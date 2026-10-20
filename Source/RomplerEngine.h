@@ -1,0 +1,600 @@
+#pragma once
+// Original C++17 multi-zone sample playback and effects engine for NOCTIVORE.
+// Self-contained core: does not depend on JUCE, VST3, or proprietary media.
+#include "BankCatalog.h"
+#include "PsySpace.h"
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <cstdint>
+#include <cstdio>
+#include <fstream>
+#include <string>
+#include <vector>
+
+namespace noctivore {
+constexpr float pi=3.14159265358979323846f;
+inline float clampf(float x,float a,float b){return std::max(a,std::min(b,x));}
+struct LFOConfig {
+ float rate=.009f, depth=0.f;
+ int wave=0, target=0, sync=0;
+};
+struct Params {
+ int bank=0, mode=0, velocityCurve=1, resampling=1, lfoWave=0, lfoTarget=0, filterMode=0;
+ float attack=.075f,decay=1.5f,sustain=.83f,release=3.2f;
+ float cutoff=.95f, resonance=.14f,glide=.07f,space=.34f,volume=.76f,pan=0.f;
+ float lfoRate=.009f,lfoDepth=0.f,bendRange=2.f,bend=0.f;
+ float sampleStart=0.f,reverse=0.f,drive=.16f,stereo=1.13f;
+ float organic=.73f, layers=.59f, movement=.52f, sub=.19f;
+ // V5 dual-bank soundscape engine (new parameters appended for V4 state compatibility).
+ int bankB=7, textureMode=0;
+ float morph=.20f, morphMotion=.14f, morphRate=.065f, texture=.42f;
+ float grain=.30f, scatter=.31f, pulseRate=2.f, spectralTilt=0.f;
+ // V6 Earthforge: four independent, host-syncable modulators, including
+ // 0.001 Hz cycles (one cycle per 16.7 minutes) and ultra-fine depths.
+ std::array<LFOConfig,4> lfos{};
+ int filter2Mode=0, filterRoute=0; // off/LP/BP/HP/notch; serial/parallel/split
+ float cutoff2=.70f,resonance2=.15f,filterBlend=.50f,filterDrive=.12f,keytrack=.12f;
+ float filterEnvAttack=.30f,filterEnvDecay=2.5f,filterEnvSustain=.4f,filterEnvRelease=3.f,filterEnvDepth=0.f;
+ float motionEnvAttack=.5f,motionEnvRelease=4.f,motionEnvDepth=.6f;
+ float fmMix=.04f,fmRatio=1.0f,fmIndex=1.2f,fmFeedback=.07f,fmInharmonic=.08f;
+ float metalMix=.018f,metalTune=.30f,metalDecay=.6f,metalTone=.42f;
+ float macroAtmosphere=.64f,macroAggression=.13f;
+ // V7: musical hypnotic motion and open, less saturated high-fidelity output.
+ float trancePulse=.17f,tranceRate=2.f,psySpiral=.24f,psySpiralRate=.16f;
+ float hiFiAir=.32f,clarity=.91f;
+ // V9: tempo-locked non-melodic gates, accents and controlled space.
+ int motif=1, motifDivision=1; // Off or six non-pitched rhythmic gates
+ float motifPitch=.36f, motifGate=.56f, motifAccent=.65f, motifGlide=.18f,motifFX=.16f;
+ float focus=.68f, mudCut=.52f, wetLowCut=.64f;
+ float biomeDepth=.72f,biomeRate=.034f,biomeChaos=.60f;
+
+
+ PsySpace::Controls fx{};
+};
+struct Sample {
+ std::vector<float> data;
+ int rate=24000,root=60;
+ bool loaded()const{return data.size()>16;}
+ float linear(float pos)const {
+  if(!loaded()||pos<0||pos>=(float)(data.size()-1))return 0;
+  const size_t i=(size_t)pos;const float frac=pos-(float)i;
+  return data[i]+(data[i+1]-data[i])*frac;
+ }
+ float cubic(float pos)const {
+  if(!loaded()||pos<1||pos>=(float)(data.size()-3))return linear(pos);
+  size_t i=(size_t)pos;float t=pos-(float)i;
+  float a=data[i-1],b=data[i],c=data[i+1],d=data[i+2];
+  return b + .5f*t*(c-a+t*(2*a-5*b+4*c-d+t*(3*(b-c)+d-a)));
+ }
+};
+inline uint32_t read4(const uint8_t* x){return (uint32_t)x[0]|(uint32_t(x[1])<<8)|(uint32_t(x[2])<<16)|(uint32_t(x[3])<<24);}
+inline uint16_t read2(const uint8_t* x){return (uint16_t)x[0]|uint16_t(x[1]<<8);}
+inline bool readWave(const std::string& file,Sample& out,int root){
+ std::ifstream f(file,std::ios::binary|std::ios::ate);if(!f)return false;
+ const auto size=f.tellg();if(size<44||size>20*1024*1024)return false;
+ std::vector<uint8_t> bytes((size_t)size);f.seekg(0);f.read((char*)bytes.data(),size);
+ if(!f||std::string((char*)bytes.data(),4)!="RIFF"||std::string((char*)bytes.data()+8,4)!="WAVE")return false;
+ uint16_t format=0,channels=0,bits=0;uint32_t rate=0;size_t offset=0,length=0;
+ for(size_t cursor=12;cursor+8<=bytes.size();){
+  uint32_t n=read4(bytes.data()+cursor+4);size_t start=cursor+8;
+  if(n>bytes.size()-start)break;
+  if(std::string((char*)bytes.data()+cursor,4)=="fmt "&&n>=16){
+   format=read2(bytes.data()+start);channels=read2(bytes.data()+start+2);
+   rate=read4(bytes.data()+start+4);bits=read2(bytes.data()+start+14);
+  }
+  if(std::string((char*)bytes.data()+cursor,4)=="data"){offset=start;length=n;}
+  cursor=start+n+(n&1);
+ }
+ if(format!=1||channels!=1||bits!=16||rate<8000||length<32||length%2)return false;
+ out.data.resize(length/2);out.rate=(int)rate;out.root=root;
+ for(size_t i=0;i<out.data.size();++i){uint16_t raw=read2(bytes.data()+offset+i*2);out.data[i]=(int16_t)raw*(1.f/32768.f);}
+ return true;
+}
+class Engine {
+public:
+ static constexpr int voiceCount=24;
+ Engine(){prepare(44100.);}
+ bool loadLibrary(const std::string& path){
+  bool any=false;bankFolder=path;
+  for(int bank=0;bank<(int)banks.size();++bank){
+   for(int zone=0;zone<4;++zone){
+    char fn[64];std::snprintf(fn,sizeof(fn),"/%02d_%d.wav",bank,rootNotes[(size_t)zone]);
+    any|=readWave(path+fn,samples[(size_t)bank][(size_t)zone],rootNotes[(size_t)zone]);
+   }
+  }
+  // Optional bank from user's own WAV recordings, see README (36/48/60/72.wav).
+  for(int zone=0;zone<4;++zone){
+   std::string file=path+"/User/"+std::to_string(rootNotes[(size_t)zone])+".wav";
+   readWave(file,samples[50][(size_t)zone],rootNotes[(size_t)zone]);
+  }
+  return any;
+ }
+ int availableZones(int bank)const {
+  if(bank<0||bank>50)return 0;
+  int result=0;
+  for(const auto& s:samples[(size_t)bank])if(s.loaded())++result;
+  return result;
+ }
+ void prepare(double sampleRate){
+  sr=std::max(8000.,sampleRate);for(auto& v:voices)v={};
+  spaceFX.prepare(sr);mixLowL=mixLowR=0;mixMidL=mixMidR=0;
+  lfoPhase=0;for(auto& l:modulators)l={};globalTime=0;motifBeats=0;held.fill(false);sustained.fill(false);sustainDown=false;
+ }
+ void setParameters(const Params& values){
+  p=values;auto fx=p.fx;fx.psySpiral=p.psySpiral;fx.psySpiralRate=p.psySpiralRate;
+  fx.wetLowCut=p.wetLowCut;
+  spaceFX.setControls(fx);
+ }
+ void setTempo(double bpm){tempo=clampf((float)bpm,30.f,300.f);spaceFX.setTempo(bpm);}
+ void setBeatClock(double ppq){if(std::isfinite(ppq))motifBeats=(float)std::fmod(ppq,65536.);}
+ void pitchWheel(int value){bend=clampf(((float)value-8192.f)/8192.f,-1,1);}
+ void controller(int cc,int value){
+  if(cc==1)modwheel=clampf((float)value/127,0,1);
+  if(cc==64){bool next=value>=64;if(!next&&sustainDown){for(int n=0;n<128;++n)if(sustained[(size_t)n]){sustained[(size_t)n]=false;releaseKey(n);}}
+   sustainDown=next;}
+  if(cc==123||cc==120)allNotesOff();
+ }
+ void allNotesOff(){for(auto& v:voices)if(v.stage)v.stage=4;held.fill(false);sustained.fill(false);}
+ void noteOn(int note,float velocity){
+  if(note<0||note>127||velocity<=0)return;
+  held[(size_t)note]=true;sustained[(size_t)note]=false;
+  const int mode=std::clamp(p.mode,0,2);
+  Voice* v=nullptr;bool retrigger=true;
+  if(mode!=0){
+   v=&voices[0];retrigger=mode==1||v->stage==0;
+  }else{
+   for(auto& c:voices)if(c.stage==0){v=&c;break;}
+   if(!v)v=&*std::min_element(voices.begin(),voices.end(),[](const Voice&a,const Voice&b){return a.level<b.level;});
+  }
+  if(!v)return;
+  float oldPitch=v->pitch;
+  int bank=std::clamp(p.bank,0,50);
+  int z=std::clamp((int)std::lround((note-36)/12.f),0,3);
+  if(!samples[(size_t)bank][(size_t)z].loaded()){
+   for(int k=0;k<4;++k)if(samples[(size_t)bank][(size_t)k].loaded()){z=k;break;}
+  }
+  if(!samples[(size_t)bank][(size_t)z].loaded())return;
+  v->sample=&samples[(size_t)bank][(size_t)z];
+  int bankB=std::clamp(p.bankB,0,50);
+  int zb=z;
+  if(!samples[(size_t)bankB][(size_t)zb].loaded())
+   for(int k=0;k<4;++k)if(samples[(size_t)bankB][(size_t)k].loaded()){zb=k;break;}
+  v->sampleB=samples[(size_t)bankB][(size_t)zb].loaded()
+   ? &samples[(size_t)bankB][(size_t)zb] : v->sample;
+  v->bank=bank;v->note=note;v->vel=clampf(velocity,0,1);
+  if(p.velocityCurve==0)v->vel=std::sqrt(v->vel);
+  else if(p.velocityCurve==2)v->vel=v->vel*v->vel;
+  v->target=(float)note;
+  v->pitch=(p.glide>.002f&&oldPitch>0)?oldPitch:(float)note;
+  v->age=++voiceCounter;
+  // Each note gets its own repeatable phase/pitch drift so layers do not phase-lock.
+  v->motionPhase=(float)((v->age*41+note*13)%101)/101.f*2.f*pi;
+  v->bodyPhase=0;v->fmPhase=0;v->modPhase=0;v->prevMod=0;
+  v->metalPos=0;v->metalDamp=0;v->fxPhase=0;v->fxStep=-1;v->filterEnv=0;v->filterAge=0;v->motionEnv=0;
+  std::fill(v->metalLine.begin(),v->metalLine.end(),0.f);
+  v->lp2=0;v->bp2=0;v->airLP=0;v->motifPitch=0;v->ghostLP=0;
+  v->noiseState=(uint32_t)(v->age*747796405ULL+note*2891336453ULL+17);v->breath=0;
+  v->layerOffset=(float)samples[(size_t)bank][(size_t)z].rate*(.10f+.15f*(float)((note*7+v->age)%11)/10.f);
+  v->oneShot=bank<50?banks[(size_t)bank].oneShot:false;
+  if(retrigger){
+   v->position=clampf(p.sampleStart,0.f,.7f)*(float)v->sample->data.size();
+   v->positionB=clampf(p.sampleStart,0.f,.7f)*(float)v->sampleB->data.size();
+   if(p.reverse>.5f){v->position=(float)v->sample->data.size()-4.f;
+     v->positionB=(float)v->sampleB->data.size()-4.f;}
+   v->grainPhase=0.f;v->grainSecondHalf=false;
+   v->anchorA[0]=v->position;v->anchorA[1]=v->position+.09f*v->sample->rate;
+   v->anchorB[0]=v->positionB;v->anchorB[1]=v->positionB+.09f*v->sampleB->rate;
+   v->level=0;v->stage=1;v->lp=0;v->bp=0;
+  }
+  v->keyDown=true;
+ }
+ void noteOff(int note){if(note<0||note>127)return;held[(size_t)note]=false;
+  if(sustainDown){sustained[(size_t)note]=true;return;}
+  releaseKey(note);
+ }
+ void render(float* left,float* right,int count){
+  if(!left||!right||count<=0)return;
+  const float dt=1.f/(float)sr;
+  float amp=clampf(p.volume,0.f,1.5f);
+  for(int i=0;i<count;++i){
+   std::array<float,11> destinations{};
+   // Per-target accumulation allows true simultaneous four-LFO routing.
+   // A small modulation envelope scales depth after attack and before release.
+   for(size_t m=0;m<modulators.size();++m){
+    auto& osc=modulators[m];const auto& cfg=p.lfos[m];
+    float hz=clampf(cfg.rate,.0002f,1.5f);
+    if(cfg.sync>0){constexpr float beatLengths[]={4.f,2.f,1.f,.5f,.25f,8.f,16.f,32.f,64.f,128.f};
+      hz=(tempo/60.f)/beatLengths[(size_t)std::clamp(cfg.sync-1,0,9)];}
+    osc.phase+=hz*dt;
+    if(osc.phase>=1.f){osc.phase-=std::floor(osc.phase);
+      osc.seed=1664525u*osc.seed+1013904223u;
+      osc.random=((osc.seed>>8)*(1.f/8388608.f)-1.f);}
+    float shape=0.f;
+    switch(cfg.wave){
+      case 1: shape=1.f-4.f*std::fabs(osc.phase-.5f);break;
+      case 2: shape=2.f*osc.phase-1.f;break;
+      case 3: shape=osc.phase<.5f?1.f:-1.f;break;
+      case 4: shape=osc.random;break;
+      case 5: shape=std::sin(2.f*pi*osc.phase)*std::sin(2.f*pi*osc.phase*3.f);break;
+      default:shape=std::sin(2.f*pi*osc.phase);
+    }
+    // Deliberate fine response for subtle organic movement.
+    float depth=clampf(cfg.depth,0,1); depth=depth*depth;
+    int dest=std::clamp(cfg.target,0,10);
+    destinations[(size_t)dest]+=shape*depth;
+   }
+   // The grid is rhythmic ONLY. No MIDI-note transposition or chirped melody.
+   // Six contrasting gate/accent contours preserve an odd forest-psy feel.
+   static constexpr float grooves[6][16] = {
+    {1.f,.28f,.58f,.18f,.84f,.22f,.72f,.12f, .96f,.22f,.54f,.33f,.80f,.14f,.68f,.40f},
+    {1.f,.15f,.27f,.80f,.22f,.16f,.89f,.22f, .90f,.14f,.30f,.86f,.15f,.18f,.94f,.32f},
+    {.95f,.26f,.78f,.13f,.48f,.91f,.20f,.76f, .93f,.12f,.74f,.32f,.85f,.51f,.20f,.62f},
+    {1.f,.11f,.84f,.18f,.14f,.91f,.57f,.13f, .87f,.67f,.11f,.89f,.21f,.13f,.73f,.41f},
+    {.93f,.68f,.48f,.60f,.85f,.31f,.55f,.33f, .90f,.47f,.42f,.65f,.81f,.28f,.48f,.62f},
+    {.95f,.10f,.14f,.12f,.76f,.11f,.12f,.20f, .90f,.09f,.13f,.18f,.70f,.14f,.15f,.28f}
+   };
+   static constexpr float divs[4]={2.f,4.f,8.f,3.f}; // eighth, 16th, 32nd, triplet
+   const int grooveIndex=std::clamp(p.motif-1,0,5);
+   const float beatsPerStep=divs[(size_t)std::clamp(p.motifDivision,0,3)];
+   const float beatClock=motifBeats*beatsPerStep;
+   const int rawStep=(int)std::floor(beatClock);
+   const int stepNum=((rawStep%16)+16)%16;
+   float stepPhase=beatClock-std::floor(beatClock);
+   // Swing shifts alternating steps WITHOUT changing pitch or grid rate.
+   float swing=clampf(p.motifGlide,0.f,1.f)*.27f;
+   stepPhase=clampf(stepPhase+(stepNum%2==1?swing:-swing),0.f,.999f);
+   const float accent=p.motif==0?1.f:grooves[(size_t)grooveIndex][(size_t)stepNum];
+   float grooveDensity=clampf(p.motifPitch,0.f,1.f);
+   const float gateShape=(1.f-std::exp(-stepPhase*38.f)) *
+     (1.f-clampf((stepPhase-(.58f-.18f*grooveDensity))/.42f,0.f,1.f));
+   const float pulse=clampf(p.motifGate,0.f,1.f);
+   const float gateStrength=(.26f+.74f*accent)*(.84f+.16f*grooveDensity);
+   const float phraseGate=p.motif==0?1.f:
+     (1.f-pulse*(.94f-gateShape*gateStrength));
+   float mixL=0,mixR=0;
+   for(auto& v:voices){
+    if(!v.stage||!v.sample||!v.sample->loaded())continue;
+    const auto& s=*v.sample;
+    const auto& sb=*v.sampleB;
+    float coeff=1.f-std::exp(-dt/std::max(.002f,p.glide));
+    v.pitch+=(v.target-v.pitch)*coeff;
+    // MIDI input sets the pitch. No scripted pitch gestures at all.
+    const float gesture=0.f;
+    float semitones=v.pitch-(float)s.root+(bend+p.bend)*p.bendRange+gesture;
+    semitones+=clampf(destinations[2],-1.f,1.f)*2.f;
+    float micro=clampf(p.organic,0.f,1.f)*.030f*std::sin(v.motionPhase);
+    float step=(float)s.rate*dt*std::exp2((semitones+micro)/12.f);
+    step=clampf(step,.01f,20.f);
+    const float semitonesB=v.pitch-(float)sb.root+(bend+p.bend)*p.bendRange+gesture
+      +clampf(destinations[2],-1.f,1.f)*2.f;
+    float stepB=clampf((float)sb.rate*dt*std::exp2((semitonesB+micro)/12.f),.01f,20.f);
+    if(p.reverse>.5f){step=-step;stepB=-stepB;}
+    // Two independent crossfaded, pitch-tracked source transports. No buffers
+    // are allocated in the audio thread. Morph is equal-power and optionally
+    // meanders at a second, deliberately slow modulation rate.
+    const bool droneLoop=!v.oneShot && p.reverse<=.5f;
+    auto readAt=[&](const Sample& source,float x)->float{
+     const float n=(float)source.data.size();
+     if(droneLoop){
+      const float begin=n*.17f,end=n*.88f;
+      const float overlap=std::min((float)source.rate*.19f,(end-begin)*.20f);
+      const float cycle=end-begin-overlap;
+      if(x>=end)x=begin+overlap+std::fmod(x-end,cycle);
+      if(x<0.f)x=begin+overlap+std::fmod(std::fabs(x),cycle);
+      if(x>end-overlap && x<end){
+       const float u=clampf((x-(end-overlap))/overlap,0.f,1.f);
+       const float a=u*u*(3.f-2.f*u);
+       const float near=p.resampling==0?source.linear(x):source.cubic(x);
+       const float far=p.resampling==0?source.linear(begin+x-(end-overlap))
+                                         :source.cubic(begin+x-(end-overlap));
+       return (1.f-a)*near+a*far;
+      }
+     }
+     return p.resampling==0?source.linear(x):source.cubic(x);
+    };
+    auto advance=[&](const Sample& source,float& pos,float delta){
+     pos+=delta;
+     if(droneLoop){
+      float begin=(float)source.data.size()*.17f;
+      float end=(float)source.data.size()*.88f;
+      float overlap=std::min((float)source.rate*.19f,(end-begin)*.20f);
+      if(pos>=end)pos=begin+overlap+std::fmod(pos-end,end-begin-overlap);
+     }else if(p.reverse>.5f){
+      if(pos<=1.f)pos=(float)source.data.size()-4.f;
+     }else if(pos>=(float)source.data.size()-4.f){
+      v.stage=4;v.keyDown=false;pos=(float)source.data.size()-4.f;
+     }
+    };
+    const float osc=std::sin(2.f*pi*p.morphRate*globalTime+v.motionPhase*.37f);
+    const float morph=clampf(p.morph + .5f*p.morphMotion*(osc+.24f*std::sin(2.f*pi*p.morphRate*.39f*globalTime))
+                    +.35f*destinations[6]
+                    +.20f*clampf(p.biomeDepth,0.f,1.f)*std::sin(2.f*pi*p.biomeRate*globalTime+v.motionPhase*.13f),0.f,1.f);
+    const float mixA=std::cos(morph*pi*.5f),mixB=std::sin(morph*pi*.5f);
+    const float baseA=readAt(s,v.position),baseB=readAt(sb,v.positionB);
+    float sample=mixA*baseA+mixB*baseB;
+    const float movement=clampf(p.movement,0.f,1.f);
+    const float organic=clampf(p.organic,0.f,1.f);
+    // Three interacting slow biome cycles. Complexity varies their relative
+    // phase; life modulates tone, source balance, layering and breath.
+    const float biomeRate=clampf(p.biomeRate,.002f,.35f);
+    const float complexity=clampf(p.biomeChaos,0.f,1.f);
+    const float life=clampf(p.biomeDepth,0.f,1.f);
+    const float bioPhase=2.f*pi*biomeRate*globalTime+v.motionPhase*.17f;
+    const float bio1=std::sin(bioPhase+complexity*1.2f*std::sin(bioPhase*.38f+v.motionPhase));
+    const float bio2=std::sin(bioPhase*(1.75f+1.6f*complexity)+v.motionPhase*1.11f);
+    const float bio3=std::sin(bioPhase*(3.6f+2.3f*complexity)+2.f*std::sin(bioPhase*.62f+v.motionPhase));
+    const float biome=life*(.55f*bio1+.27f*bio2+.18f*bio3);
+    // Source mixing is also modulated by Life, not just an inaudible detune.
+    sample=sample*(1.f+.12f*biome);
+    v.motionPhase+=dt*(.17f+movement*1.70f);
+    if(v.motionPhase>2.f*pi)v.motionPhase-=2.f*pi;
+    const float drift=std::sin(v.motionPhase)+.34f*std::sin(v.motionPhase*.53f+1.2f);
+    float layer=mixA*readAt(s,v.position+v.layerOffset*(1.f+.10f*movement*drift+.25f*biome))
+               +mixB*readAt(sb,v.positionB+v.layerOffset*(float)sb.rate/(float)s.rate*(1.f+.10f*movement*drift+.25f*biome));
+    // Overlapping, windowed grains with separately randomized capture anchors.
+    // Freeze keeps its anchors locked; Cloud/Fracture continually reseed them.
+    const int mode=std::clamp(p.textureMode,0,5);
+    if(mode==1||mode==4||mode==5){
+     const float duration=.065f+.58f*(1.f-clampf(p.grain+.5f*destinations[8],0.f,1.f));
+     v.grainPhase+=dt/duration;
+     bool reset=false;
+     if(v.grainPhase>=1.f){v.grainPhase-=std::floor(v.grainPhase);reset=true;}
+     bool half=v.grainPhase>=.5f;
+     auto reanchor=[&](int head){
+      v.noiseState=v.noiseState*1664525u+1013904223u;
+      float rnd=((v.noiseState>>8)*(1.f/8388608.f)-1.f);
+      float offset=rnd*clampf(p.scatter,0.f,1.f)*2.8f;
+      if(mode==5)offset*=.18f;
+      v.anchorA[(size_t)head]=v.position+offset*(float)s.rate;
+      v.anchorB[(size_t)head]=v.positionB+offset*(float)sb.rate;
+     };
+     if(mode!=5){
+      if(reset)reanchor(0);
+      if(half&&!v.grainSecondHalf)reanchor(1);
+     }
+     v.grainSecondHalf=half;
+     const float a=v.grainPhase,b=std::fmod(a+.5f,1.f);
+     const float wa=std::sin(pi*a)*std::sin(pi*a);
+     const float wb=std::sin(pi*b)*std::sin(pi*b);
+     auto head=[&](int j,float phase){
+      return mixA*readAt(s,v.anchorA[(size_t)j]+phase*duration*(float)sr*step)
+           + mixB*readAt(sb,v.anchorB[(size_t)j]+phase*duration*(float)sr*stepB);
+     };
+     float grains=(head(0,a)*wa+head(1,b)*wb)/(wa+wb+1.e-5f);
+     const float amount=mode==5?(.75f+.25f*p.texture):clampf(p.texture,0.f,1.f);
+     sample=sample*(1.f-amount)+grains*amount;
+    }
+    advance(s,v.position,step);
+    advance(sb,v.positionB,stepB);
+    float time=.02f;
+    if(v.stage==1){time=std::max(.001f,p.attack);v.level+=dt/time;
+     if(v.level>=1){v.level=1;v.stage=2;}}
+    else if(v.stage==2){time=std::max(.01f,p.decay);
+     v.level+=(p.sustain-v.level)*std::min(1.f,dt*5.f/time);
+     if(std::fabs(p.sustain-v.level)<.002f)v.stage=3;
+    }
+    else if(v.stage==3)v.level+=(p.sustain-v.level)*.001f;
+    else if(v.stage==4){v.level-=dt*std::max(.05f,v.releaseLevel)/std::max(.01f,p.release);
+      if(v.level<=.0001f){v.stage=0;v.level=0;continue;}}
+    // Two envelopes, one for the filter and one for LFO/motion intensity.
+    const bool releasing=v.stage==4;
+    const float fAttack=std::max(.003f,p.filterEnvAttack);
+    if(!releasing){
+      v.filterAge+=dt;
+      if(v.filterAge<fAttack)v.filterEnv=v.filterAge/fAttack;
+      else v.filterEnv=clampf(p.filterEnvSustain,0.f,1.f)
+        +(1.f-clampf(p.filterEnvSustain,0.f,1.f))*
+          std::exp(-(v.filterAge-fAttack)/std::max(.01f,p.filterEnvDecay));
+      v.motionEnv=clampf(v.motionEnv+dt/std::max(.003f,p.motionEnvAttack),0.f,1.f);
+    }else{
+      v.filterEnv*=std::exp(-dt/std::max(.01f,p.filterEnvRelease));
+      v.motionEnv*=std::exp(-dt/std::max(.01f,p.motionEnvRelease));
+    }
+    const float envAmt=v.filterEnv*clampf(p.filterEnvDepth,-1.f,1.f);
+    const float moveDepth=.15f+v.motionEnv*clampf(p.motionEnvDepth,0.f,1.f);
+    const float aggression=clampf(p.macroAggression,0.f,1.f);
+    const float atmosphere=clampf(p.macroAtmosphere,0.f,1.f);
+    // Two-operator inharmonic FM: no samples or wavetables required.
+    const float carrier=std::min(7200.f,fundamentalHz(v.pitch+gesture+(bend+p.bend)*p.bendRange+clampf(destinations[2],-1.f,1.f)*2.f));
+    const float fmFreq=std::min((float)sr*.42f,carrier*(p.fmRatio+.19f*p.fmInharmonic));
+    v.modPhase=wrapPhase(v.modPhase+2.f*pi*fmFreq*dt);
+    const float mod=std::sin(v.modPhase+clampf(p.fmFeedback,0.f,.95f)*v.prevMod*2.5f);
+    v.prevMod=mod;
+    v.fmPhase=wrapPhase(v.fmPhase+2.f*pi*carrier*dt);
+    const float fmAmount=clampf(p.fmIndex+.6f*destinations[5]+aggression*1.5f,0.f,16.f);
+    const float fmA=std::sin(v.fmPhase+fmAmount*mod);
+    const float fmB=std::sin(v.fmPhase*1.019f+(fmAmount*.7f)*std::sin(v.modPhase*(1.17f+p.fmInharmonic*.46f)));
+    const float fmSignal=(.68f*fmA+.32f*fmB)*(.12f+.88f*v.motionEnv);
+    float fmMix=clampf(p.fmMix+aggression*.07f,0.f,1.f);
+    sample=sample*(1.f-fmMix*.48f)+fmSignal*fmMix*.75f;
+    // Physical-style damped resonator. Persistent delay provides real metallic
+    // sustain; partials from inharmonic FM add bright scraped-metal motion.
+    const float metalAmt=clampf(p.metalMix+.12f*destinations[7]+aggression*.035f,0.f,1.f);
+    const int delaySamples=std::clamp((int)((float)sr/(carrier*(.51f+p.metalTune*3.8f))),16,4094);
+    const int tap=(v.metalPos+4096-delaySamples)%4096;
+    float ringing=v.metalLine[(size_t)tap];
+    float feedback=clampf(.48f+p.metalDecay*.49f,0.f,.978f);
+    v.metalDamp+=(ringing-v.metalDamp)*(.02f+.65f*p.metalTone);
+    const float excitation=(.15f*sample+.12f*fmSignal)*metalAmt;
+    v.metalLine[(size_t)v.metalPos]=std::tanh(v.metalDamp*feedback+excitation);
+    v.metalPos=(v.metalPos+1)%4096;
+    sample+=metalAmt*(ringing*.87f+.12f*fmSignal);
+    // Stable two-stage SVFs, with serial, parallel or band-split routing.
+    float baseCut=clampf(p.cutoff + .27f*destinations[3]*moveDepth +envAmt*.35f + (accent-.5f)*.11f*p.motifAccent*(p.motif>0?1.f:0.f)
+                  +p.keytrack*(v.pitch-60.f)/120.f
+                  +.035f*organic*std::sin(v.motionPhase*.67f)+.19f*biome,.008f,1.f);
+    float otherCut=clampf(p.cutoff2+.27f*destinations[4]*moveDepth+envAmt*.28f-.13f*biome,.008f,1.f);
+    auto filt=[&](float input,float cutoff,float resonance,int mode,float& lp,float& bp){
+      float hz=25.f*std::pow(760.f,cutoff);
+      float g=clampf(2.f*std::sin(pi*hz*dt),.001f,.70f);
+      float q=clampf(1.60f-resonance*1.46f,.14f,1.8f);
+      lp+=g*bp;
+      float hp=std::tanh(input*1.4f)*.715f-lp-q*bp;
+      bp+=g*hp;
+      lp=clampf(lp,-4.f,4.f);bp=clampf(bp,-4.f,4.f);
+      switch(mode){case 1:return bp;case 2:return hp;case 3:return hp+lp;default:return lp;}
+    };
+    const float clean=sample;
+    const bool split=p.filterRoute==2 && p.filter2Mode>0;
+    float stage1=filt(clean,baseCut,p.resonance,split?0:p.filterMode,v.lp,v.bp);
+    float filtered=stage1;
+    if(p.filter2Mode>0){
+      float secondInput=(p.filterRoute==0)?stage1:clean;
+      float stage2=filt(secondInput,otherCut,p.resonance2,split?2:p.filter2Mode-1,v.lp2,v.bp2);
+      filtered=stage1*(1.f-p.filterBlend)+stage2*p.filterBlend;
+    }
+    float drive=clampf(p.drive+aggression*.22f,0.f,1.f);
+    float dry=filtered*.84f+clean*.16f;
+    dry+=p.spectralTilt*(clean-v.lp)*.6f;
+    // Clarity macro preserves uncompressed detail while still allowing edge.
+    const float cleanFraction=clampf(p.clarity,0.f,1.f);
+    float saturated=std::tanh(dry*(1.16f+drive*2.0f+p.filterDrive*1.2f))*.75f;
+    dry=saturated*(1.f-.62f*cleanFraction)+dry*.73f*(.62f*cleanFraction);
+    const float edge=std::tanh((clean-v.lp)*2.1f)*(.04f+.09f*drive);
+    dry+=edge*(1.f-.70f*clampf(p.clarity,0.f,1.f));
+    // Non-pitched ghost/breath accents instead of cartoony FM chirps.
+    // High-pass stochastic air: musically rhythmic but never melodic.
+    if(p.motif>0 && p.motifFX>.0001f && accent>.32f){
+      const float ghostEnv=(1.f-std::exp(-stepPhase*48.f))*std::exp(-stepPhase*14.f);
+      v.noiseState=1664525u*v.noiseState+1013904223u;
+      const float n=((v.noiseState>>8)*(1.f/8388608.f)-1.f);
+      v.ghostLP+=(n-v.ghostLP)*(.014f+.05f*complexity);
+      const float ghost=n-v.ghostLP;
+      dry+=.10f*clampf(p.motifFX,0.f,1.f)*accent*ghostEnv*ghost;
+    }
+
+    // Gentle air shelf made from the actual 48 kHz samples, not hard noise.
+    v.airLP+=(sample-v.airLP)*.12f;
+    dry+=(sample-v.airLP)*.10f*clampf(p.hiFiAir,0.f,1.f);
+    float layerGain=clampf(p.layers+atmosphere*.18f,0.f,1.f)*(.29f+.32f*organic);
+    layerGain*=clampf(1.f+.35f*biome,.40f,1.5f);
+    float stereoLayer=std::tanh(layer*(1.25f+drive*2.2f))*.76f*layerGain;
+    // Organic fundamental/subharmonic, never overly prominent for percussive banks.
+    float fundamental=std::clamp(440.f*std::exp2((v.pitch-69.f)/12.f),20.f,1500.f);
+    v.bodyPhase+=dt*fundamental*pi; // sub oscillator at half fundamental
+    if(v.bodyPhase>2*pi)v.bodyPhase-=2*pi;
+    float sub=(.21f*std::sin(v.bodyPhase)+.065f*std::sin(2.f*v.bodyPhase)) * clampf(p.sub,0.f,1.f);
+    // Soft fluttering airflow behind the sample, synthesized per voice.
+    // LCG is deterministic and allocation free, one 32-bit update per sample.
+    v.noiseState=v.noiseState*1664525u+1013904223u;
+    float noise=((v.noiseState>>8)*(1.f/8388608.f)-1.f);
+    v.breath+=(noise-v.breath)*(.003f+.013f*organic);
+    float air=v.breath*organic*(.10f+.13f*life)*(.75f+.25f*drift+.55f*biome);
+    sub*=v.oneShot?.33f:1.f;
+    float gain=v.level*v.vel*.46f;
+    // Tempo-aware forest/psytrance polymetric breathing, available in every
+    // texture algorithm. Pattern steps are softly interpolated, never clicked.
+    constexpr float seq[16]={1.f,.64f,.92f,.48f,.98f,.56f,.72f,.39f,
+                             1.f,.50f,.80f,.60f,.94f,.45f,.84f,.70f};
+    float beat=globalTime*tempo/60.f*clampf(p.tranceRate,.25f,8.f);
+    float slot=std::fmod(beat*4.f+v.note*.125f,16.f);
+    int ix=std::clamp((int)slot,0,15);
+    float frac=slot-ix;
+    float transition=clampf((frac-.85f)/.15f,0.f,1.f);
+    transition=transition*transition*(3.f-2.f*transition);
+    float trance=seq[ix]*(1.f-transition)+seq[(ix+1)%16]*transition;
+    gain*=1.f-clampf(p.trancePulse,0.f,1.f)*(.95f-trance);
+    gain*=phraseGate;
+    gain*=clampf(1.f+.18f*biome,.55f,1.35f);
+    if(p.motif>0)gain*=1.f+.33f*clampf(p.motifAccent,0.f,1.f)*(accent-.45f);
+    if(mode==3){
+     float clockPhase=std::fmod(globalTime*tempo/60.f*clampf(p.pulseRate,.25f,16.f)
+             +(float)(v.note%5)*.04f,1.f);
+     float gate=.16f+.84f*(.5f+.5f*std::cos(2*pi*clockPhase));
+     gain*=1.f-clampf(p.texture,0.f,1.f)*(1.f-gate);
+    }
+    if(mode==4){
+     float clockPhase=std::fmod(globalTime*tempo/60.f*clampf(p.pulseRate,.25f,16.f),1.f);
+     float gate=clockPhase<.36f?.98f:.12f;
+     gain*=1.f-clampf(p.texture,0.f,1.f)*.84f*(1.f-gate);
+    }
+    gain*=clampf(1.f+destinations[0]*.45f,0.f,1.5f);
+    float orbit=(mode==2? p.texture*.75f*std::sin(v.motionPhase*1.35f+globalTime*.37f):0.f);
+    float pan=clampf(p.pan +destinations[1]*moveDepth+orbit+.21f*biome,-1.f,1.f);
+    // Equal-power output pan and subtle sample-bank stereo spread
+    float spread=clampf(p.stereo,0,1.5f)*(((v.note%7)-3)/12.f);
+    float a=clampf(pan+spread,-1,1);
+    mixL+=(dry*(1-layerGain*.4f)+stereoLayer*.44f+sub+air)*gain*std::sqrt(.5f*(1.f-a));
+    mixR+=(dry*(1-layerGain*.4f)+stereoLayer*.98f+sub-air*.36f)*gain*std::sqrt(.5f*(1.f+a));
+   }
+   globalTime+=dt;
+   motifBeats+=dt*tempo/60.f;
+   if(motifBeats>65536.f)motifBeats-=65536.f;
+   if(globalTime>100000.f)globalTime=0;
+   float wetL=0,wetR=0;
+   {
+     auto fx=p.fx;
+     fx.delayWarp=clampf(fx.delayWarp+.27f*destinations[9],0.f,1.f);
+     fx.reverbMod=clampf(fx.reverbMod+.25f*destinations[10]+.2f*p.macroAtmosphere,0.f,1.f);
+     fx.reverbMix=clampf(fx.reverbMix+.09f*p.macroAtmosphere,0.f,.98f);
+     fx.psySpiral=p.psySpiral;fx.psySpiralRate=p.psySpiralRate;
+     fx.wetLowCut=p.wetLowCut;
+     spaceFX.setControls(fx); // assignment only; no allocation.
+   }
+   // Focus network: adjustable low-mid cleanup in DRY audio only.
+   // Slow and fast low-passes isolate the 120–600 Hz buildup; the high pass
+   // on the wet path lives INSIDE PsySpace and does not remove bass from dry.
+   float lowCoeff=1.f-std::exp(-2.f*pi*125.f*dt);
+   float midCoeff=1.f-std::exp(-2.f*pi*625.f*dt);
+   mixLowL+=(mixL-mixLowL)*lowCoeff;mixLowR+=(mixR-mixLowR)*lowCoeff;
+   mixMidL+=(mixL-mixMidL)*midCoeff;mixMidR+=(mixR-mixMidR)*midCoeff;
+   const float cut=.69f*clampf(p.mudCut,0.f,1.f);
+   mixL-=cut*(mixMidL-mixLowL);
+   mixR-=cut*(mixMidR-mixLowR);
+   // Narrow low frequencies in a controllable way while keeping weird stereo
+   // animation in the mids and highs; energy-normalized mid/side operation.
+   const float narrow=clampf(p.focus,0.f,1.f)*.45f;
+   const float side=(mixL-mixR)*.5f;
+   const float mid=(mixL+mixR)*.5f;
+   mixL=mid+(1.f-narrow)*side;
+   mixR=mid-(1.f-narrow)*side;
+   spaceFX.tick(mixL,mixR,wetL,wetR);
+   // A softly limited master bus retains transient punch and space width.
+   // More headroom and less blanket drive than Earthforge v6 master limiter.
+   // Soft limiting is retained to make accidental dense chords manageable.
+   float masterBoost=1.05f+.20f*(1.f-clampf(p.clarity,0.f,1.f));
+   left[i]+=std::tanh((mixL+wetL)*amp*masterBoost)*.96f;
+   right[i]+=std::tanh((mixR+wetR)*amp*masterBoost)*.96f;
+  }
+ }
+private:
+ struct Voice {
+  const Sample* sample=nullptr;
+  const Sample* sampleB=nullptr;
+  int note=-1,bank=0,stage=0;
+  float vel=0,position=0,positionB=0,level=0,releaseLevel=1,pitch=0,target=0,lp=0,bp=0;
+  float motionPhase=0,layerOffset=0,bodyPhase=0,breath=0;
+  float lp2=0,bp2=0,filterEnv=0,filterAge=0,motionEnv=0,airLP=0;
+  float fmPhase=0,modPhase=0,prevMod=0,metalDamp=0,motifPitch=0,fxPhase=0,ghostLP=0;int fxStep=-1;
+  std::array<float,4096> metalLine{};int metalPos=0;
+  float grainPhase=0.f;bool grainSecondHalf=false;
+  std::array<float,2> anchorA{},anchorB{};uint32_t noiseState=1;
+  bool keyDown=false,oneShot=false;uint64_t age=0;
+ };
+ void releaseKey(int n){
+  if(p.mode==2){int latest=-1;for(int i=0;i<128;++i)if(held[(size_t)i])latest=i;
+   if(latest>=0){voices[0].target=(float)latest;voices[0].note=latest;return;}}
+  for(auto& v:voices)if(v.stage&&v.note==n){v.releaseLevel=v.level;v.stage=4;v.keyDown=false;}
+ }
+ static float wave(float x,int k){
+  switch(k){case 1:return 1.f-4.f*std::fabs(x-.5f);
+   case 2:return x<.5f?1.f:-1.f;
+   case 3:return 2.f*x-1.f;
+   case 4:return 2.f*(std::exp(-5.f*x)-.5f*(1.f+std::exp(-5.f)))/(1.f-std::exp(-5.f));
+   default:return std::sin(2*pi*x);}
+ }
+ static float fundamentalHz(float midi){return clampf(440.f*std::exp2((midi-69.f)/12.f),20.f,8000.f);}
+ static float wrapPhase(float phase){return phase>=2.f*pi?std::fmod(phase,2.f*pi):phase;}
+ struct ModState {float phase=0.f,random=0.f;uint32_t seed=1234567u;};
+ double sr=44100.;Params p;
+ std::array<ModState,4> modulators{};
+ std::array<std::array<Sample,4>,51> samples{};
+ std::array<Voice,voiceCount> voices{};
+ std::array<bool,128> held{},sustained{};
+ uint64_t voiceCounter=0;bool sustainDown=false;
+ float bend=0,modwheel=0,lfoPhase=0,globalTime=0,motifBeats=0,tempo=145;
+ float mixLowL=0,mixLowR=0,mixMidL=0,mixMidR=0;
+ PsySpace spaceFX;std::string bankFolder;
+};
+}
