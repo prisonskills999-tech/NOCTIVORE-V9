@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(NOCTIVORE_FX VERSION 10.1.0 LANGUAGES C CXX)
+project(NOCTIVORE_FX VERSION 10.2.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -21,10 +21,10 @@ else()
 endif()
 juce_add_plugin(NOCTIVORE_FX
  COMPANY_NAME "Noctivore Audio"
- BUNDLE_ID "audio.noctivore.xenobiome.living"
+ BUNDLE_ID "audio.noctivore.xenobiome.painted"
  PLUGIN_MANUFACTURER_CODE NcFx
- PLUGIN_CODE Xb11
- PRODUCT_NAME "NOCTIVORE FX XENOBIOME LIVING"
+ PLUGIN_CODE Xb12
+ PRODUCT_NAME "NOCTIVORE FX PAINTED FOREST"
  FORMATS VST3
  IS_SYNTH TRUE
  NEEDS_MIDI_INPUT TRUE
@@ -39,7 +39,7 @@ option(NOCTIVORE_GENERIC_EDITOR "Use JUCE generic parameter editor" OFF)
 juce_generate_juce_header(NOCTIVORE_FX)
 target_sources(NOCTIVORE_FX PRIVATE
  Source/PluginProcessor.h Source/PluginProcessor.cpp
- Source/PluginEditor.h Source/PluginEditor.cpp
+ Source/PluginEditor.h Source/PluginEditor.cpp Source/PaintedForest.h
  Source/RomplerEngine.h Source/PsySpace.h Source/BankCatalog.h)
 target_compile_definitions(NOCTIVORE_FX PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0
  PRIVATE NOCTIVORE_GENERIC_EDITOR=$<BOOL:${NOCTIVORE_GENERIC_EDITOR}>)
