@@ -30,6 +30,9 @@ public:
  bool libraryLoaded=false;
  juce::File paintingFile() const;
  std::atomic<float> peak{0.f};
+ std::atomic<float> displayTempo{145.f};
+ std::atomic<float> displayPpq{0.f};
+ std::atomic<bool> displayPlaying{false};
  std::array<std::atomic<float>,128> scope{};
  std::atomic<unsigned> scopeCursor{0};
 private:
