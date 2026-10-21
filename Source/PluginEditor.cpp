@@ -466,7 +466,10 @@ void NoctivoreEditor::showPage(Page next){
  for(auto& s:sections)for(auto* c:s.children)c->setVisible(s.page==page && !art);
  for(auto& a:artDials)a.knob->setVisible(art);
  for(auto& a:artMenus)a.menu->setVisible(art);
- for(auto& a:artButtons)a.button->setVisible(art);
+ for(size_t i=0;i<artButtons.size();++i){
+  artButtons[i].button->setVisible(art);
+  artButtons[i].button->selected=art && i<5 && i==(size_t)page;
+ }
  for(size_t i=0;i<tabs.size();++i){
   tabs[i].setVisible(!art);
   tabs[i].setToggleState((int)i==(int)page,dontSendNotification);
