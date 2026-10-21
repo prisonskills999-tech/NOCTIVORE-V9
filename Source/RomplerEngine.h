@@ -52,6 +52,7 @@ struct Params {
  float xenoFormant=.31f, xenoCross=.12f, xenoWrithe=.54f;
  // V10.1: tuned life below MIDI note 57 and correlated slow organic motion.
  float lowRegisterLife=.72f, coupledMotion=.53f;
+ float performanceMod=0.f;
  // V10.5 user-editable 16 step gate: default all steps active.
  std::array<float,16> gateSteps{{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}};
 
@@ -233,6 +234,11 @@ public:
     int dest=std::clamp(cfg.target,0,10);
     destinations[(size_t)dest]+=shape*depth;
    }
+   // MIDI CC1 and the painted mod fader share a musical modulation macro.
+   const float modAmount=clampf(modwheel+p.performanceMod,0.f,1.f);
+   destinations[6]+=.32f*modAmount;
+   destinations[3]+=.14f*modAmount;
+   destinations[10]+=.16f*modAmount;
    // The grid is rhythmic ONLY. No MIDI-note transposition or chirped melody.
    // Six contrasting gate/accent contours preserve an odd forest-psy feel.
    static constexpr float grooves[6][16] = {
