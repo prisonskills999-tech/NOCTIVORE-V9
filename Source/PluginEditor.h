@@ -38,6 +38,11 @@ private:
   ArtKnob(juce::AudioProcessorValueTreeState&,const juce::String&,const juce::String&);
   void paint(juce::Graphics&) override;
  };
+ struct ArtFader final : juce::Slider {
+  std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attachment;
+  ArtFader(juce::AudioProcessorValueTreeState&,const juce::String&,const juce::String&);
+  void paint(juce::Graphics&) override;
+ };
  struct ArtMenu final : juce::ComboBox {
   std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> attachment;
   ArtMenu(juce::AudioProcessorValueTreeState&,const juce::String&,const juce::StringArray&);
@@ -48,6 +53,7 @@ private:
   void paintButton(juce::Graphics&,bool hover,bool down) override;
  };
  struct ArtDialSpot { std::unique_ptr<ArtKnob> knob; float x=0,y=0,d=54; };
+ struct ArtFaderSpot { std::unique_ptr<ArtFader> fader; float x=0,y=0,w=0,h=0; };
  struct ArtMenuSpot { std::unique_ptr<ArtMenu> menu; float x=0,y=0,w=0,h=0; };
  struct ArtButtonSpot { std::unique_ptr<ArtHotspot> button; float x=0,y=0,w=0,h=0; };
  struct Section {
@@ -65,6 +71,7 @@ private:
  bool hasCustomPatch=false;
  std::vector<ArtDialSpot> artDials;
  std::vector<ArtMenuSpot> artMenus;
+ std::vector<ArtFaderSpot> artFaders;
  std::vector<ArtButtonSpot> artButtons;
  bool paintedPage() const {return page==Atlas && originalPainting.isValid();}
  NoctivoreProcessor& processor;
