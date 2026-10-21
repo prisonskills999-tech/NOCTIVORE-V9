@@ -3,63 +3,26 @@
 #include <cmath>
 using namespace juce;
 namespace {
- const Colour soil=Colour::fromRGB(23,25,20);
- const Colour bark=Colour::fromRGB(37,40,31);
- const Colour stone=Colour::fromRGB(53,55,43);
- const Colour outline=Colour::fromRGB(87,86,65);
- const Colour ivory=Colour::fromRGB(235,219,184);
- const Colour soft=Colour::fromRGB(176,170,143);
- const Colour moss=Colour::fromRGB(166,178,112);
- const Colour clay=Colour::fromRGB(205,117,77);
- const Colour ochre=Colour::fromRGB(224,180,102);
- const Colour slate=Colour::fromRGB(143,164,155);
- const Colour ash=Colour::fromRGB(188,149,129);
- const std::array<Colour,5> accents{{moss,clay,ochre,slate,ash}};
- Rectangle<int> rect(float x,float y,float w,float h,float sx,float sy){
-  return {(int)std::round(x*sx),(int)std::round(y*sy),(int)std::round(w*sx),(int)std::round(h*sy)};
- }
+ using namespace painted;
+ Rectangle<int> rect(float x,float y,float w,float h,float sx,float sy){return {(int)std::round(x*sx),(int)std::round(y*sy),(int)std::round(w*sx),(int)std::round(h*sy)};}
 }
 NoctivoreEditor::Skin::Skin(){
- setColour(Slider::textBoxBackgroundColourId,Colours::transparentBlack);
- setColour(Slider::textBoxOutlineColourId,Colours::transparentBlack);
- setColour(Slider::textBoxTextColourId,ivory);
- setColour(ComboBox::backgroundColourId,stone.darker(.25f));
- setColour(ComboBox::outlineColourId,outline);
- setColour(ComboBox::textColourId,ivory);
- setColour(ComboBox::arrowColourId,ochre);
- setColour(PopupMenu::backgroundColourId,bark);
- setColour(PopupMenu::textColourId,ivory);
- setColour(PopupMenu::highlightedBackgroundColourId,clay.darker(.55f));
- setColour(TextButton::textColourOffId,ivory);
- setColour(TextButton::textColourOnId,soil);
+ setColour(Slider::textBoxBackgroundColourId,painted::soil.withAlpha(.7f));
+ setColour(Slider::textBoxOutlineColourId,painted::outline.withAlpha(.3f));
+ setColour(Slider::textBoxTextColourId,painted::ivory);
+ setColour(ComboBox::backgroundColourId,painted::bark);
+ setColour(ComboBox::outlineColourId,painted::outline);
+ setColour(ComboBox::textColourId,painted::ivory);
+ setColour(ComboBox::arrowColourId,painted::ochre);
+ setColour(PopupMenu::backgroundColourId,painted::bark);
+ setColour(PopupMenu::textColourId,painted::ivory);
+ setColour(PopupMenu::highlightedBackgroundColourId,painted::clay.darker(.45f));
+ setColour(TextButton::textColourOffId,painted::ivory);
+ setColour(TextButton::textColourOnId,painted::soil);
 }
-void NoctivoreEditor::Skin::drawRotarySlider(Graphics& g,int x,int y,int w,int h,float value,float start,float end,Slider& slider){
- const auto col=accents[(size_t)std::clamp((int)slider.getProperties().getWithDefault("tint",0),0,4)];
- float radius=std::max(10.f,std::min(w*.32f,h*.37f));
- const float cx=x+w*.5f,cy=y+h*.43f;
- Path track;track.addCentredArc(cx,cy,radius,radius,0,start,end,true);
- g.setColour(outline.withAlpha(.75f));g.strokePath(track,PathStrokeType(4.5f,PathStrokeType::curved,PathStrokeType::rounded));
- float angle=start+(end-start)*value;
- Path arc;arc.addCentredArc(cx,cy,radius,radius,0,start,angle,true);
- g.setColour(col);g.strokePath(arc,PathStrokeType(4.5f,PathStrokeType::curved,PathStrokeType::rounded));
- ColourGradient grad(stone.brighter(.2f),cx-radius,cy-radius,soil,cx+radius,cy+radius,false);
- g.setGradientFill(grad);g.fillEllipse(cx-radius*.81f,cy-radius*.81f,radius*1.62f,radius*1.62f);
- g.setColour(outline);g.drawEllipse(cx-radius*.81f,cy-radius*.81f,radius*1.62f,radius*1.62f,1.f);
- float a=angle-MathConstants<float>::halfPi;
- g.setColour(col);
- g.drawLine(cx,cy,cx+std::cos(a)*radius*.62f,cy+std::sin(a)*radius*.62f,2.5f);
-}
-void NoctivoreEditor::Skin::drawButtonBackground(Graphics& g,Button& b,const Colour&,bool hovered,bool pressed){
- auto box=b.getLocalBounds().toFloat().reduced(1.5f);
- auto tint=accents[(size_t)std::clamp((int)b.getProperties().getWithDefault("tint",0),0,4)];
- bool active=b.getToggleState();
- g.setColour(active?tint:pressed?stone.brighter(.1f):hovered?stone:bark);
- g.fillRoundedRectangle(box,7.f);
- g.setColour(active?tint.brighter(.45f):outline);
- g.drawRoundedRectangle(box,7.f,1.f);
- g.setColour(tint.withAlpha(active?.78f:.52f));
- g.fillRoundedRectangle({box.getX()+6.f,box.getY()+5.f,2.f,box.getHeight()-10.f},1.f);
-}
+void NoctivoreEditor::Skin::drawRotarySlider(Graphics& g,int x,int y,int w,int h,float value,float start,float end,Slider& slider){painted::rotary(g,x,y,w,h,value,start,end,painted::accents[(size_t)std::clamp((int)slider.getProperties().getWithDefault("tint",0),0,4)]);}
+void NoctivoreEditor::Skin::drawButtonBackground(Graphics& g,Button& button,const Colour&,bool hovered,bool down){painted::button(g,button,hovered,down,painted::accents[(size_t)std::clamp((int)button.getProperties().getWithDefault("tint",0),0,4)]);}
+void NoctivoreEditor::Skin::drawComboBox(Graphics& g,int w,int h,bool,int,int,int,int,ComboBox&){painted::selector(g,w,h);}
 NoctivoreEditor::Dial::Dial(AudioProcessorValueTreeState& apvts,const String& id,const String& text,int colour){
  knob.setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
  knob.setRotaryParameters(MathConstants<float>::pi*1.2f,MathConstants<float>::pi*2.8f,true);
@@ -104,7 +67,7 @@ NoctivoreEditor::NoctivoreEditor(NoctivoreProcessor& p)
  addAndMakeVisible(keyboard);keyboard.setAvailableRange(24,96);
  keyboard.setKeyWidth(21.f);keyboard.setScrollButtonsVisible(false);
  StringArray bankNames;for(auto& b:noctivore::banks)bankNames.add(b.name);bankNames.add("User Bank");
- auto& a=section(Atlas,"01 / SOURCE FIELD",moss,3);
+ auto& a=section(Atlas,"01 / SPORE ATLAS",moss,3);
  select(a,"bank","SOURCE A — MATERIAL",bankNames);
  select(a,"bankB","SOURCE B — COUNTERPOINT",bankNames);
  select(a,"textureMode","TEXTURE ENGINE",{"Flow","Grain Cloud","Orbital","Pulsar","Fracture","Time Freeze"});
@@ -116,13 +79,13 @@ NoctivoreEditor::NoctivoreEditor(NoctivoreProcessor& p)
  dial(b,"biomeChaos","BIOME COMPLEXITY",2);
  dial(b,"sub","SUB BODY",2);dial(b,"pulseRate","PULSE BEATS",2);dial(b,"spectralTilt","DARK / BRIGHT",2);
  dial(b,"stereo","WIDTH",2);dial(b,"drive","SATURATION",2);dial(b,"volume","OUTPUT",2);
- auto& x=section(Atlas,"02B / XENOBIOME MORPHOLOGY",slate,3);
+ auto& x=section(Atlas,"03 / CREATURE MORPHOLOGY",slate,3);
  dial(x,"xenoFormant","ALIEN VOCAL TRACT",3);
  dial(x,"xenoCross","ORGANISM COUPLING",3);
  dial(x,"xenoWrithe","BODY MUTATION",3);
  dial(x,"lowRegisterLife","DEEP LIFE",3);
  dial(x,"coupledMotion","LINKED MOTION",3);
- auto& c=section(Atlas,"03 / RHYTHMIC GATE LAB",clay,3);
+ auto& c=section(Atlas,"04 / FOREST RHYTHMS",clay,3);
  select(c,"motif","GATE PATTERN",{"Off","Underbrush","Offbeat","Tribal","Broken","Breathing","Shadow"});
  select(c,"motifDivision","SYNC GRID",{"1/8","1/16","1/32","Triplet"});
  dial(c,"motifPitch","GROOVE VARIATION",1);
@@ -197,7 +160,7 @@ NoctivoreEditor::NoctivoreEditor(NoctivoreProcessor& p)
  auto& sy3=section(System,"03 / AMPLITUDE ENVELOPE",ash,3);
  dial(sy3,"attack","ATTACK",4);dial(sy3,"decay","DECAY",4);dial(sy3,"sustain","SUSTAIN",4);
  dial(sy3,"release","RELEASE",4);dial(sy3,"sub","SUB BODY",4);dial(sy3,"drive","DRIVE",4);
- const char* labels[]={"ATLAS","ALIEN FM","4 LFOs","PSY SPACE","UTILITY"};
+ const char* labels[]={"ATLAS","MORPHOLOGY","4 LFOs","PSY SPACE","UTILITY"};
  for(size_t i=0;i<tabs.size();++i){addAndMakeVisible(tabs[i]);tabs[i].setButtonText(labels[i]);
   tabs[i].getProperties().set("tint",(int)i);tabs[i].setClickingTogglesState(false);
   tabs[i].onClick=[this,i]{showPage((Page)i);};}
@@ -341,79 +304,69 @@ void NoctivoreEditor::layout(Section& section_,Rectangle<int> area){
 void NoctivoreEditor::resized(){
  float sx=getWidth()/1160.f,sy=getHeight()/790.f;
  auto R=[&](float x,float y,float w,float h){return rect(x,y,w,h,sx,sy);};
- for(size_t i=0;i<tabs.size();++i)tabs[i].setBounds(R(18.f+(float)i*143.f,175,137,36));
- actions[0].setBounds(R(778,175,120,36));
- actions[1].setBounds(R(905,175,115,36));
- actions[2].setBounds(R(1026,175,119,36));
- sceneLabel.setBounds(R(22,97,135,18));scenes.setBounds(R(20,116,273,34));
+ for(size_t i=0;i<tabs.size();++i)tabs[i].setBounds(R(18.f+(float)i*143.f,174,137,36));
+ actions[0].setBounds(R(778,174,120,36));
+ actions[1].setBounds(R(905,174,115,36));
+ actions[2].setBounds(R(1026,174,119,36));
+ sceneLabel.setBounds(R(27,98,135,18));scenes.setBounds(R(27,116,270,34));
  for(auto& c:controls){
-  if(c->getName()=="PERMANENT_ATM")c->setBounds(R(826,79,120,86));
-  if(c->getName()=="PERMANENT_FURY")c->setBounds(R(956,79,120,86));
+  if(c->getName()=="PERMANENT_ATM")c->setBounds(R(826,79,115,86));
+  if(c->getName()=="PERMANENT_FURY")c->setBounds(R(956,79,115,86));
  }
  for(auto& s:sections){
-  if(s.page!=page)continue;
-  const int localIndex=(int)(&s-&sections[0]);
+  if(s.page!=page){s.bounds={};continue;}
+  int order=0;for(const auto& test:sections){if(&test==&s)break;if(test.page==page)++order;}
   if(page==Atlas){
-   int order=0;for(const auto& x:sections){if(x.page==Atlas && &x!=&s)++order;if(&x==&s)break;}
-   layout(s,R(18+order*379,226,370,440));
-  }else if(page==Forge){
-   int order=0;for(const auto& x:sections){if(x.page==Forge && &x!=&s)++order;if(&x==&s)break;}
-   layout(s,R(18+order*379,226,370,440));
+   int col=order%2,row=order/2;
+   layout(s,R(18.f+col*570.f,224.f+row*223.f,554.f,214.f));
   }else if(page==Motion){
-   int order=0;for(const auto& x:sections){if(x.page==Motion && &x!=&s)++order;if(&x==&s)break;}
-   if(order<4)layout(s,R(18+order*285,226,275,360));
-   else layout(s,R(18,596,1124,70));
-  }else if(page==Space){
-   int order=0;for(const auto& x:sections){if(x.page==Space && &x!=&s)++order;if(&x==&s)break;}
-   layout(s,R(18+order*379,226,370,440));
+   if(order<4)layout(s,R(18.f+order*285.f,224.f,275.f,356.f));
+   else layout(s,R(18,590,1124,80));
   }else{
-   int order=0;for(const auto& x:sections){if(x.page==System && &x!=&s)++order;if(&x==&s)break;}
-   layout(s,R(18+order*379,226,370,440));
+   layout(s,R(18.f+order*379.f,224.f,370.f,442.f));
   }
-  (void)localIndex;
  }
- keyboard.setBounds(R(25,692,1110,65));
+ keyboard.setBounds(R(26,701,1108,51));
 }
 void NoctivoreEditor::timerCallback(){repaint();}
 void NoctivoreEditor::paint(Graphics& g){
- g.fillAll(soil);
- float sx=getWidth()/1160.f,sy=getHeight()/790.f;
- Graphics::ScopedSaveState saved(g);g.addTransform(AffineTransform::scale(sx,sy));
- ColourGradient bg(Colour::fromRGB(37,43,31),0,0,soil,1100,790,false);
- g.setGradientFill(bg);g.fillRect(0,0,1160,790);
- // Desert relief lines are background-only; controls retain precise alignment.
- for(int i=0;i<20;++i){Path ridge;
-  float y=20.f+i*38.f;ridge.startNewSubPath(0,y);
-  ridge.cubicTo(300,y-26.f,650,y+34.f,1160,y-9.f);
-  g.setColour(ochre.withAlpha(.028f));g.strokePath(ridge,PathStrokeType(.8f));}
- g.setColour(ivory);g.setFont(Font(34.f,Font::bold));
- g.drawText("NOCTIVORE",20,13,360,43,Justification::left);
- g.setColour(clay);g.setFont(Font(13.f,Font::bold));
- g.drawText("SHADOW BIOME  /  V9",21,56,275,20,Justification::left);
- g.setColour(soft);g.setFont(Font(11.f));
- g.drawText("SYNC GATES  •  ZERO MELODIC SEQUENCING  •  ULTRA SLOW LFOs",390,25,540,19,Justification::left);
- g.setColour(outline);g.drawLine(20,80,1140,80,1.f);
- g.setColour(bark);g.fillRoundedRectangle({18,93,790,69},9.f);
- g.setColour(outline);g.drawRoundedRectangle({18,93,790,69},9.f,1.f);
- const auto peak=std::clamp(processor.peak.load(std::memory_order_relaxed),0.f,1.f);
- g.setColour(stone);g.fillRoundedRectangle({1110,87,25,76},5.f);
- g.setColour(moss);g.fillRoundedRectangle({1115,158-peak*65,15,peak*65},3.f);
- g.setColour(soft);g.setFont(Font(10.f));g.drawText("OUT",1090,74,64,18,Justification::centred);
- for(auto& s:sections){
-  if(s.page!=page)continue;
+ g.fillAll(painted::soil);
+ const float sx=getWidth()/1160.f,sy=getHeight()/790.f;
+ Graphics::ScopedSaveState scope(g);
+ g.addTransform(AffineTransform::scale(sx,sy));
+ painted::forestBackdrop(g);
+ g.setColour(painted::ivory);g.setFont(Font(35.f,Font::bold));
+ g.drawText("NOCTIVORE FX",22,14,560,45,Justification::left);
+ g.setColour(painted::ochre);g.setFont(Font(12.5f,Font::bold));
+ g.drawText("XENOBIOME  /  THE PAINTED FOREST",26,60,460,18,Justification::left);
+ painted::spiral(g,567,41,23,painted::ochre.withAlpha(.65f),2.f);
+ painted::creature(g,750,117,.52f);
+ painted::mushroom(g,1090,81,.82f,painted::clay);
+ painted::mushroom(g,1112,82,.54f,painted::moss);
+ g.setColour(painted::bark);g.fillRoundedRectangle({18.f,92.f,790.f,72.f},13.f);
+ g.setColour(painted::outline);g.drawRoundedRectangle({18.f,92.f,790.f,72.f},13.f,1.f);
+ g.setColour(painted::ochre.withAlpha(.5f));g.drawLine(20,168,1140,168,1.f);
+ for(size_t i=0;i<sections.size();++i){
+  auto& s=sections[i];if(s.page!=page)continue;
   auto r=s.bounds.toFloat();r.setX(r.getX()/sx);r.setY(r.getY()/sy);
   r.setWidth(r.getWidth()/sx);r.setHeight(r.getHeight()/sy);
-  g.setColour(bark);g.fillRoundedRectangle(r,11.f);
-  g.setColour(outline);g.drawRoundedRectangle(r,11.f,1.f);
-  g.setColour(s.accent);g.fillRoundedRectangle({r.getX()+13,r.getY()+12,3.f,17.f},1.5f);
-  g.setFont(Font(12.f,Font::bold));
-  g.drawText(s.title,r.getX()+24,r.getY()+10,r.getWidth()-35,22,Justification::left);
+  painted::panel(g,r,s.accent,(int)i);
+  g.setColour(s.accent);g.setFont(Font(12.2f,Font::bold));
+  g.drawText(s.title,r.getX()+23,r.getY()+7,r.getWidth()-50,23,Justification::left);
  }
- g.setColour(stone);g.fillRoundedRectangle({18,683,1124,83},10.f);
- g.setColour(outline);g.drawRoundedRectangle({18,683,1124,83},10.f,1.f);
- g.setColour(soft);g.setFont(Font(10.2f));
- if(processor.libraryLoaded)
-  g.drawText("50 DIVERSE BANKS / 48 kHz / NON-PITCHED GATES / 4 ULTRA-SLOW LFOs",22,766,900,17,Justification::left);
- else {g.setColour(clay);g.drawText("SAMPLE BANKS NOT FOUND — verify VST3 Contents/Resources/Banks",22,766,930,17,Justification::left);}
- g.setColour(ochre);g.drawText("SHADOW BIOME 9.0",1003,766,140,17,Justification::right);
+ g.setColour(painted::bark);g.fillRoundedRectangle({18.f,685.f,1124.f,74.f},10.f);
+ g.setColour(painted::outline);g.drawRoundedRectangle({18.f,685.f,1124.f,74.f},10.f,1.f);
+ const float peak=std::clamp(processor.peak.load(std::memory_order_relaxed),0.f,1.f);
+ g.setColour(painted::stone);g.fillRoundedRectangle({1114.f,105.f,13.f,55.f},3.f);
+ g.setColour(painted::moss);g.fillRoundedRectangle({1117.f,158.f-peak*50.f,7.f,peak*50.f},2.f);
+ g.setColour(painted::soft);g.setFont(Font(10.f));
+ g.drawText("OUT",1085,86,65,16,Justification::centred);
+ if(processor.libraryLoaded){
+  g.drawText("FOREST ATLAS  /  200 ORIGINAL SAMPLES  /  FOUR ULTRA-SLOW LFOs",27,764,940,18,Justification::left);
+ }else{
+  g.setColour(painted::clay);
+  g.drawText("SOUND BANKS MISSING — check VST3 Contents/Resources/Banks",27,764,980,18,Justification::left);
+ }
+ g.setColour(painted::ochre);
+ g.drawText("PAINTED FOREST 10.2",978,764,166,18,Justification::right);
 }
