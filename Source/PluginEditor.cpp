@@ -59,6 +59,24 @@ void NoctivoreEditor::ArtHotspot::paintButton(Graphics& g,bool hovered,bool down
  g.setColour(Colour::fromRGB(247,205,108).withAlpha(down?.95f:.66f));
  g.drawRoundedRectangle(r,6.f,1.2f);
 }
+NoctivoreEditor::ArtFader::ArtFader(AudioProcessorValueTreeState& st,const String& id,const String& text){
+ setSliderStyle(Slider::LinearVertical);
+ setTextBoxStyle(Slider::NoTextBox,false,0,0);
+ setMouseDragSensitivity(150);
+ setTooltip(text+" — drag vertically");
+ attachment=std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(st,id,*this);
+}
+void NoctivoreEditor::ArtFader::paint(Graphics& g){
+ auto b=getLocalBounds().toFloat().reduced(9.f,5.f);
+ const float norm=juce::jlimit(0.f,1.f,(float)((getValue()-getMinimum())/(getMaximum()-getMinimum()+1.e-12)));
+ const float y=b.getBottom()-(norm*b.getHeight());
+ g.setColour(juce::Colour::fromRGB(244,189,95).withAlpha(.22f));
+ g.fillRoundedRectangle(b,3.f);
+ g.setColour(juce::Colour::fromRGB(242,184,92).withAlpha(.80f));
+ g.fillRoundedRectangle(b.getX(),y,b.getWidth(),b.getBottom()-y,2.f);
+ g.setColour(juce::Colour::fromRGB(241,221,178));
+ g.fillRoundedRectangle(b.getX()-3.f,y-3.f,b.getWidth()+6.f,5.f,2.f);
+}
 NoctivoreEditor::ArtMenu::ArtMenu(AudioProcessorValueTreeState& st,const String& id,const StringArray& names){
  for(auto name:names)addItem(name,getNumItems()+1);
  attachment=std::make_unique<AudioProcessorValueTreeState::ComboBoxAttachment>(st,id,*this);
@@ -232,6 +250,11 @@ NoctivoreEditor::NoctivoreEditor(NoctivoreProcessor& p)
    a.knob=std::make_unique<ArtKnob>(processor.state,id,label);
    addAndMakeVisible(*a.knob);artDials.push_back(std::move(a));
  };
+ auto artFader=[this](const char* id,const char* label,float x,float y,float w,float h){
+   ArtFaderSpot f;f.x=x;f.y=y;f.w=w;f.h=h;
+   f.fader=std::make_unique<ArtFader>(processor.state,id,label);
+   addAndMakeVisible(*f.fader);artFaders.push_back(std::move(f));
+ };
  auto artMenu=[this](const char* id,StringArray opts,float x,float y,float w,float h){
    ArtMenuSpot a;a.x=x;a.y=y;a.w=w;a.h=h;
    a.menu=std::make_unique<ArtMenu>(processor.state,id,opts);
@@ -297,6 +320,9 @@ NoctivoreEditor::NoctivoreEditor(NoctivoreProcessor& p)
  artDial("resonance2","Resonance 2",1149,760);
  artDial("filterBlend","Filter Blend",1222,760);
  artDial("filterDrive","Filter Tone",1294,760);
+ artDial("volume","Master Output",1360,938,68);
+ artFader("bend","Pitch Bend",51,916,43,84);
+ artFader("performanceMod","Performance Modulation",109,916,43,84);
  const float tx[]={244,445,626,801,1024},tw[]={170,180,170,181,171};
  for(int i=0;i<5;++i)artButton("Switch page",tx[i],852,tw[i],40,[this,i]{showPage((Page)i);});
  artButton("Previous preset",528,200,32,42,[this]{stepScene(-1);});
@@ -489,6 +515,7 @@ void NoctivoreEditor::showPage(Page next){
  for(auto& s:sections)for(auto* c:s.children)c->setVisible(s.page==page && !art);
  for(auto& a:artDials)a.knob->setVisible(art);
  for(auto& a:artMenus)a.menu->setVisible(art);
+ for(auto& a:artFaders)a.fader->setVisible(art);
  for(size_t i=0;i<artButtons.size();++i){
   artButtons[i].button->setVisible(art);
   artButtons[i].button->selected=art && i<5 && i==(size_t)page;
@@ -521,6 +548,7 @@ void NoctivoreEditor::resized(){
  const bool atlas=paintedPage();
  for(auto& a:artDials)a.knob->setBounds(R(a.x-a.d*.5f,a.y-a.d*.5f,a.d,a.d));
  for(auto& a:artMenus)a.menu->setBounds(R(a.x,a.y,a.w,a.h));
+ for(auto& a:artFaders)a.fader->setBounds(R(a.x,a.y,a.w,a.h));
  for(auto& a:artButtons)a.button->setBounds(R(a.x,a.y,a.w,a.h));
  // In every mode the painted keyboard occupies the same exact place.
  keyboard.setBounds(R(214,907,1024,94));
