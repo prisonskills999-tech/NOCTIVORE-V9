@@ -489,43 +489,38 @@ void NoctivoreEditor::layout(Section& section_,Rectangle<int> area){
   section_.children[(size_t)i]->setBounds(x,y,cw,ch);}
 }
 void NoctivoreEditor::resized(){
- if(paintedPage()){
-  float sx=(float)getWidth()/1491.f,sy=(float)getHeight()/1055.f;
-  auto R=[&](float x,float y,float w,float h){
-   return Rectangle<int>(roundToInt(x*sx),roundToInt(y*sy),roundToInt(w*sx),roundToInt(h*sy));};
-  for(auto& a:artDials)a.knob->setBounds(R(a.x-a.d*.5f,a.y-a.d*.5f,a.d,a.d));
-  for(auto& a:artMenus)a.menu->setBounds(R(a.x,a.y,a.w,a.h));
-  for(auto& a:artButtons)a.button->setBounds(R(a.x,a.y,a.w,a.h));
-  scenes.setBounds(R(546,201,277,41));
-  keyboard.setBounds(R(214,907,1024,94));
-  return;
- }
-
- float sx=getWidth()/1160.f,sy=getHeight()/790.f;
- auto R=[&](float x,float y,float w,float h){return rect(x,y,w,h,sx,sy);};
- for(size_t i=0;i<tabs.size();++i)tabs[i].setBounds(R(18.f+(float)i*143.f,174,137,36));
- actions[0].setBounds(R(778,174,120,36));
- actions[1].setBounds(R(905,174,115,36));
- actions[2].setBounds(R(1026,174,119,36));
- sceneLabel.setBounds(R(27,98,135,18));scenes.setBounds(R(27,116,270,34));
+ const float sx=(float)getWidth()/1491.f,sy=(float)getHeight()/1055.f;
+ auto R=[&](float x,float y,float w,float h){
+  return juce::Rectangle<int>(roundToInt(x*sx),roundToInt(y*sy),roundToInt(w*sx),roundToInt(h*sy));};
+ const bool atlas=paintedPage();
+ for(auto& a:artDials)a.knob->setBounds(R(a.x-a.d*.5f,a.y-a.d*.5f,a.d,a.d));
+ for(auto& a:artMenus)a.menu->setBounds(R(a.x,a.y,a.w,a.h));
+ for(auto& a:artButtons)a.button->setBounds(R(a.x,a.y,a.w,a.h));
+ // In every mode the painted keyboard occupies the same exact place.
+ keyboard.setBounds(R(214,907,1024,94));
+ scenes.setBounds(atlas?R(548,201,275,41):R(530,181,365,39));
+ sceneLabel.setBounds(R(538,159,210,21));
+ for(size_t i=0;i<tabs.size();++i)tabs[i].setBounds(R(244.f+(float)i*204.f,851.f,190.f,43.f));
+ actions[0].setBounds(R(1114,174,103,44));
+ actions[1].setBounds(R(1224,174,103,44));
+ actions[2].setBounds(R(1334,174,123,44));
  for(auto& c:controls){
-  if(c->getName()=="PERMANENT_ATM")c->setBounds(R(826,79,115,86));
-  if(c->getName()=="PERMANENT_FURY")c->setBounds(R(956,79,115,86));
+  if(c->getName()=="PERMANENT_ATM")c->setBounds(R(1013,109,115,89));
+  if(c->getName()=="PERMANENT_FURY")c->setBounds(R(1359,109,115,89));
  }
- for(auto& s:sections){
-  if(s.page!=page){s.bounds={};continue;}
-  int order=0;for(const auto& test:sections){if(&test==&s)break;if(test.page==page)++order;}
-  if(page==Atlas){
-   int col=order%2,row=order/2;
-   layout(s,R(18.f+col*570.f,224.f+row*223.f,554.f,214.f));
+ for(auto& section_:sections){
+  if(section_.page!=page){section_.bounds={};continue;}
+  int index=0;
+  for(const auto& test:sections){if(&test==&section_)break;if(test.page==page)++index;}
+  if(atlas){
+   section_.bounds={}; // No additional widgets laid over the illustrated front page.
   }else if(page==Motion){
-   if(order<4)layout(s,R(18.f+order*285.f,224.f,275.f,356.f));
-   else layout(s,R(18,590,1124,80));
+   if(index<4)layout(section_,R(35.f+index*359.f,260.f,345.f,453.f));
+   else layout(section_,R(36,744,1420,90));
   }else{
-   layout(s,R(18.f+order*379.f,224.f,370.f,442.f));
+   layout(section_,R(36.f+index*477.f,259.f,460.f,559.f));
   }
  }
- keyboard.setBounds(R(26,701,1108,51));
 }
 void NoctivoreEditor::timerCallback(){
  uiSeconds+=1.f/24.f;
@@ -540,49 +535,151 @@ void NoctivoreEditor::timerCallback(){
  currentGateStep=((next%16)+16)%16;
  repaint();
 }
+
+void NoctivoreEditor::drawAnimation(Graphics& g){
+ juce::Graphics::ScopedSaveState saved(g);
+ const float sx=(float)getWidth()/1491.f,sy=(float)getHeight()/1055.f;
+ g.addTransform(juce::AffineTransform::scale(sx,sy));
+ auto get=[this](const char* id)->float{
+  if(auto* v=processor.state.getRawParameterValue(id))return v->load();
+  return 0.f;
+ };
+ const float life=std::clamp(get("biomeDepth"),0.f,1.f);
+ const float speed=std::max(.003f,get("biomeRate"));
+ const float motion=std::sin(2.f*juce::MathConstants<float>::pi*speed*uiSeconds);
+ const float brightness=.14f+.28f*smoothedPeak+.16f*life*(.5f+.5f*motion);
+ // The hand-painted forest creature glows from actual sound level and Life.
+ for(int i=0;i<2;++i){
+  const float x=i==0?697.f:737.f,y=349.f;
+  g.setColour(juce::Colour::fromRGB(245,173,83).withAlpha(brightness*.46f));
+  g.fillEllipse(x-13.f,y-13.f,26.f,26.f);
+  g.setColour(juce::Colour::fromRGB(254,205,102).withAlpha(brightness));
+  g.fillEllipse(x-5.f,y-5.f,10.f,10.f);
+ }
+ // An original animated spiral inside the static painting, not an image spinner.
+ {
+  const float cx=720.f,cy=453.f,phase=uiSeconds*(.18f+.35f*get("coupledMotion"));
+  juce::Path line;
+  for(int i=0;i<70;++i){
+   const float t=(float)i/69.f,theta=phase+4.f*juce::MathConstants<float>::pi*t;
+   const float rr=24.f*t;
+   const float xx=cx+rr*std::cos(theta),yy=cy+rr*std::sin(theta);
+   if(i==0)line.startNewSubPath(xx,yy);else line.lineTo(xx,yy);
+  }
+  g.setColour(juce::Colour::fromRGB(239,181,93).withAlpha(.25f+.28f*life));
+  g.strokePath(line,juce::PathStrokeType(1.5f));
+ }
+ // Current gate step follows Ableton's beat position while Live is playing.
+ if(get("motif")>0.5f){
+  for(int i=0;i<16;++i){
+   const float x=1156.f+(float)i*13.95f;
+   const float h=28.f*(.25f+.75f*(.5f+.5f*std::sin(i*1.8f+get("motif")*2.f)));
+   const bool active=i==currentGateStep;
+   g.setColour((active?juce::Colour::fromRGB(245,194,98):juce::Colour::fromRGB(151,170,105))
+      .withAlpha(active?.68f:.10f));
+   g.fillRoundedRectangle(x,414.f-h,8.4f,h,2.f);
+  }
+ }
+ // Stereo output meters read directly from the audio thread's atomic meter.
+ const float level=std::clamp(smoothedPeak,0.f,1.f);
+ for(int i=0;i<2;++i){
+  const float h=68.f*std::sqrt(level);
+  g.setColour(juce::Colour::fromRGB(i==0?175:213,205,106).withAlpha(.74f));
+  g.fillRoundedRectangle(1282.f+i*21.f,998.f-h,10.f,h,2.f);
+ }
+}
+void NoctivoreEditor::drawSubpage(Graphics& g){
+ if(originalPainting.isValid()){
+  g.drawImage(originalPainting,getLocalBounds().toFloat());
+  g.setColour(juce::Colour::fromRGB(14,18,12).withAlpha(.88f));
+  g.fillRect(getLocalBounds());
+ }else{
+  g.fillAll(juce::Colour::fromRGB(17,20,15));
+ }
+ juce::Graphics::ScopedSaveState state(g);
+ const float sx=(float)getWidth()/1491.f,sy=(float)getHeight()/1055.f;
+ g.addTransform(juce::AffineTransform::scale(sx,sy));
+ const juce::Colour ochre=juce::Colour::fromRGB(221,175,97);
+ const juce::Colour ivory=juce::Colour::fromRGB(237,216,173);
+ const juce::Colour moss=juce::Colour::fromRGB(147,166,104);
+ const char* names[]={"ATLAS","MORPHOLOGY","4 LFOs","PSY SPACE","UTILITY"};
+ g.setColour(ivory);g.setFont(juce::Font(34.f,juce::Font::bold));
+ g.drawText("NOCTIVORE FX",34,34,570,50,juce::Justification::left);
+ g.setColour(ochre);g.setFont(juce::Font(17.f,juce::Font::bold));
+ g.drawText(juce::String("XENOBIOME / ")+names[(int)page],37,88,710,26,juce::Justification::left);
+ painted::spiral(g,965.f,77.f,40.f,ochre.withAlpha(.42f),2.3f);
+ painted::mushroom(g,1423.f,107.f,1.35f,painted::clay.withAlpha(.9f));
+ painted::mushroom(g,1381.f,111.f,.87f,moss.withAlpha(.73f));
+ g.setColour(juce::Colour::fromRGB(44,44,30));g.fillRoundedRectangle({25.f,155.f,1440.f,78.f},14.f);
+ g.setColour(ochre.withAlpha(.49f));g.drawRoundedRectangle({25.f,155.f,1440.f,78.f},14.f,1.f);
+ g.setColour(ivory.withAlpha(.5f));g.setFont(juce::Font(13.f));
+ g.drawText("FACTORY SCENE",400,178,128,27,juce::Justification::left);
+ for(size_t index=0;index<sections.size();++index){
+  const auto& s=sections[index];if(s.page!=page)continue;
+  auto r=s.bounds.toFloat();
+  if(r.isEmpty())continue;
+  r.setX(r.getX()/sx);r.setY(r.getY()/sy);
+  r.setWidth(r.getWidth()/sx);r.setHeight(r.getHeight()/sy);
+  painted::panel(g,r,s.accent,(int)index);
+  g.setColour(s.accent);
+  g.setFont(juce::Font(17.f,juce::Font::bold));
+  g.drawText(s.title,r.getX()+29.f,r.getY()+10.f,r.getWidth()-54.f,29.f,juce::Justification::left);
+ }
+ if(page==Motion){
+  // Visualization of each LFO's waveform / rate and depth. The actual modulation
+  // remains in the DSP; this is an informative, parameter-driven phase preview.
+  for(int i=0;i<4;++i){
+   const juce::String prefix=i==0?"":("lfo"+juce::String(i+1));
+   const auto rateId=i==0?juce::String("rate"):prefix+"Rate";
+   const auto depthId=i==0?juce::String("depth"):prefix+"Depth";
+   const auto waveId=i==0?juce::String("wave"):prefix+"Wave";
+   const auto syncId="lfo"+juce::String(i+1)+"Sync";
+   auto raw=[this](const juce::String& key)->float{
+     if(auto* v=processor.state.getRawParameterValue(key))return v->load();
+     return 0.f;
+   };
+   float hz=std::max(.0002f,raw(rateId));
+   const int sync=std::clamp((int)raw(syncId),0,10);
+   if(sync!=0){
+    constexpr float beats[]={4.f,2.f,1.f,.5f,.25f,8.f,16.f,32.f,64.f,128.f};
+    hz=(processor.displayTempo.load(std::memory_order_relaxed)/60.f)/beats[sync-1];
+   }
+   const int wave=(int)raw(waveId);
+   const float depth=std::clamp(raw(depthId),0.f,1.f);
+   const float x=57.f+i*359.f,y=657.f;
+   juce::Path graph;
+   for(int k=0;k<=88;++k){
+    const float t=(float)k/88.f;
+    const float phase=std::fmod(t*1.5f+uiSeconds*hz,1.f);
+    float v=std::sin(juce::MathConstants<float>::twoPi*phase);
+    if(wave==1)v=1.f-4.f*std::abs(phase-.5f);
+    else if(wave==2)v=phase*2.f-1.f;
+    else if(wave==3)v=phase<.5f?1.f:-1.f;
+    else if(wave==4)v=std::sin(6.283185f*std::floor(t*6.f+uiSeconds*hz));
+    else if(wave==5)v*=std::sin(18.84955f*phase);
+    const float yy=y-13.f*v*depth;
+    if(k==0)graph.startNewSubPath(x,yy);else graph.lineTo(x+t*298.f,yy);
+   }
+   g.setColour(moss.withAlpha(.22f));g.drawLine(x,y,x+298.f,y,1.f);
+   g.setColour(ochre.withAlpha(.85f));g.strokePath(graph,juce::PathStrokeType(2.f));
+  }
+ }
+ // Painted navigation and playable keyboard remain in the same locations as
+ // the main illustration, providing consistent visual continuity on every page.
+ g.setColour(juce::Colour::fromRGB(35,34,23));
+ g.fillRoundedRectangle({25.f,842.f,1440.f,57.f},11.f);
+ g.setColour(ochre.withAlpha(.36f));
+ g.drawRoundedRectangle({25.f,842.f,1440.f,57.f},11.f,1.f);
+ g.setColour(juce::Colour::fromRGB(36,35,25));
+ g.fillRoundedRectangle({200.f,901.f,1060.f,108.f},12.f);
+ const float level=std::clamp(smoothedPeak,0.f,1.f);
+ g.setColour(moss);
+ g.fillRoundedRectangle({1281.f,985.f-53.f*level,13.f,53.f*level},2.f);
+}
 void NoctivoreEditor::paint(Graphics& g){
  if(paintedPage()){
-  g.drawImage(originalPainting,getLocalBounds().toFloat());
-  return;
- }
-
- g.fillAll(painted::soil);
- const float sx=getWidth()/1160.f,sy=getHeight()/790.f;
- Graphics::ScopedSaveState scope(g);
- g.addTransform(AffineTransform::scale(sx,sy));
- painted::forestBackdrop(g);
- g.setColour(painted::ivory);g.setFont(Font(35.f,Font::bold));
- g.drawText("NOCTIVORE FX",22,14,560,45,Justification::left);
- g.setColour(painted::ochre);g.setFont(Font(12.5f,Font::bold));
- g.drawText("XENOBIOME  /  THE PAINTED FOREST",26,60,460,18,Justification::left);
- painted::spiral(g,567,41,23,painted::ochre.withAlpha(.65f),2.f);
- painted::creature(g,750,117,.52f);
- painted::mushroom(g,1090,81,.82f,painted::clay);
- painted::mushroom(g,1112,82,.54f,painted::moss);
- g.setColour(painted::bark);g.fillRoundedRectangle({18.f,92.f,790.f,72.f},13.f);
- g.setColour(painted::outline);g.drawRoundedRectangle({18.f,92.f,790.f,72.f},13.f,1.f);
- g.setColour(painted::ochre.withAlpha(.5f));g.drawLine(20,168,1140,168,1.f);
- for(size_t i=0;i<sections.size();++i){
-  auto& s=sections[i];if(s.page!=page)continue;
-  auto r=s.bounds.toFloat();r.setX(r.getX()/sx);r.setY(r.getY()/sy);
-  r.setWidth(r.getWidth()/sx);r.setHeight(r.getHeight()/sy);
-  painted::panel(g,r,s.accent,(int)i);
-  g.setColour(s.accent);g.setFont(Font(12.2f,Font::bold));
-  g.drawText(s.title,r.getX()+23,r.getY()+7,r.getWidth()-50,23,Justification::left);
- }
- g.setColour(painted::bark);g.fillRoundedRectangle({18.f,685.f,1124.f,74.f},10.f);
- g.setColour(painted::outline);g.drawRoundedRectangle({18.f,685.f,1124.f,74.f},10.f,1.f);
- const float peak=std::clamp(processor.peak.load(std::memory_order_relaxed),0.f,1.f);
- g.setColour(painted::stone);g.fillRoundedRectangle({1114.f,105.f,13.f,55.f},3.f);
- g.setColour(painted::moss);g.fillRoundedRectangle({1117.f,158.f-peak*50.f,7.f,peak*50.f},2.f);
- g.setColour(painted::soft);g.setFont(Font(10.f));
- g.drawText("OUT",1085,86,65,16,Justification::centred);
- if(processor.libraryLoaded){
-  g.drawText("FOREST ATLAS  /  200 ORIGINAL SAMPLES  /  FOUR ULTRA-SLOW LFOs",27,764,940,18,Justification::left);
- }else{
-  g.setColour(painted::clay);
-  g.drawText("SOUND BANKS MISSING — check VST3 Contents/Resources/Banks",27,764,980,18,Justification::left);
- }
- g.setColour(painted::ochre);
- g.drawText("PAINTED FOREST 10.2",978,764,166,18,Justification::right);
+  if(originalPainting.isValid())g.drawImage(originalPainting,getLocalBounds().toFloat());
+  else g.fillAll(juce::Colour::fromRGB(17,20,15));
+  drawAnimation(g);
+ }else drawSubpage(g);
 }
