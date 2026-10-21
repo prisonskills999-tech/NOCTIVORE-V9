@@ -1,4 +1,4 @@
-name: Build NOCTIVORE V10.1 Living Lows Windows VST3
+name: Build NOCTIVORE V10.2 Painted Forest Windows VST3
 
 on:
   push:
@@ -49,20 +49,20 @@ jobs:
           $env:GIT_CONFIG_COUNT='1'
           $env:GIT_CONFIG_KEY_0='core.longpaths'
           $env:GIT_CONFIG_VALUE_0='true'
-          $buildDir = 'C:/nfx101_${{ matrix.edition }}'
+          $buildDir = 'C:/nfx102_${{ matrix.edition }}'
           cmake -S . -B $buildDir -G 'Visual Studio 17 2022' -A x64 '-DJUCE_BUILD_EXTRAS=OFF' '-DNOCTIVORE_GENERIC_EDITOR=${{ matrix.generic }}'
           if ($LASTEXITCODE -ne 0) { throw 'CMake configure failed' }
 
       - name: Compile release VST3
         shell: pwsh
         run: |
-          cmake --build 'C:/nfx101_${{ matrix.edition }}' --config Release --target NOCTIVORE_FX_VST3 --parallel 4
+          cmake --build 'C:/nfx102_${{ matrix.edition }}' --config Release --target NOCTIVORE_FX_VST3 --parallel 4
           if ($LASTEXITCODE -ne 0) { throw 'Windows C++ compilation failed' }
 
       - name: Verify and ZIP the installable plugin
         shell: pwsh
         run: |
-          $buildDir = 'C:/nfx101_${{ matrix.edition }}'
+          $buildDir = 'C:/nfx102_${{ matrix.edition }}'
           $bundles = @(Get-ChildItem -Path $buildDir -Recurse -Directory -Filter '*.vst3' | Where-Object {
             Test-Path (Join-Path $_.FullName 'Contents/Resources/Banks/00_36.wav')
           })
@@ -72,7 +72,7 @@ jobs:
           if ($banks.Count -ne 200) { throw "Bundle has $($banks.Count) of 200 WAVs" }
           $bins = @(Get-ChildItem (Join-Path $bundle.FullName 'Contents/x86_64-win') -File -Filter '*.vst3' -ErrorAction SilentlyContinue | Where-Object { $_.Length -gt 100000 })
           if ($bins.Count -ne 1) { throw 'Missing compiled x64 VST3 module' }
-          $target = Join-Path $env:GITHUB_WORKSPACE 'NOCTIVORE_V10_1_${{ matrix.edition }}.zip'
+          $target = Join-Path $env:GITHUB_WORKSPACE 'NOCTIVORE_V10_2_${{ matrix.edition }}.zip'
           Compress-Archive -LiteralPath $bundle.FullName -DestinationPath $target -CompressionLevel Fastest -Force
           if (!(Test-Path $target)) { throw 'ZIP was not created' }
           Write-Host "Package: $target"
@@ -80,7 +80,7 @@ jobs:
       - name: Upload downloadable Windows VST3
         uses: actions/upload-artifact@v4
         with:
-          name: NOCTIVORE-V10-1-${{ matrix.edition }}-WIN64-VST3
-          path: NOCTIVORE_V10_1_${{ matrix.edition }}.zip
+          name: NOCTIVORE-V10-2-${{ matrix.edition }}-WIN64-VST3
+          path: NOCTIVORE_V10_2_${{ matrix.edition }}.zip
           if-no-files-found: error
           retention-days: 30
