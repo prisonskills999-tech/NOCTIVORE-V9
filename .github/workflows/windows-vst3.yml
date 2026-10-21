@@ -1,0 +1,86 @@
+name: Build NOCTIVORE V9 Windows VST3
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows-vst3:
+    name: VST3 ${{ matrix.edition }}
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - edition: FULL_GUI
+            generic: 'OFF'
+          - edition: SAFE_GUI
+            generic: 'ON'
+    steps:
+      - name: Get source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: requirements.txt
+
+      - name: Install bank generator dependencies
+        shell: pwsh
+        run: python -m pip install -r requirements.txt
+
+      - name: Generate all 200 original sound-bank WAVs
+        shell: pwsh
+        run: |
+          python Source/generate_shadow_biome.py
+          if ($LASTEXITCODE -ne 0) { throw 'Sound-bank generation failed' }
+          $n = @(Get-ChildItem -Path Banks -File -Filter '*.wav').Count
+          if ($n -ne 200) { throw "Expected 200 WAVs; found $n" }
+          Write-Host "Generated $n banks"
+
+      - name: Configure JUCE 8 and Windows x64 VST3
+        shell: pwsh
+        run: |
+          $env:GIT_CONFIG_COUNT='1'
+          $env:GIT_CONFIG_KEY_0='core.longpaths'
+          $env:GIT_CONFIG_VALUE_0='true'
+          $buildDir = 'C:/nfx9_${{ matrix.edition }}'
+          cmake -S . -B $buildDir -G 'Visual Studio 17 2022' -A x64 '-DJUCE_BUILD_EXTRAS=OFF' '-DNOCTIVORE_GENERIC_EDITOR=${{ matrix.generic }}'
+          if ($LASTEXITCODE -ne 0) { throw 'CMake configure failed' }
+
+      - name: Compile release VST3
+        shell: pwsh
+        run: |
+          cmake --build 'C:/nfx9_${{ matrix.edition }}' --config Release --target NOCTIVORE_FX_VST3 --parallel 4
+          if ($LASTEXITCODE -ne 0) { throw 'Windows C++ compilation failed' }
+
+      - name: Verify and ZIP the installable plugin
+        shell: pwsh
+        run: |
+          $buildDir = 'C:/nfx9_${{ matrix.edition }}'
+          $bundles = @(Get-ChildItem -Path $buildDir -Recurse -Directory -Filter '*.vst3' | Where-Object {
+            Test-Path (Join-Path $_.FullName 'Contents/Resources/Banks/00_36.wav')
+          })
+          if ($bundles.Count -ne 1) { throw "Expected exactly one bundled VST3, found $($bundles.Count)" }
+          $bundle = $bundles[0]
+          $banks = @(Get-ChildItem (Join-Path $bundle.FullName 'Contents/Resources/Banks') -File -Filter '*.wav')
+          if ($banks.Count -ne 200) { throw "Bundle has $($banks.Count) of 200 WAVs" }
+          $bins = @(Get-ChildItem (Join-Path $bundle.FullName 'Contents/x86_64-win') -File -Filter '*.vst3' -ErrorAction SilentlyContinue | Where-Object { $_.Length -gt 100000 })
+          if ($bins.Count -ne 1) { throw 'Missing compiled x64 VST3 module' }
+          $target = Join-Path $env:GITHUB_WORKSPACE 'NOCTIVORE_V9_${{ matrix.edition }}.zip'
+          Compress-Archive -LiteralPath $bundle.FullName -DestinationPath $target -CompressionLevel Fastest -Force
+          if (!(Test-Path $target)) { throw 'ZIP was not created' }
+          Write-Host "Package: $target"
+
+      - name: Upload downloadable Windows VST3
+        uses: actions/upload-artifact@v4
+        with:
+          name: NOCTIVORE-V9-${{ matrix.edition }}-WIN64-VST3
+          path: NOCTIVORE_V9_${{ matrix.edition }}.zip
+          if-no-files-found: error
+          retention-days: 30
