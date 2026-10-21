@@ -157,6 +157,8 @@ NoctivoreEditor::NoctivoreEditor(NoctivoreProcessor& p)
  dial(f,"fmFeedback","FEEDBACK",1);dial(f,"fmInharmonic","INHARMONIC",1);
  dial(f,"metalMix","RESONATOR",1);dial(f,"metalTune","RESONANCE TUNE",1);
  dial(f,"metalDecay","RING TIME",1);dial(f,"metalTone","MATERIAL",1);
+ dial(f,"colony","MUTANT COLONY",3);dial(f,"creatures","CREATURE DENSITY",3);
+ dial(f,"psyFold","PSY SPECTRAL FOLD",1);dial(f,"symbiosis","SOURCE SYMBIOSIS",0);
  auto& fi=section(Forge,"02 / DUAL FILTER NETWORK",moss,3);
  select(fi,"filterMode","FILTER 1",{"Low Pass","Band Pass","High Pass"});
  select(fi,"filter2Mode","FILTER 2",{"Off","Low Pass","Band Pass","High Pass","Notch"});
@@ -351,7 +353,7 @@ NoctivoreEditor::NoctivoreEditor(NoctivoreProcessor& p)
  // Entire painted 16-step gate is user-programmable, automatable and saved.
  for(int i=0;i<16;++i){
   const auto key=juce::String::formatted("gateStep%02d",i+1);
-  artButton("Gate step "+juce::String(i+1),1151.f+i*14.2f,381.f,13.6f,44.f,
+  artButton((juce::String("Gate step ")+juce::String(i+1)).toRawUTF8(),1151.f+i*14.2f,381.f,13.6f,44.f,
    [this,key]{
      if(auto* v=processor.state.getRawParameterValue(key))
        setParameter(key.toRawUTF8(),v->load()>.5f?0.f:1.f);
@@ -444,6 +446,10 @@ void NoctivoreEditor::mutate(bool subtle){
  setParameter("fmMix",.005f+r.nextFloat()*.065f);
  setParameter("metalMix",r.nextFloat()*.012f);
  setParameter("metalDecay",.32f+r.nextFloat()*.63f);
+ setParameter("colony",.2f+r.nextFloat()*.75f);
+ setParameter("creatures",.1f+r.nextFloat()*.85f);
+ setParameter("psyFold",.04f+r.nextFloat()*.65f);
+ setParameter("symbiosis",.1f+r.nextFloat()*.75f);
  setParameter("trancePulse",.14f+r.nextFloat()*.55f);
  setParameter("psySpiral",.14f+r.nextFloat()*.60f);
  setParameter("reverbMod",.2f+r.nextFloat()*.75f);
@@ -503,6 +509,10 @@ void NoctivoreEditor::applyScene(int which){
  setParameter("biomeChaos",.28f+.11f*(float)(which%6));
  setParameter("lowRegisterLife",.58f+.05f*(float)(which%7));
  setParameter("coupledMotion",.38f+.08f*(float)(which%6));
+ setParameter("colony",.25f+.12f*(float)(which%6));
+ setParameter("creatures",.25f+.105f*(float)(which%6));
+ setParameter("psyFold",.08f+.08f*(float)(which%5));
+ setParameter("symbiosis",.17f+.12f*(float)(which%6));
  for(int i=2;i<=4;++i){auto prefix="lfo"+String(i);
   setParameter((prefix+"Depth").toRawUTF8(),.10f+.04f*(float)i);
   setParameter((prefix+"Rate").toRawUTF8(),.001f+.0022f*(float)i);

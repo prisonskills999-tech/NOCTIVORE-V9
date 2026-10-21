@@ -52,6 +52,8 @@ struct Params {
  float xenoFormant=.31f, xenoCross=.12f, xenoWrithe=.54f;
  // V10.1: tuned life below MIDI note 57 and correlated slow organic motion.
  float lowRegisterLife=.72f, coupledMotion=.53f;
+ // V10.6: no noise generator, transient strike, or preprogrammed MIDI jumps.
+ float colony=.33f, creatures=.39f, psyFold=.22f, symbiosis=.26f;
  float performanceMod=0.f;
  // V10.5 user-editable 16 step gate: default all steps active.
  std::array<float,16> gateSteps{{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}};
@@ -178,6 +180,7 @@ public:
   // Each note gets its own repeatable phase/pitch drift so layers do not phase-lock.
   v->motionPhase=(float)((v->age*41+note*13)%101)/101.f*2.f*pi;
   v->bodyPhase=0;v->fmPhase=0;v->modPhase=0;v->prevMod=0;
+   v->cellPhase=v->organismPhase=v->organismTonePhase=v->foldLP=0.f;
   v->aliveA=v->aliveB=0.f;
   v->metalPos=0;v->metalDamp=0;v->fxPhase=0;v->fxStep=-1;v->filterEnv=0;v->filterAge=0;v->motionEnv=0;
   std::fill(v->metalLine.begin(),v->metalLine.end(),0.f);
@@ -341,9 +344,15 @@ public:
      const float linked=coupling*(.82f*biome+.18f*(accent-.50f));
      const float lowWeight=clampf((57.f-v.pitch)/31.f,0.f,1.f);
      const float lowLife=lowWeight*clampf(p.lowRegisterLife,0.f,1.f)*(v.oneShot?.20f:1.f);
+     // Self-coupled cellular oscillator: slowly evolving but sample-rate continuous.
+     const float colony=clampf(p.colony,0.f,1.f);
+     const float cellularRate=.071f+colony*.48f;
+     v.cellPhase=wrapPhase(v.cellPhase+2.f*pi*cellularRate*dt*(1.f+.24f*bio2));
+     const float cellular=std::sin(v.cellPhase+2.3f*colony*std::sin(v.cellPhase*.41f+bio3))
+        *(.63f+.37f*bio1);
      const float osc=std::sin(2.f*pi*p.morphRate*globalTime+v.motionPhase*.37f);
     const float morph=clampf(p.morph + .5f*p.morphMotion*(osc+.24f*std::sin(2.f*pi*p.morphRate*.39f*globalTime))
-                    +.35f*destinations[6]+.13f*linked
+                    +.35f*destinations[6]+.13f*linked+.12f*colony*cellular
                     +.20f*clampf(p.biomeDepth,0.f,1.f)*std::sin(2.f*pi*p.biomeRate*globalTime+v.motionPhase*.13f),0.f,1.f);
     const float mixA=std::cos(morph*pi*.5f),mixB=std::sin(morph*pi*.5f);
     const float baseA=readAt(s,v.position),baseB=readAt(sb,v.positionB);
@@ -361,6 +370,10 @@ public:
     const float cross=clampf(p.xenoCross,0.f,1.f);
     const float interaction=std::tanh(baseA*baseB*(3.0f+1.7f*cross));
     sample+=cross*.31f*interaction;
+     // Source A and B hybridization, without a parallel stochastic texture.
+     const float sym=clampf(p.symbiosis,0.f,1.f);
+     const float hybrid=std::tanh(2.4f*baseA*baseB+.7f*(baseA-baseB)*cellular);
+     sample+=.34f*sym*hybrid;
     // Shared biome cycles above feed source morph, the moving read-head, FM and filters.
     // Source mixing is also modulated by Life, not just an inaudible detune.
     sample=sample*(1.f+.12f*biome);
@@ -439,7 +452,8 @@ public:
     const float mod=std::sin(v.modPhase+clampf(p.fmFeedback,0.f,.95f)*v.prevMod*2.5f);
     v.prevMod=mod;
     v.fmPhase=wrapPhase(v.fmPhase+2.f*pi*carrier*dt);
-    const float fmAmount=clampf(p.fmIndex+.6f*destinations[5]+aggression*1.5f+.85f*wr*std::fabs(bio2)+.85f*linked,0.f,16.f);
+    const float fmAmount=clampf(p.fmIndex+.6f*destinations[5]+aggression*1.5f
+       +.85f*wr*std::fabs(bio2)+.85f*linked+.95f*colony*cellular,0.f,16.f);
     const float fmA=std::sin(v.fmPhase+fmAmount*mod);
     const float fmB=std::sin(v.fmPhase*1.019f+(fmAmount*.7f)*std::sin(v.modPhase*(1.17f+p.fmInharmonic*.46f)));
     const float fmSignal=(.68f*fmA+.32f*fmB)*(.12f+.88f*v.motionEnv);
@@ -455,11 +469,34 @@ public:
        sample+=creature*lowLife*(.20f+.065f*coupling)*breathe
                    *(.40f+.60f*v.motionEnv);
      }
+    // Irregular creature calls stay tied to the held fundamental (not MIDI arps).
+    // Raised smooth envelope avoids boing onset and broadband noise.
+    const float creatureAmt=clampf(p.creatures,0.f,1.f);
+    if(creatureAmt>.0001f){
+      const float rate=(.19f+creatureAmt*2.85f)*(1.f+.31f*bio2);
+      v.organismPhase+=rate*dt;
+      if(v.organismPhase>=1.f)v.organismPhase-=std::floor(v.organismPhase);
+      const float growth=std::sin(pi*v.organismPhase);
+      const float window=growth*growth*(.35f+.65f*growth);
+      const float ratio=2.6f+1.1f*(.5f+.5f*bio1)+1.4f*(.5f+.5f*cellular);
+      const float freq=std::min((float)sr*.18f,carrier*ratio);
+      v.organismTonePhase=wrapPhase(v.organismTonePhase+2.f*pi*freq*dt);
+      const float throat=std::sin(v.organismTonePhase+.84f*std::sin(v.modPhase*.57f+bio3));
+      sample+=.17f*creatureAmt*window*throat*(.35f+.65f*v.motionEnv);
+    }
+    // Dynamic harmonic folding with gentle anti-alias low-pass smoothing.
+    const float fold=clampf(p.psyFold,0.f,1.f);
+    if(fold>.0001f){
+      const float warped=std::sin(sample*(1.4f+3.8f*fold)+.65f*cellular*fold);
+      const float coeff=clampf(2.f*pi*std::min((float)sr*.2f,2400.f+carrier*2.7f)*dt,.001f,.70f);
+      v.foldLP+=coeff*(warped-v.foldLP);
+      sample=sample*(1.f-.24f*fold)+v.foldLP*(.24f*fold);
+    }
     // Morphing pseudo-vocal tract with two narrow, stable resonant peaks.
     // Reacts to living biome and cross-layer motion without broadband noise.
     const float xeno=clampf(p.xenoFormant,0.f,1.f);
     if(xeno>.0001f){
-      const float vowelPos=clampf(.5f+.27f*bio1+.18f*bio3+.15f*wr*std::sin(v.motionPhase*.4f)+.13f*linked,0.f,1.f);
+      const float vowelPos=clampf(.5f+.27f*bio1+.18f*bio3+.15f*wr*std::sin(v.motionPhase*.4f)+.13f*linked+.14f*colony*cellular,0.f,1.f);
       const float f1=270.f+830.f*vowelPos;
       const float f2=1150.f+1650.f*(1.f-vowelPos);
       auto vocal=[&](float hz,float& lp,float& bp,float input){
@@ -489,7 +526,8 @@ public:
     float baseCut=clampf(p.cutoff + .27f*destinations[3]*moveDepth +envAmt*.35f + (accent-.5f)*.11f*p.motifAccent*(p.motif>0?1.f:0.f)
                   +p.keytrack*(v.pitch-60.f)/120.f
                   +.035f*organic*std::sin(v.motionPhase*.67f)+.19f*biome+.14f*linked,.008f,1.f);
-    float otherCut=clampf(p.cutoff2+.27f*destinations[4]*moveDepth+envAmt*.28f-.13f*biome-.09f*linked,.008f,1.f);
+    float otherCut=clampf(p.cutoff2+.27f*destinations[4]*moveDepth+envAmt*.28f
+      -.13f*biome-.09f*linked-.09f*colony*cellular,.008f,1.f);
     auto filt=[&](float input,float cutoff,float resonance,int mode,float& lp,float& bp){
       float hz=25.f*std::pow(760.f,cutoff);
       float g=clampf(2.f*std::sin(pi*hz*dt),.001f,.70f);
@@ -629,6 +667,7 @@ private:
   int note=-1,bank=0,stage=0;
   float vel=0,position=0,positionB=0,level=0,releaseLevel=1,pitch=0,target=0,lp=0,bp=0;
   float motionPhase=0,layerOffset=0,bodyPhase=0,breath=0,aliveA=0,aliveB=0;
+   float cellPhase=0,organismPhase=0,organismTonePhase=0,foldLP=0;
   float lp2=0,bp2=0,filterEnv=0,filterAge=0,motionEnv=0,airLP=0;
   float xenoLp1=0,xenoBp1=0,xenoLp2=0,xenoBp2=0;
   float fmPhase=0,modPhase=0,prevMod=0,metalDamp=0,motifPitch=0,fxPhase=0,ghostLP=0;int fxStep=-1;
