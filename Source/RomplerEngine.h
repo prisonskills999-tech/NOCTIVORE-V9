@@ -21,7 +21,7 @@ struct LFOConfig {
 };
 struct Params {
  int bank=0, mode=0, velocityCurve=1, resampling=1, lfoWave=0, lfoTarget=0, filterMode=0;
- float attack=.075f,decay=1.5f,sustain=.83f,release=3.2f;
+ float attack=.28f,decay=3.2f,sustain=.93f,release=4.4f;
  float cutoff=.95f, resonance=.14f,glide=.07f,space=.34f,volume=.76f,pan=0.f;
  float lfoRate=.009f,lfoDepth=0.f,bendRange=2.f,bend=0.f;
  float sampleStart=0.f,reverse=0.f,drive=.16f,stereo=1.13f;
@@ -37,19 +37,19 @@ struct Params {
  float cutoff2=.70f,resonance2=.15f,filterBlend=.50f,filterDrive=.12f,keytrack=.12f;
  float filterEnvAttack=.30f,filterEnvDecay=2.5f,filterEnvSustain=.4f,filterEnvRelease=3.f,filterEnvDepth=0.f;
  float motionEnvAttack=.5f,motionEnvRelease=4.f,motionEnvDepth=.6f;
- float fmMix=.04f,fmRatio=1.0f,fmIndex=1.2f,fmFeedback=.07f,fmInharmonic=.08f;
- float metalMix=.018f,metalTune=.30f,metalDecay=.6f,metalTone=.42f;
+ float fmMix=.014f,fmRatio=1.0f,fmIndex=.85f,fmFeedback=.025f,fmInharmonic=.035f;
+ float metalMix=0.f,metalTune=.30f,metalDecay=.45f,metalTone=.30f;
  float macroAtmosphere=.64f,macroAggression=.13f;
  // V7: musical hypnotic motion and open, less saturated high-fidelity output.
  float trancePulse=.17f,tranceRate=2.f,psySpiral=.24f,psySpiralRate=.16f;
  float hiFiAir=.32f,clarity=.91f;
  // V9: tempo-locked non-melodic gates, accents and controlled space.
  int motif=1, motifDivision=1; // Off or six non-pitched rhythmic gates
- float motifPitch=.36f, motifGate=.56f, motifAccent=.65f, motifGlide=.18f,motifFX=.16f;
+ float motifPitch=.36f, motifGate=.42f, motifAccent=.65f, motifGlide=.18f,motifFX=0.f;
  float focus=.68f, mudCut=.52f, wetLowCut=.64f;
  float biomeDepth=.72f,biomeRate=.034f,biomeChaos=.60f;
  // v10: physically inspired noise-free cross excitation and resonant vocal tract.
- float xenoFormant=.20f, xenoCross=.10f, xenoWrithe=.44f;
+ float xenoFormant=.31f, xenoCross=.12f, xenoWrithe=.54f;
  // V10.1: tuned life below MIDI note 57 and correlated slow organic motion.
  float lowRegisterLife=.72f, coupledMotion=.53f;
 
@@ -532,7 +532,10 @@ public:
     // All micro-motion comes from the sample's resonant material and biome.
     const float air=0.f;
     sub*=v.oneShot?.33f:1.f;
-    float gain=v.level*v.vel*.46f*(1.f+.15f*lowLife);
+    // Start voices as a slow swell; rhythmic bleeps live inside the sample, not at note-on.
+     const float voicedRise=clampf(v.filterAge/.18f,0.f,1.f);
+     const float attackShape=voicedRise*voicedRise*(3.f-2.f*voicedRise);
+     float gain=v.level*v.vel*.46f*(1.f+.15f*lowLife)*(.70f+.30f*attackShape);
     // Tempo-aware forest/psytrance polymetric breathing, available in every
     // texture algorithm. Pattern steps are softly interpolated, never clicked.
     constexpr float seq[16]={1.f,.64f,.92f,.48f,.98f,.56f,.72f,.39f,

@@ -1,173 +1,132 @@
 #!/usr/bin/env python3
-"""NOCTIVORE v10 - 200 original NOISE-FREE 48 kHz soundscape multisamples.
-
-25 distinct, deterministically synthesized physical/organic/fantastical recipes.
-No stochastic broadband noise is rendered. Random numbers choose fixed voice
-parameters only; all audible content is pitched/quasiperiodic resonant material.
-No proprietary recordings or samples are used.
+"""NOCTIVORE 10.3 FOREST SIGNALS: 200 original, soft-attack 48k WAV recordings.
+No samples, code or recordings from G-Sonique are used. No broadband noise layer.
+Tonal wet bleeps, breathy vowels, organic FM, insects and evolving mycelium.
 """
 from pathlib import Path
 import re
 import numpy as np
 from scipy import signal
 from scipy.io import wavfile
-
 SR=48000
 NOTES=(36,48,60,72)
-FAMILIES=(
- 'Subterranean throat', 'Hollow woodwind', 'Liquid membranes', 'Forest clicking',
- 'Vowel metamorphosis', 'Bent glass', 'Fungal organ', 'Symbiotic pulse',
- 'Molten rubber', 'Alien bird-cry', 'Wormhole resonance', 'Amphibian glottis',
- 'Spectral pollen', 'Low ritual horn', 'Psychedelic spiral', 'Cavern harmonium',
- 'Cellular squelch', 'Formant polyphony', 'Slow tectonic folds', 'Chitinic trills',
- 'Undersea sonar', 'Fractal phasing', 'Subatomic oscillation', 'Ritual bone flute',
- 'Organic signal corruption'
-)
-
+FAMILIES=('Glowworm Lanterns','Moss Pool Bubbles','Root Modem Choir','Whispering Fern Throat',
+'Amber Droplet Swarm','Wet Circuit Larvae','Mycelium Signal Relay','Saproot Syllables',
+'Hollow Forest Choir','Alien Pond Conversations','Bark Membrane Organ',
+'Luminous Fungal Glass','Gurgling Mud Springs','Swamp Microtone Body',
+'Canopy Lattice','Spiral Leaf Organ','Polymer Reed Colony','Bacterial Call and Response',
+'Gliding Root Pools','Pollen Orbit','Vowel Beetle Village','Underground Telegraph',
+'Sinebent Fireflies','Wormhole Sapflow','Underbrush Telepathy')
 def bank_info():
-    text=(Path(__file__).resolve().parent/'BankCatalog.h').read_text(encoding='utf-8')
-    rows=re.findall(r'\{"([^"]+)","([^"]+)",(\d+),(true|false)\}',text)
-    assert len(rows)==50, len(rows)
-    return [(name,category,int(kind)) for name,category,kind,_ in rows]
-
-def lpf(x,cutoff):
-    return signal.sosfilt(signal.butter(2, float(cutoff), fs=SR, output='sos'), x)
-
-def create(bank,note,kind,style):
-    rng=np.random.default_rng(3907+bank*157+note*31)
-    duration=7.0+0.35*(bank%5)  # 7 - 8.4s sustained, loopable
-    n=int(round(duration*SR))
-    t=np.arange(n,dtype=np.float64)/SR
+    txt=(Path(__file__).parent/'BankCatalog.h').read_text(encoding='utf8')
+    rows=re.findall(r'\{"([^"]+)","([^"]+)",(\d+),(true|false)\}',txt)
+    assert len(rows)==50, f'{len(rows)} banks instead of 50'
+    return rows
+def create(bank,note,kind=0,style=None):
+    style=bank%25 if style is None else style
+    duration=8.1+.32*(bank%5)
+    t=np.arange(int(round(duration*SR)),dtype=np.float64)/SR
     f=440.0*2.0**((note-69)/12)
-    phi=float(rng.uniform(0,2*np.pi))
-    slow=.036+.007*(bank%7)
-    middle=.13+.012*(bank%9)
-    quick=.42+.061*(bank%6)
-    q=np.sin(2*np.pi*slow*t+phi)
-    p=np.sin(2*np.pi*middle*t+.83*phi)
-    z=np.sin(2*np.pi*quick*t+1.7*phi)
-    squirm=np.sin(2*np.pi*(.81+.17*(bank%8))*t+1.35*q)
-    flutter=(.5+.5*np.sin(2*np.pi*(2.3+.2*(bank%8))*t+q))**6
-    # Highly stable band-limited quasi-harmonic phase, no noise / no hiss.
-    glide=1.+.008*q+.0023*p
-    theta=2*np.pi*f*np.cumsum(glide)/SR
-    def o(r=1.0, bend=0.0, skew=0.0):
-        return np.sin(theta*r+bend*q+skew*np.sin(.31*theta+.7*p))
-    def fm(a=1.,b=1.5,idx=1.6):
-        return np.sin(theta*a+idx*(1+.28*p)*np.sin(theta*b+.8*q))
-    def phasecluster(ratios, weights, motion=0.4):
-        out=np.zeros_like(t)
-        for i,(ratio,w) in enumerate(zip(ratios,weights)):
-            out+=w*np.sin(theta*ratio+motion*(i+1)*q+(i*.35)*p)
-        return out
-    # Recipes are deliberately non-equivalent: different spectral shapes,
-    # time envelopes and inharmonic relationships, not the same drone+noise.
-    if style==0:  # deep false-vocal creature glottis
-        x=.54*fm(.49,1.03,2.3)+.34*o(.251,2.4)+.26*fm(1.01,.71,1.6)
-        x*=.66+.34*np.maximum(0,squirm)**2
-    elif style==1:  # hollow pipes and filtered harmonic modes
-        x=phasecluster((.498,1,1.996,2.99,4.04),(.62,.26,.17,.12,.07),1.1)
-        x+=.19*o(.746,3.2)
-    elif style==2:  # slippery stretched membranes
-        x=.45*fm(.502,.82,3.5)+.33*fm(1.001,.33,1.8)+.19*o(.255,3.4)
-        x*=.52+.48*(.5+.5*np.sin(2*np.pi*.54*t+1.8*q))**2
-    elif style==3:  # dry pitched insect clacks / distinct gap shapes
-        x=(.32*o(1.44,1.5)+.36*fm(2.53,1.21,2.4))*flutter+.18*o(.51,2)
-        x*=.72+.28*np.abs(p)
-    elif style==4:  # multi-vowel choir, no breath noise
-        x=np.zeros_like(t)
-        # resonant sinusoidal harmonic formants glide up/down independently
-        F1=430+460*(.5+.5*q);F2=1150+780*(.5+.5*p)
-        for h in range(1,13):
-            weight=.20+1.7*np.exp(-((f*h-F1)/220)**2)+1.1*np.exp(-((f*h-F2)/340)**2)
-            x+=(weight/(h**.72))*o(h,.14*h)
-        x*=.15
-    elif style==5:  # bent glass, harmonics with short inharmonic skirts
-        x=phasecluster((.507,.998,1.995,2.74,3.97),(.28,.35,.22,.18,.11),1.8)
-        x+=.23*fm(1.002,2.23,2.1)
-    elif style==6:  # dense, morphing fungal organ
-        x=.28*o(.251,1.9)+.29*o(.499,2.1)+.29*o(1.001,1.8)+.15*o(2.02,4.3)
-        x*=.64+.36*(.5+.5*q)**2
-    elif style==7:  # purposeful 5:7 sympathetic rhythm
-        e=(.2+.8*(.5+.5*np.sin(2*np.pi*1.33*t+.3*p))**4)
-        x=(.47*fm(.489,1.22,2.7)+.31*o(1.003,3.3))*e+.19*o(.246)
-    elif style==8:  # rubber mouth / resonant wah
-        x=.59*fm(.72,.315,3.9)+.28*fm(1.48,.412,1.4)+.16*o(.50,3.1)
-    elif style==9:  # uncanny pitched bird glissandi but no note-sequencing
-        x=.4*fm(1.97,.727,2.6)+.37*o(.991,1.6,1.2)+.21*o(.493,2.3)
-        x*=.25+.75*flutter
-    elif style==10: # phase-based wormhole / tiny beating dissonances
-        x=phasecluster((.248,.5,.504,1.003,1.013,2.017),(.22,.23,.28,.27,.17,.13),1.7)
-    elif style==11: # slow wet glottal deformation
-        x=.51*fm(.497,1.313,4.6)+.25*fm(.999,.405,2.4)+.18*o(.248)
-        x*=.38+.62*(.5+.5*np.sin(2*np.pi*.69*t+1.1*q))**3
-    elif style==12: # pollen spectral motes / quiet fast sine partials
-        x=phasecluster((.498,.753,1.002,1.49,2.011,2.51,3.06),(.22,.18,.31,.12,.13,.11,.07),2.0)
-        x*=.64+.36*np.abs(z)
-    elif style==13: # ritual subhorn, massive body
-        x=.53*o(.251,2)+.39*o(.501,1.5)+.21*fm(.998,.75,1.4)
-    elif style==14: # harmonic psychedelic spiral, no noise bed
-        x=.5*fm(.749,1.11,2.9)+.31*fm(1.492,.612,1.2)+.22*o(.249,1.4)
-        x*=.65+.35*np.sin(2*np.pi*.23*t+1.4*q)**2
-    elif style==15: # cavern harmonium, moving resonances
-        x=phasecluster((.498,.998,1.492,2.005,2.997),(.44,.33,.22,.18,.09),1.25)
-        x+=.17*fm(1.,.27,.72)
-    elif style==16: # sudden elastic cell contractions / non-melodic
-        e=(.12+.88*(.5+.5*np.sin(2*np.pi*1.92*t+1.7*p))**8)
-        x=.57*fm(1.05,.87,3.4)*e+.25*o(.503,1.8)+.17*o(.252)
-    elif style==17: # dissonant formant polyphony
-        x=.36*fm(.998,.249,1.3)+.38*fm(1.498,.971,1.7)+.25*fm(.502,.722,2.1)
-        x*=.80+.20*q
-    elif style==18: # ultra-low geological fold
-        x=.41*o(.125,2.1)+.37*o(.251,2.3)+.21*fm(.504,.619,3.1)
-    elif style==19: # trilling wing made entirely of quasi-periodic FM
-        e=(.24+.76*(.5+.5*np.sin(2*np.pi*(3.4+.1*(bank%7))*t+q))**3)
-        x=.33*o(.499,2.7)+(.27*fm(2.31,1.603,2.6)+.31*o(3.15,2.1))*e
-    elif style==20: # organic sonar, rising beating circles
-        x=.48*o(.503,3.5)+.22*fm(1.01,.37,2.8)+.22*o(2.01,3.)
-        x*=.3+.7*(.5+.5*np.sin(2*np.pi*.42*t+.6*p))**4
-    elif style==21: # fractal, phase-offset harmonic lattice
-        x=phasecluster((.249,.51,.766,.997,1.502,2.048,3.105),(.13,.30,.20,.26,.16,.15,.08),2.4)
-    elif style==22: # unstable cellular oscillation, not noise
-        x=.35*fm(.482,1.812,3.2)+.34*fm(.992,.421,2.1)+.24*o(.245,1.7)
-        x*=.50+.50*(.5+.5*z)**4
-    elif style==23: # bone/wood flute with warm overblown spectral response
-        x=.51*o(.998,1.9)+.22*o(1.994,3.1)+.12*o(3.007,3.7)+.27*o(.501,1.6)
-    elif style==24: # enigmatic rhythmic transmission made of structured oscillations
-        e=.25+.75*(.5+.5*np.sin(2*np.pi*(1.67+.07*(bank%5))*t+q+2*p))**7
-        x=.37*fm(1.001,.38,3.4)*e+.35*fm(.511,.816,1.8)+.22*o(.256,2.6)
-    else:raise ValueError(style)
-    # Keep natural, bank-specific but broadband-noise-free dynamics.
-    swell=.80+.20*np.sin(2*np.pi*(.029+.004*(bank%7))*t+phi+.45*q)**2
-    x*=swell
-    fade=(1-np.exp(-t/.018))*(1-np.exp(-(duration-t)/.07))
-    x=lpf(x*fade, min(12500.,max(6400., 8400.+1300.*(bank%5))))
-    x-=np.mean(x)
-    rms=np.sqrt(np.mean(x*x))+1e-12
-    target=.15 if style in (3,9,12,19,20,24) else .18
+    phi=((1147+29*bank+71*note)*.61803398875%1)*2*np.pi
+    slow=np.sin(2*np.pi*(.028+.005*(bank%7))*t+phi)
+    tide=np.sin(2*np.pi*(.105+.012*(bank%8))*t+.57*phi)
+    curl=np.sin(2*np.pi*(.31+.031*(bank%9))*t+1.23*phi)
+    phase=2*np.pi*f*np.cumsum(1+.009*(.58*slow+.28*tide+.14*curl))/SR
+    def o(r=1,w=.3):
+        return np.sin(phase*r+w*(slow+.4*curl))
+    def fm(c=1,m=.5,index=1.):
+        return np.sin(phase*c+index*(1+.24*tide)*np.sin(phase*m+.8*slow))
+    def pulse(speed=1.4,offset=0):
+        env=.5+.5*np.sin(2*np.pi*speed*t+1.3*tide+slow+offset+phi)
+        return .24+.76*env**2
+    def cl(rs,ws,motion=1.):
+        value=np.zeros_like(t)
+        for i,(r,w) in enumerate(zip(rs,ws)):
+            value+=w*np.sin(phase*r+motion*(1+i*.2)*slow+i*1.2)
+        return value
+    # Each bank has its own topology instead of one shared harmonic drone.
+    if style==0:
+        x=.27*o(.5,1.8)+(.46*fm(2.07,.91,.68)+.19*o(3.07,1.3))*pulse(2.1)+.16*o(1.01,1.9)
+    elif style==1:
+        x=(.48*fm(.52,.237,1.2)+.34*o(1.02,3.2))*pulse(.76)+.24*o(.249,1.4)
+    elif style==2:
+        x=.3*o(.48,1.3)+.35*fm(1.98,2.31,1.05)*pulse(1.74)+.25*fm(3.03,.618,.45)*pulse(3.3,2.)
+    elif style==3:
+        x=(.47*fm(.501,.29,1.8)+.34*o(1.,3.8)+.23*o(1.98,3.))*(.73+.27*slow*tide)
+    elif style==4:
+        x=cl((.25,.5,1.,1.5,2.02),(.15,.27,.33,.24,.12),1.9)+.28*fm(2.,.753,1.4)*pulse(1.08)
+    elif style==5:
+        x=.48*fm(1.17,.457,1.6)+.26*fm(2.,.87,.73)*pulse(2.4)+.2*o(.502,2.2)
+    elif style==6:
+        x=.32*o(.498,.9)+.3*fm(1.01,1.49,.84)*pulse(1.3)+.23*fm(2.54,.7,1.)*pulse(3.1,1.7)
+    elif style==7:
+        x=.38*o(.501,1.6)+(.28*fm(1.,.286,1.2)+.25*o(2.,2.3))*pulse(1.4)
+    elif style==8:
+        x=cl((.33,.502,.99,1.998,3.,4.03),(.22,.25,.32,.2,.16,.1),2.1)*(.82+.18*slow)
+    elif style==9:
+        x=.28*o(.5,.9)+.39*fm(1.74,.63,1.34)*pulse(1.9)+.26*o(2.37,3.1)*pulse(2.71,2.8)
+    elif style==10:
+        x=cl((.251,.499,1.004,2.01,2.98),(.14,.30,.34,.22,.16),2.2)+.18*fm(1.46,.32,.9)
+    elif style==11:
+        x=.23*o(.51,2)+.23*o(1.013,2.1)+.38*fm(2.07,.318,.85)*pulse(.68)+.22*o(3.01,1.8)
+    elif style==12:
+        x=(.42*fm(.502,.681,1.)+.31*o(1.501,2.8))*pulse(.58)+.19*fm(2.08,1.46,.78)*pulse(2.03)
+    elif style==13:
+        x=.26*o(.249,1.1)+.34*fm(1.01,.49,1.63)+.3*fm(1.49,.237,1.1)*pulse(1.03)
+    elif style==14:
+        x=cl((.51,1.,1.49,2.,2.51),(.17,.32,.24,.19,.12),2.6)*(.7+.3*slow**2)
+    elif style==15:
+        x=.31*o(.499,2.)+.31*o(.503,3.)+.24*o(1.009,2.2)+.18*fm(2.02,.511,.9)
+    elif style==16:
+        x=(.55*o(.997,2.9)+.21*o(2.003,4.1))*pulse(.38)+.24*fm(.5,.291,1.4)
+    elif style==17:
+        x=.36*fm(.74,.29,1.4)*pulse(.81)+.34*fm(2.07,.71,.77)*pulse(1.43,.7)+.2*o(.499,.8)
+    elif style==18:
+        x=.42*fm(.502,1.106,1.1)+.31*fm(1.25,.379,.89)*pulse(1.13)+.22*o(.251,2.2)
+    elif style==19:
+        x=cl((.496,1.001,1.993,3.013,4.01),(.14,.34,.23,.16,.08),1.6)+.24*fm(3.03,1.07,.56)*pulse(2.5)
+    elif style==20:
+        x=(.33*fm(.5,.683,1.8)+.39*fm(1.,.327,1.2))*pulse(.54)+.24*fm(2.01,.987,.7)*pulse(2.08)
+    elif style==21:
+        x=.25*o(.25,1.1)+.33*o(.506,2.1)+.3*fm(1.99,.917,1.)*pulse(1.33)+.18*o(1.01,1.3)
+    elif style==22:
+        x=.22*o(.499,1.2)+.38*o(1.502,1.4)+.3*fm(2.753,.375,1.1)*pulse(2.29)
+    elif style==23:
+        x=.36*fm(.503,.713,1.45)+.31*o(1.002,3.5)+.26*fm(1.51,1.045,.85)*pulse(.48)
+    else:
+        x=.24*o(.498,2.4)+.29*fm(1.01,.314,1.45)+.24*fm(2.04,.863,1.4)*pulse(2.2)+.2*o(3.02,2.9)*pulse(.87,2.5)
+    if bank>=25:
+        x=.74*x+.20*fm(.693+.031*(bank%4),.294+.037*(bank%6),.85+.2*curl)
+        x*=.86+.14*np.sin(2*np.pi*(.047+.004*(bank%6))*t+phi)**2
+    # No pitch drops or struck resonances at note start. Use a slow, transparent swell.
+    x*=(.86+.14*(1+slow*tide)*.5)
+    attack=(1-np.exp(-t/.17))
+    release=(1-np.exp(-np.maximum(duration-t,0)/.18))
+    x*=attack*release
+    # Low DC, no noise, gentle high-frequency limit.
+    sos=signal.butter(2,(80.0,12500.0),btype='bandpass',fs=SR,output='sos')
+    x=signal.sosfilt(sos,x)
+    x-=x.mean()
+    rms=float(np.sqrt(np.mean(x*x))+1e-12)
+    target=.135 if style in (0,2,6,9,17,19,24) else .16
     x*=target/rms
     peak=np.max(np.abs(x))
-    if peak>.88:x*=.88/peak
+    if peak>.86:x*=.86/peak
     return np.rint(np.clip(x,-1,1)*32767).astype('<i2')
-
 def main():
     root=Path(__file__).resolve().parent.parent
     banks=root/'Banks';banks.mkdir(parents=True,exist_ok=True)
     entries=bank_info()
-    lines=['# NOCTIVORE v10 — Noise-Free Xenobiome Source Atlas','',
-      '200 original PCM16 WAV recordings, synthesized at 48 kHz without stochastic broadband noise.','',
-      '| # | Bank | Organic model | A/B role |','|---:|---|---|---|']
-    for bank,(name,category,kind) in enumerate(entries):
-        # Covers all 25 types twice, while large sound families stay contrasting.
-        model=((bank%25)*11)%25
+    lines=['# NOCTIVORE 10.3 — Forest Signals Source Atlas','',
+           '200 original clean-tonal 48 kHz PCM16 recordings with sustained motion.','','| # | Bank | Sound family | Role |','|---:|---|---|---|']
+    for bank,(name,category,kind,_) in enumerate(entries):
         for note in NOTES:
-            wavfile.write(banks/f'{bank:02d}_{note}.wav',SR,create(bank,note,kind,model))
-        role=('BODY','VOICE','MOTION','PUNCTUATION','SPACE')[bank%5]
-        lines.append(f'| {bank:02d} | {name} | {FAMILIES[model]} | {role} |')
-        if bank%10==9:print(f'Generated {bank+1}/50 noise-free multisample banks',flush=True)
-    (banks/'MANIFEST.txt').write_text('NOCTIVORE v10: 200 noise-free original 48 kHz WAVs; 25 synthetic organic models.\n')
-    lines+=['','Recommended contrasting pairings: A00+B23, A02+B48, A07+B33, A11+B42, A20+B14, A26+B39.',
-            'No G-Sonique proprietary sound libraries or copyrighted recordings are used.']
-    (root/'SOUND_ATLAS.md').write_text('\n'.join(lines)+'\n',encoding='utf-8')
-    print('Completed 200 noise-free sound sources',flush=True)
+            wavfile.write(banks/f'{bank:02d}_{note}.wav',SR,create(bank,note,int(kind)))
+        role=('BODY','MICRO-FX','VOICE','MOTION','SPECTRAL SPACE')[bank%5]
+        lines.append(f'| {bank:02d} | {name} | {FAMILIES[bank%25]} | {role} |')
+        if bank%10==9:print(f'Generated {bank+1}/50 banks',flush=True)
+    (banks/'MANIFEST.txt').write_text('NOCTIVORE Forest Signals 10.3 - 200 original 48k samples.\n')
+    lines+=['','No proprietary G-Sonique audio, data or source files are used.']
+    (root/'SOUND_ATLAS.md').write_text('\n'.join(lines)+'\n',encoding='utf8')
+    print('Completed 200 original forest WAV samples',flush=True)
 if __name__=='__main__':main()

@@ -39,10 +39,10 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  StringArray names;for(const auto& b:noctivore::banks)names.add(b.name);names.add("User Bank");
  choose("bank","Instrument Bank",names);
  choose("mode","Voice Mode",{"Polyphonic","Mono","Legato"});
- add("attack","Attack",.001f,8,.075f);
- add("decay","Decay",.01f,9,1.5f);
- add("sustain","Sustain",0,1,.83f);
- add("release","Release",.01f,12,3.2f);
+ add("attack","Attack",.001f,8,.28f);
+ add("decay","Decay",.01f,9,3.2f);
+ add("sustain","Sustain",0,1,.93f);
+ add("release","Release",.01f,12,4.4f);
  choose("filterMode","Filter Mode",{"Low Pass","Band Pass","High Pass"});
  add("cutoff","Filter Cutoff",.015f,1,.95f);
  add("resonance","Filter Resonance",0,1,.14f);
@@ -125,12 +125,12 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  add("motionEnvAttack","Motion Env Attack",.003f,15.f,.5f);
  add("motionEnvRelease","Motion Env Release",.01f,20.f,4.f);
  add("motionEnvDepth","Motion Env Amount",0.f,1.f,.6f);
- add("fmMix","FM Amount",0.f,1.f,.04f);
+ add("fmMix","FM Amount",0.f,1.f,.014f);
  add("fmRatio","FM Ratio",.25f,16.f,1.f);
- add("fmIndex","FM Index",0.f,12.f,1.2f);
- add("fmFeedback","FM Feedback",0.f,.95f,.07f);
- add("fmInharmonic","FM Inharmonicity",0.f,1.f,.08f);
- add("metalMix","Metal Resonator",0.f,1.f,.018f);
+ add("fmIndex","FM Index",0.f,12.f,.85f);
+ add("fmFeedback","FM Feedback",0.f,.95f,.025f);
+ add("fmInharmonic","FM Inharmonicity",0.f,1.f,.035f);
+ add("metalMix","Metal Resonator",0.f,1.f,0.f);
  add("metalTune","Metal Tune",0.f,1.f,.30f);
  add("metalDecay","Metal Decay",0.f,1.f,.6f);
  add("metalTone","Metal Tone",0.f,1.f,.42f);
@@ -147,10 +147,10 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  choose("motif","Ritual Motif",{"Off","Serpent","Ritual","Insect","Portal","Fracture","Hollow"},1);
  choose("motifDivision","Motif Grid",{"1/8","1/16","1/32","Triplet"},1);
  add("motifPitch","Pitch Leap",0.f,1.f,.42f);
- add("motifGate","Motif Gate",0.f,1.f,.56f);
+ add("motifGate","Motif Gate",0.f,1.f,.42f);
  add("motifAccent","Ritual Accents",0.f,1.f,.65f);
  add("motifGlide","Pitch Glide",0.f,1.f,.25f);
- add("motifFX","Resonant Events",0.f,1.f,.25f);
+ add("motifFX","Resonant Events",0.f,1.f,0.f);
  add("mudCut","Low-Mid Cleanup",0.f,1.f,.52f);
  add("wetLowCut","FX Low Cut",0.f,1.f,.64f);
  add("focus","Stereo Focus",0.f,1.f,.68f);
@@ -160,9 +160,9 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
    NormalisableRange<float>(.002f,.35f,0.f,2.8f),.034f));
  add("biomeChaos","Biome Complexity",0.f,1.f,.60f);
  // v10: optional expressive resonant interaction, never continuous noise.
- add("xenoFormant","Alien Formants",0.f,1.f,.20f);
+ add("xenoFormant","Alien Formants",0.f,1.f,.31f);
  add("xenoCross","Organism Coupling",0.f,1.f,.10f);
- add("xenoWrithe","Body Mutation",0.f,1.f,.44f);
+ add("xenoWrithe","Body Mutation",0.f,1.f,.54f);
  add("lowRegisterLife","Low Register Life",0.f,1.f,.72f);
  add("coupledMotion","Coupled Motion",0.f,1.f,.53f);
 
