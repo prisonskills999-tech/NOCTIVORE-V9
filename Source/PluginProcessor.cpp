@@ -249,7 +249,13 @@ void NoctivoreProcessor::processBlock(AudioBuffer<float>& output,MidiBuffer& eve
  p.fx.reverbMix=noctivore::clampf(p.fx.reverbMix*(.65f+get("space")),0,1);
  if(auto* playhead=getPlayHead())
   if(auto position=playhead->getPosition()) {
-   if(auto bpm=position->getBpm())sampler.setTempo(*bpm);
+   if(auto bpm=position->getBpm()){
+    sampler.setTempo(*bpm);
+    displayTempo.store((float)*bpm,std::memory_order_relaxed);
+   }
+   displayPlaying.store(position->getIsPlaying(),std::memory_order_relaxed);
+   if(auto ppq=position->getPpqPosition())
+    displayPpq.store((float)*ppq,std::memory_order_relaxed);
    // Quantized motifs lock to Live's beat grid when transport is running;
    // when stopped the keyboard can still audition freely.
    if(position->getIsPlaying())
