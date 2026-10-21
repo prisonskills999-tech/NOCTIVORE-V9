@@ -165,6 +165,7 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  add("xenoWrithe","Body Mutation",0.f,1.f,.54f);
  add("lowRegisterLife","Low Register Life",0.f,1.f,.72f);
  add("coupledMotion","Coupled Motion",0.f,1.f,.53f);
+ add("performanceMod","Performance Mod Wheel",0.f,1.f,0.f);
  for(int i=0;i<16;++i){
   auto key=juce::String::formatted("gateStep%02d",i+1);
   auto label=juce::String("Forest Gate Step ")+juce::String(i+1);
@@ -244,6 +245,7 @@ void NoctivoreProcessor::processBlock(AudioBuffer<float>& output,MidiBuffer& eve
  p.biomeDepth=get("biomeDepth");p.biomeRate=get("biomeRate");p.biomeChaos=get("biomeChaos");
  p.xenoFormant=get("xenoFormant");p.xenoCross=get("xenoCross");p.xenoWrithe=get("xenoWrithe");
  p.lowRegisterLife=get("lowRegisterLife");p.coupledMotion=get("coupledMotion");
+ p.performanceMod=get("performanceMod");
  for(int i=0;i<16;++i){auto key=juce::String::formatted("gateStep%02d",i+1);
   p.gateSteps[(size_t)i]=get(key.toRawUTF8());
  }
