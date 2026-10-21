@@ -72,14 +72,14 @@ def main():
     root=Path(__file__).resolve().parent.parent
     out=root/'Banks';out.mkdir(parents=True,exist_ok=True)
     entries=original.bank_info()
-    for bank,(_,category,kind) in enumerate(entries):
+    for bank,(_,category,kind,one_shot) in enumerate(entries):
         for note in ROOTS:
-            wavfile.write(out/f'{bank:02d}_{note}.wav',SR,create(bank,note,kind,bank%10))
+            wavfile.write(out/f'{bank:02d}_{note}.wav',SR,create(bank,note,int(kind),bank%10))
         if bank%10==9:print('Created',bank+1,'of 50 banks',flush=True)
     (out/'MANIFEST.txt').write_text('NOCTIVORE v10.6 — 200 original 48kHz/PCM16, noise-free experimental organisms.\\n')
     with (root/'SOUND_ATLAS.md').open('w') as outmd:
         outmd.write('# NOCTIVORE v10.6 — ABYSSAL ECOLOGY\\n\\n50 banks / 200 original samples.\\n\\n')
-        for idx,(name,_,_) in enumerate(entries):
+        for idx,(name,_,_,_) in enumerate(entries):
             outmd.write(f'- {idx:02d} **{name}** — {ROLES[idx%10]}\\n')
         outmd.write('\\nOriginal deterministic synthesis; no copied or third-party recordings.\\n')
     print('All 200 regenerated',flush=True)
