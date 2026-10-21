@@ -1,6 +1,7 @@
 #include "PluginEditor.h"
 #include <algorithm>
 #include <cmath>
+#include <functional>
 using namespace juce;
 namespace {
  using namespace painted;
@@ -23,6 +24,35 @@ NoctivoreEditor::Skin::Skin(){
 void NoctivoreEditor::Skin::drawRotarySlider(Graphics& g,int x,int y,int w,int h,float value,float start,float end,Slider& slider){painted::rotary(g,x,y,w,h,value,start,end,painted::accents[(size_t)std::clamp((int)slider.getProperties().getWithDefault("tint",0),0,4)]);}
 void NoctivoreEditor::Skin::drawButtonBackground(Graphics& g,Button& button,const Colour&,bool hovered,bool down){painted::button(g,button,hovered,down,painted::accents[(size_t)std::clamp((int)button.getProperties().getWithDefault("tint",0),0,4)]);}
 void NoctivoreEditor::Skin::drawComboBox(Graphics& g,int w,int h,bool,int,int,int,int,ComboBox&){painted::selector(g,w,h);}
+
+NoctivoreEditor::ArtKnob::ArtKnob(AudioProcessorValueTreeState& st,const String& id,const String& label){
+ setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+ setTextBoxStyle(Slider::NoTextBox,false,0,0);
+ setMouseDragSensitivity(250);
+ setRotaryParameters(MathConstants<float>::pi*1.18f,MathConstants<float>::pi*2.82f,true);
+ setTooltip(label+" — drag to edit");
+ if(auto* p=st.getParameter(id))setDoubleClickReturnValue(true,p->convertFrom0to1(p->getDefaultValue()));
+ attachment=std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(st,id,*this);
+}
+void NoctivoreEditor::ArtKnob::paint(Graphics& g){
+ auto r=getLocalBounds().toFloat();float cx=r.getCentreX(),cy=r.getCentreY(),rad=.44f*std::min(r.getWidth(),r.getHeight());
+ float norm=getMaximum()>getMinimum()?(float)((getValue()-getMinimum())/(getMaximum()-getMinimum())):0.f;
+ norm=std::clamp(norm,0.f,1.f);
+ float first=MathConstants<float>::pi*1.18f,last=MathConstants<float>::pi*2.82f;
+ Path p;p.addCentredArc(cx,cy,rad,rad,0,first,first+norm*(last-first),true);
+ g.setColour(Colour::fromRGB(242,197,105).withAlpha(isMouseOverOrDragging()?.92f:.34f));
+ g.strokePath(p,PathStrokeType(isMouseOverOrDragging()?2.3f:1.1f));
+ if(isMouseOverOrDragging()){
+   g.setColour(Colour::fromRGB(20,23,17).withAlpha(.92f));
+   g.fillRoundedRectangle(0.f,0.f,r.getWidth(),16.f,3.f);
+   g.setColour(Colour::fromRGB(235,218,174));g.setFont(Font(10.f,Font::bold));
+   g.drawText(String(getValue(),2),0,0,getWidth(),16,Justification::centred);
+ }
+}
+NoctivoreEditor::ArtMenu::ArtMenu(AudioProcessorValueTreeState& st,const String& id,const StringArray& names){
+ for(auto name:names)addItem(name,getNumItems()+1);
+ attachment=std::make_unique<AudioProcessorValueTreeState::ComboBoxAttachment>(st,id,*this);
+}
 NoctivoreEditor::Dial::Dial(AudioProcessorValueTreeState& apvts,const String& id,const String& text,int colour){
  knob.setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
  knob.setRotaryParameters(MathConstants<float>::pi*1.2f,MathConstants<float>::pi*2.8f,true);
@@ -62,6 +92,7 @@ void NoctivoreEditor::select(Section& s,const char* id,const char* label,StringA
 NoctivoreEditor::NoctivoreEditor(NoctivoreProcessor& p)
  :AudioProcessorEditor(&p),processor(p),keyboard(p.keyboardState,MidiKeyboardComponent::horizontalKeyboard){
  setLookAndFeel(&skin);
+ originalPainting=ImageFileFormat::loadFrom(processor.paintingFile());
  // No resizing until EVERY child and attachment is constructed: essential
  // for Ableton Live, which may request editor layout immediately on creation.
  addAndMakeVisible(keyboard);keyboard.setAvailableRange(24,96);
@@ -183,9 +214,86 @@ NoctivoreEditor::NoctivoreEditor(NoctivoreProcessor& p)
  atm->setName("PERMANENT_ATM");addAndMakeVisible(*atm);controls.push_back(std::move(atm));
  auto fury=std::make_unique<Dial>(processor.state,"macroAggression","AGGRESSION",1);
  fury->setName("PERMANENT_FURY");addAndMakeVisible(*fury);controls.push_back(std::move(fury));
+
+ // This is the exact screenshot, not a procedural imitation: all hotspots
+ // are positioned in its original 1491x1055 coordinate system.
+ auto artDial=[this](const char* id,const char* label,float x,float y,float d=54.f){
+   ArtDialSpot a;a.x=x;a.y=y;a.d=d;
+   a.knob=std::make_unique<ArtKnob>(processor.state,id,label);
+   addAndMakeVisible(*a.knob);artDials.push_back(std::move(a));
+ };
+ auto artMenu=[this](const char* id,StringArray opts,float x,float y,float w,float h){
+   ArtMenuSpot a;a.x=x;a.y=y;a.w=w;a.h=h;
+   a.menu=std::make_unique<ArtMenu>(processor.state,id,opts);
+   addAndMakeVisible(*a.menu);artMenus.push_back(std::move(a));
+ };
+ auto artButton=[this](const char* label,float x,float y,float w,float h,std::function<void()> fn){
+   ArtButtonSpot a;a.x=x;a.y=y;a.w=w;a.h=h;
+   a.button=std::make_unique<ArtHotspot>();a.button->setTooltip(label);
+   a.button->onClick=std::move(fn);
+   addAndMakeVisible(*a.button);artButtons.push_back(std::move(a));
+ };
+ StringArray names;for(const auto& b:noctivore::banks)names.add(b.name);names.add("User Bank");
+ artMenu("bank",names,390,155,160,33);artMenu("bankB",names,964,155,156,33);
+ artMenu("motif",{"Off","Underbrush","Offbeat","Tribal","Broken","Breathing","Shadow"},1164,421,220,28);
+ artMenu("filterMode",{"Low Pass","Band Pass","High Pass"},187,796,243,30);
+ artMenu("filter2Mode",{"Off","Low Pass","Band Pass","High Pass","Notch"},1004,796,280,30);
+ artMenu("division",{"1/4","1/8","1/8 dotted","1/16","1/16 dotted","1/32","1/4 triplet","1/8 triplet"},623,797,238,30);
+ artDial("morph","Bank A/B Morph",725,164,66);
+ artDial("lowRegisterLife","Deep Life Growth",70,343);
+ artDial("sub","Deep Life Depth",137,343);
+ artDial("movement","Deep Life Movement",204,343);
+ artDial("grain","Deep Life Texture",274,343);
+ artDial("morphMotion","Motion Sync",369,341);
+ artDial("biomeRate","Motion Rate",432,341);
+ artDial("psySpiralRate","Motion Phase",496,341);
+ artDial("coupledMotion","Linked Motion",558,341);
+ artDial("layers","Biome Density",877,344);
+ artDial("texture","Biome Size",944,344);
+ artDial("stereo","Biome Spread",1012,344);
+ artDial("biomeDepth","Biome Life",1083,344);
+ artDial("tranceRate","Gate Rate",1178,340);
+ artDial("motifPitch","Gate Length",1247,340);
+ artDial("motifGlide","Gate Swing",1315,340);
+ artDial("motifGate","Rhythmic Gate",1380,340);
+ artDial("xenoFormant","Alien Vocal Formants",135,526);
+ artDial("xenoWrithe","Talk",201,526);
+ artDial("fmIndex","Harmonics",269,526);
+ artDial("xenoCross","Wet",337,526);
+ artDial("xenoCross","Coupling",414,606);
+ artDial("morph","Organism Transfer",514,606);
+ artDial("morphMotion","Variation",588,606);
+ artDial("spectralTilt","Body Shape",666,574);
+ artDial("grain","Body Stretch",738,574);
+ artDial("scatter","Disrupt",808,574);
+ artDial("motionEnvRelease","Regenerate",879,574);
+ artDial("fmRatio","FM Ratio",969,530);
+ artDial("fmIndex","FM Index",1029,530);
+ artDial("fmMix","FM Amount",1089,530);
+ artDial("fmInharmonic","FM Blend",1146,530);
+ artDial("drive","Drive",1320,540);
+ artDial("macroAggression","Bite",1390,540);
+ artDial("filterDrive","Fuzz",1320,603);
+ artDial("spectralTilt","Tone",1392,603);
+ artDial("cutoff","Cutoff 1",198,749);
+ artDial("resonance","Resonance 1",267,749);
+ artDial("filterEnvDepth","Filter 1 Envelope",341,749);
+ artDial("filterDrive","Filter 1 Drive",414,749);
+ artDial("reverbSize","Atmosphere Size",626,751);
+ artDial("reverbDark","Damping",693,751);
+ artDial("stereo","Width",762,751);
+ artDial("reverbMix","Reverb Mix",830,751);
+ artDial("cutoff2","Cutoff 2",1050,752);
+ artDial("resonance2","Resonance 2",1118,752);
+ artDial("filterBlend","Filter Blend",1191,752);
+ artDial("filterDrive","Filter Tone",1263,752);
+ const float tx[]={244,445,626,801,1024},tw[]={170,180,170,181,171};
+ for(int i=0;i<5;++i)artButton("Switch page",tx[i],852,tw[i],40,[this,i]{showPage((Page)i);});
+ artButton("Mutate",876,201,45,42,[this]{mutate(true);});
+ artButton("Evolve",830,201,45,42,[this]{mutate(false);});
  showPage(Atlas);
- setResizable(true,true);setResizeLimits(1020,690,1620,1100);
- setSize(1160,790);
+ setResizable(true,true);setResizeLimits(1010,715,1600,1132);
+ setSize(1192,844);
  startTimerHz(15);
 }
 NoctivoreEditor::~NoctivoreEditor(){stopTimer();setLookAndFeel(nullptr);}
@@ -286,8 +394,19 @@ void NoctivoreEditor::applyScene(int which){
 }
 void NoctivoreEditor::showPage(Page next){
  page=next;
- for(auto& s:sections)for(auto* c:s.children)c->setVisible(s.page==page);
- for(size_t i=0;i<tabs.size();++i)tabs[i].setToggleState((int)i==(int)page,dontSendNotification);
+ bool art=paintedPage();
+ for(auto& s:sections)for(auto* c:s.children)c->setVisible(s.page==page && !art);
+ for(auto& a:artDials)a.knob->setVisible(art);
+ for(auto& a:artMenus)a.menu->setVisible(art);
+ for(auto& a:artButtons)a.button->setVisible(art);
+ for(size_t i=0;i<tabs.size();++i){
+  tabs[i].setVisible(!art);
+  tabs[i].setToggleState((int)i==(int)page,dontSendNotification);
+ }
+ for(auto& a:actions)a.setVisible(!art);
+ scenes.setVisible(!art);sceneLabel.setVisible(!art);
+ for(auto& c:controls)if(c->getName().startsWith("PERMANENT_"))c->setVisible(!art);
+ keyboard.setAlpha(art?.26f:1.f);
  if(getWidth()>0 && getHeight()>0)resized();
  repaint();
 }
@@ -302,6 +421,17 @@ void NoctivoreEditor::layout(Section& section_,Rectangle<int> area){
   section_.children[(size_t)i]->setBounds(x,y,cw,ch);}
 }
 void NoctivoreEditor::resized(){
+ if(paintedPage()){
+  float sx=(float)getWidth()/1491.f,sy=(float)getHeight()/1055.f;
+  auto R=[&](float x,float y,float w,float h){
+   return Rectangle<int>(roundToInt(x*sx),roundToInt(y*sy),roundToInt(w*sx),roundToInt(h*sy));};
+  for(auto& a:artDials)a.knob->setBounds(R(a.x-a.d*.5f,a.y-a.d*.5f,a.d,a.d));
+  for(auto& a:artMenus)a.menu->setBounds(R(a.x,a.y,a.w,a.h));
+  for(auto& a:artButtons)a.button->setBounds(R(a.x,a.y,a.w,a.h));
+  keyboard.setBounds(R(214,907,1024,94));
+  return;
+ }
+
  float sx=getWidth()/1160.f,sy=getHeight()/790.f;
  auto R=[&](float x,float y,float w,float h){return rect(x,y,w,h,sx,sy);};
  for(size_t i=0;i<tabs.size();++i)tabs[i].setBounds(R(18.f+(float)i*143.f,174,137,36));
@@ -330,6 +460,11 @@ void NoctivoreEditor::resized(){
 }
 void NoctivoreEditor::timerCallback(){repaint();}
 void NoctivoreEditor::paint(Graphics& g){
+ if(paintedPage()){
+  g.drawImage(originalPainting,getLocalBounds().toFloat());
+  return;
+ }
+
  g.fillAll(painted::soil);
  const float sx=getWidth()/1160.f,sy=getHeight()/790.f;
  Graphics::ScopedSaveState scope(g);

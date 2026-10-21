@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(NOCTIVORE_FX VERSION 10.3.0 LANGUAGES C CXX)
+project(NOCTIVORE_FX VERSION 10.4.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -21,10 +21,10 @@ else()
 endif()
 juce_add_plugin(NOCTIVORE_FX
  COMPANY_NAME "Noctivore Audio"
- BUNDLE_ID "audio.noctivore.forestsignals"
+ BUNDLE_ID "audio.noctivore.truepainted"
  PLUGIN_MANUFACTURER_CODE NcFx
- PLUGIN_CODE Fs13
- PRODUCT_NAME "NOCTIVORE FX FOREST SIGNALS"
+ PLUGIN_CODE Pt14
+ PRODUCT_NAME "NOCTIVORE FX TRUE PAINTED FOREST"
  FORMATS VST3
  IS_SYNTH TRUE
  NEEDS_MIDI_INPUT TRUE
@@ -57,3 +57,14 @@ add_custom_command(TARGET NOCTIVORE_FX_VST3 POST_BUILD
          "${CMAKE_CURRENT_SOURCE_DIR}/Banks"
          "$<TARGET_FILE_DIR:NOCTIVORE_FX_VST3>/../Resources/Banks"
  COMMENT "Bundling 200 NOCTIVORE V10 Xenobiome 48k WAV multisamples")
+
+# Prevent a deceptively successful build without the original painting.
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/Assets/painted_forest.jpg")
+ message(FATAL_ERROR "Artwork missing. Upload Assets/painted_forest.jpg to the repository.")
+endif()
+add_custom_command(TARGET NOCTIVORE_FX_VST3 POST_BUILD
+ COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:NOCTIVORE_FX_VST3>/../Resources/GUI"
+ COMMAND ${CMAKE_COMMAND} -E copy_if_different
+  "${CMAKE_CURRENT_SOURCE_DIR}/Assets/painted_forest.jpg"
+  "$<TARGET_FILE_DIR:NOCTIVORE_FX_VST3>/../Resources/GUI/painted_forest.jpg"
+ COMMENT "Bundling the original painted interface image")

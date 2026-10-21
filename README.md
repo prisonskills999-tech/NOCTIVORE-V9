@@ -1,21 +1,11 @@
-# NOCTIVORE FX v10.3 — FOREST SIGNALS
-Original darkpsy/forest-psy instrument. Maintains the v10.2 hand-painted JUCE GUI,
-the stable v10.1 low-register modulation, four LFOs, dual filters, and MIDI clock gate.
+# NOCTIVORE v10.4 — TRUE PAINTED FOREST
 
-## New in this version
-- 50 entirely re-authored banks, 25 genuinely different organic synthesis topologies,
-  each with two independent performances; 200 48 kHz factory WAV multisamples.
-- Evolving wet forest bleeps, mellow blops, fungal voices, singing insects,
-  root transmissions, hollow reeds and moving psychedelic spectral textures.
-- Longer recorded sample swells (~170ms), much gentler MIDI note onset,
-  longer default attack and release, higher sustain.
-- Metal resonator and gate-triggered pitched events OFF by default to suppress
-  the recurring 'boing'; FM defaults subdued but remains available.
-- Rhythmic gate/sync grid, Deep Life, Linked Motion, and the full effects retained.
-- All banks are synthesized from original code. No G-Sonique library or recordings.
+**What changed:** The main Atlas GUI renders the original hand-painted artwork from `Assets/painted_forest.jpg`, instead of drawing a rough vector imitation. Forty-nine? More than forty visible knobs are host-automatable interactive sliders aligned to the illustrated knobs; banks, gate patterns, effect selectors and five tabs are interactive. All deep modulation, effects, filter and utility pages are preserved.
 
-## Windows build
-Use .github/workflows/windows-vst3.yml in this repository branch;
-GitHub Actions generates all 200 WAVs, builds the JUCE VST3 on Windows,
-and uploads FULL_GUI and SAFE_GUI VST3 artifacts.
-Build must complete successfully and be tested in Ableton to be considered verified.
+**IMPORTANT: ONE ARTWORK UPLOAD REQUIRED.** To complete this branch without installing a compiler, add the supplied JPEG to `Assets/painted_forest.jpg` using GitHub → Add file → Upload files (select this branch). Actions builds automatically. Until that picture is added, CMake deliberately fails so there is no misleading GUI artifact.
+
+**Choose the FULL_GUI artifact.** SAFE_GUI intentionally uses the generic parameter editor and will never show the artwork. After the build, install the full plugin with its `Contents/Resources/GUI/painted_forest.jpg`.
+
+The painting is raster and static; the controls over it are live and mapped to real APVTS parameters. Some illustrated details remain decorative, and there are no fake audio modulations.
+
+Windows compilation and Ableton host loading must still be verified.

@@ -168,6 +168,9 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
 
  return {a.begin(),a.end()};
 }
+juce::File NoctivoreProcessor::paintingFile() const {
+ return moduleResourceFolder().getParentDirectory().getChildFile("GUI").getChildFile("painted_forest.jpg");
+}
 NoctivoreProcessor::NoctivoreProcessor():
  AudioProcessor(BusesProperties().withOutput("Stereo Output",AudioChannelSet::stereo(),true)),
  state(*this,nullptr,"NOCTIVORE_FX_STATE",layout()){

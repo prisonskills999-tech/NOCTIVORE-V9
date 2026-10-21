@@ -28,6 +28,7 @@ public:
  juce::AudioProcessorValueTreeState state;
  juce::MidiKeyboardState keyboardState;
  bool libraryLoaded=false;
+ juce::File paintingFile() const;
  std::atomic<float> peak{0.f};
  std::array<std::atomic<float>,128> scope{};
  std::atomic<unsigned> scopeCursor{0};

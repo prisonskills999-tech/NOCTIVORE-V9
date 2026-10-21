@@ -33,6 +33,22 @@ private:
   Selector(juce::AudioProcessorValueTreeState&,const juce::String&,const juce::String&,const juce::StringArray&);
   void resized() override;
  };
+ struct ArtKnob final : juce::Slider {
+  std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attachment;
+  ArtKnob(juce::AudioProcessorValueTreeState&,const juce::String&,const juce::String&);
+  void paint(juce::Graphics&) override;
+ };
+ struct ArtMenu final : juce::ComboBox {
+  std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> attachment;
+  ArtMenu(juce::AudioProcessorValueTreeState&,const juce::String&,const juce::StringArray&);
+ };
+ struct ArtHotspot final : juce::Button {
+  ArtHotspot():juce::Button("art_hotspot"){}
+  void paintButton(juce::Graphics&,bool,bool) override {}
+ };
+ struct ArtDialSpot { std::unique_ptr<ArtKnob> knob; float x=0,y=0,d=54; };
+ struct ArtMenuSpot { std::unique_ptr<ArtMenu> menu; float x=0,y=0,w=0,h=0; };
+ struct ArtButtonSpot { std::unique_ptr<ArtHotspot> button; float x=0,y=0,w=0,h=0; };
  struct Section {
   Page page;
   juce::String title;
@@ -41,6 +57,11 @@ private:
   juce::Rectangle<int> bounds{};
   std::vector<juce::Component*> children;
  };
+ juce::Image originalPainting;
+ std::vector<ArtDialSpot> artDials;
+ std::vector<ArtMenuSpot> artMenus;
+ std::vector<ArtButtonSpot> artButtons;
+ bool paintedPage() const {return page==Atlas && originalPainting.isValid();}
  NoctivoreProcessor& processor;
  juce::MidiKeyboardComponent keyboard;
  std::vector<std::unique_ptr<juce::Component>> controls;
