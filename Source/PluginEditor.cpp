@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <cmath>
 #include <functional>
+#include <array>
+#include <utility>
 using namespace juce;
 namespace {
  using namespace painted;
@@ -48,6 +50,14 @@ void NoctivoreEditor::ArtKnob::paint(Graphics& g){
    g.setColour(Colour::fromRGB(235,218,174));g.setFont(Font(10.f,Font::bold));
    g.drawText(String(getValue(),2),0,0,getWidth(),16,Justification::centred);
  }
+}
+void NoctivoreEditor::ArtHotspot::paintButton(Graphics& g,bool hovered,bool down){
+ if(!(hovered||down||selected))return;
+ const auto r=getLocalBounds().toFloat().reduced(1.f);
+ g.setColour(Colour::fromRGB(203,155,77).withAlpha(down?.31f:selected?.20f:.13f));
+ g.fillRoundedRectangle(r,6.f);
+ g.setColour(Colour::fromRGB(247,205,108).withAlpha(down?.95f:.66f));
+ g.drawRoundedRectangle(r,6.f,1.2f);
 }
 NoctivoreEditor::ArtMenu::ArtMenu(AudioProcessorValueTreeState& st,const String& id,const StringArray& names){
  for(auto name:names)addItem(name,getNumItems()+1);
@@ -289,14 +299,72 @@ NoctivoreEditor::NoctivoreEditor(NoctivoreProcessor& p)
  artDial("filterDrive","Filter Tone",1294,760);
  const float tx[]={244,445,626,801,1024},tw[]={170,180,170,181,171};
  for(int i=0;i<5;++i)artButton("Switch page",tx[i],852,tw[i],40,[this,i]{showPage((Page)i);});
- artButton("Mutate",907,201,40,42,[this]{mutate(true);});
- artButton("Evolve",860,201,40,42,[this]{mutate(false);});
+ artButton("Previous preset",528,200,32,42,[this]{stepScene(-1);});
+ artButton("Next preset",804,200,32,42,[this]{stepScene(1);});
+ artButton("Save patch",844,201,37,42,[this]{savePreset();});
+ artButton("Mutate organism",884,201,38,42,[this]{mutate(false);});
+ artButton("Subtle evolution",928,201,38,42,[this]{mutate(true);});
+ artButton("Previous source A",363,152,25,38,[this]{stepChoice("bank",-1,51);});
+ artButton("Next source A",545,152,25,38,[this]{stepChoice("bank",1,51);});
+ artButton("Previous source B",955,152,24,38,[this]{stepChoice("bankB",-1,51);});
+ artButton("Next source B",1143,152,24,38,[this]{stepChoice("bankB",1,51);});
+ artButton("Load patch",970,201,35,42,[this]{loadPreset();});
  showPage(Atlas);
  setResizable(true,true);setResizeLimits(1010,715,1600,1132);
  setSize(1192,844);
- startTimerHz(15);
+ startTimerHz(24);
 }
-NoctivoreEditor::~NoctivoreEditor(){stopTimer();setLookAndFeel(nullptr);}
+NoctivoreEditor::~NoctivoreEditor(){stopTimer();presetChooser.reset();setLookAndFeel(nullptr);}
+
+void NoctivoreEditor::stepChoice(const char* id,int amount,int count){
+ if(count<=0)return;
+ if(auto* raw=processor.state.getRawParameterValue(id)){
+  const int current=juce::roundToInt(raw->load());
+  setParameter(id,(float)((current+count+amount%count)%count));
+ }
+}
+void NoctivoreEditor::stepScene(int direction){
+ const int count=scenes.getNumItems()-1;
+ if(count<=0)return;
+ const int current=scenes.getSelectedId()<=1?0:scenes.getSelectedId()-2;
+ const int next=(current+count+direction%count)%count;
+ scenes.setSelectedId(next+2,juce::sendNotificationSync);
+}
+void NoctivoreEditor::savePreset(){
+ const auto folder=juce::File::getSpecialLocation(juce::File::userDocumentsDirectory);
+ presetChooser=std::make_unique<juce::FileChooser>("Save NOCTIVORE patch",
+   folder.getChildFile("NOCTIVORE Forest.nvpreset"),"*.nvpreset");
+ juce::Component::SafePointer<NoctivoreEditor> alive(this);
+ presetChooser->launchAsync(juce::FileBrowserComponent::saveMode |
+    juce::FileBrowserComponent::canSelectFiles |
+    juce::FileBrowserComponent::warnAboutOverwriting,
+    [alive](const juce::FileChooser& chooser){
+      if(alive==nullptr)return;
+      auto file=chooser.getResult();
+      if(file.getFullPathName().isEmpty())return;
+      file=file.withFileExtension(".nvpreset");
+      juce::MemoryBlock data;
+      alive->processor.getStateInformation(data);
+      file.replaceWithData(data.getData(),data.getSize());
+    });
+}
+void NoctivoreEditor::loadPreset(){
+ const auto folder=juce::File::getSpecialLocation(juce::File::userDocumentsDirectory);
+ presetChooser=std::make_unique<juce::FileChooser>("Load NOCTIVORE patch",folder,"*.nvpreset");
+ juce::Component::SafePointer<NoctivoreEditor> alive(this);
+ presetChooser->launchAsync(juce::FileBrowserComponent::openMode |
+    juce::FileBrowserComponent::canSelectFiles,
+    [alive](const juce::FileChooser& chooser){
+      if(alive==nullptr)return;
+      auto file=chooser.getResult();
+      if(!file.existsAsFile())return;
+      juce::MemoryBlock data;
+      if(file.loadFileAsData(data) && data.getSize()>0)
+        alive->processor.setStateInformation(data.getData(),(int)data.getSize());
+      alive->hasCustomPatch=true;
+    });
+}
+
 void NoctivoreEditor::setParameter(const char* id,float value){
  if(auto* param=processor.state.getParameter(id)){
   param->beginChangeGesture();param->setValueNotifyingHost(param->convertTo0to1(value));param->endChangeGesture();}
@@ -406,7 +474,7 @@ void NoctivoreEditor::showPage(Page next){
  for(auto& a:actions)a.setVisible(!art);
  scenes.setVisible(true);sceneLabel.setVisible(!art);
  for(auto& c:controls)if(c->getName().startsWith("PERMANENT_"))c->setVisible(!art);
- keyboard.setAlpha(art?.26f:1.f);
+ keyboard.setAlpha(art?.43f:1.f);
  if(getWidth()>0 && getHeight()>0)resized();
  repaint();
 }
@@ -459,7 +527,19 @@ void NoctivoreEditor::resized(){
  }
  keyboard.setBounds(R(26,701,1108,51));
 }
-void NoctivoreEditor::timerCallback(){repaint();}
+void NoctivoreEditor::timerCallback(){
+ uiSeconds+=1.f/24.f;
+ if(uiSeconds>72000.f)uiSeconds=0.f;
+ smoothedPeak=.78f*smoothedPeak+.22f*std::clamp(processor.peak.load(std::memory_order_relaxed),0.f,1.f);
+ const float rate=processor.displayTempo.load(std::memory_order_relaxed)/60.f;
+ const float pos=processor.displayPlaying.load(std::memory_order_relaxed)?
+   processor.displayPpq.load(std::memory_order_relaxed):uiSeconds*rate;
+ const float divisions[]={2.f,4.f,8.f,3.f};
+ int div=std::clamp((int)processor.state.getRawParameterValue("motifDivision")->load(),0,3);
+ int next=(int)std::floor(pos*divisions[div]);
+ currentGateStep=((next%16)+16)%16;
+ repaint();
+}
 void NoctivoreEditor::paint(Graphics& g){
  if(paintedPage()){
   g.drawImage(originalPainting,getLocalBounds().toFloat());
