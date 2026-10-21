@@ -1,69 +1,59 @@
-# V9 Shadow Biome — Original Sound Banks
+# NOCTIVORE v10 — Noise-Free Xenobiome Source Atlas
 
-15 complementary synthesis models; 50 distinct bank identities, four key zones (C2/C3/C4/C5) each.
+200 original PCM16 WAV recordings, synthesized at 48 kHz without stochastic broadband noise.
 
-| # | Bank | Source character | Layering role |
+| # | Bank | Organic model | A/B role |
 |---:|---|---|---|
-| 00 | Obsidian Invocation | hollow | body |
-| 01 | Spore Cathedral | liquid | texture |
-| 02 | Mycelium Choir | tape | air |
-| 03 | Event Horizon | radiation | motion |
-| 04 | Ancient Skin Drum | underwater | transient |
-| 05 | Blackglass Insects | spores | body |
-| 06 | Interstellar Autopsy | liquid | texture |
-| 07 | Swamp Magnetics | underwater | air |
-| 08 | Copper Forest Shrine | ritual | motion |
-| 09 | Abyssal Carrier | radiation | transient |
-| 10 | Signal From Below | elastic | body |
-| 11 | Cave of Thorns | hollow | texture |
-| 12 | Ceremony At Zero | crackle | air |
-| 13 | Plasma Organism | underwater | motion |
-| 14 | Dead Transmission | radiation | transient |
-| 15 | Thirteen Witnesses | tape | body |
-| 16 | Forest Spirit Spiral | swarm | texture |
-| 17 | Violet Fungal Tide | liquid | air |
-| 18 | Hypersleep Failure | hollow | motion |
-| 19 | Neural Parasite | swarm | transient |
-| 20 | Iron Bell Cathedral | ritual | body |
-| 21 | Hollow Constellation | hollow | texture |
-| 22 | Blackwater Speaker | choir | air |
-| 23 | Alien Dream Sequence | elastic | motion |
-| 24 | Ceremonial Stone | ritual | transient |
-| 25 | Shadow Biome | wind | body |
-| 26 | The Silent Reactor | crackle | texture |
-| 27 | Pulsar Graveyard | radiation | air |
-| 28 | Bone Rattle Run | swarm | motion |
-| 29 | Vessel of Echoes | vowel | transient |
-| 30 | Dark Matter Pulse | phase | body |
-| 31 | Fossil Frequency | crackle | texture |
-| 32 | Shamanic Dream Choir | vowel | air |
-| 33 | Wormhole Weather | wind | motion |
-| 34 | Organic Relay | underwater | transient |
-| 35 | Midnight Mandala | wind | body |
-| 36 | Shamanic Fracture | crystalline | texture |
-| 37 | Vox Ex Machina | vowel | air |
-| 38 | Spectral Cicada | crackle | motion |
-| 39 | Hypnotic Root Cavern | elastic | transient |
-| 40 | Temple of Fragments | ritual | body |
-| 41 | Nebula Corridors | wind | texture |
-| 42 | Fractal Serpent Garden | tape | air |
-| 43 | Gelatinous Orbit | spores | motion |
-| 44 | Occult Harmonics | tape | transient |
-| 45 | Liquid Oracle Transmission | vowel | body |
-| 46 | Ghost Signal Choir | choir | texture |
-| 47 | Primitive Interference | swarm | air |
-| 48 | Insectoid Machine | crackle | motion |
-| 49 | Last World Drone | crackle | transient |
+| 00 | Obsidian Invocation | Subterranean throat | BODY |
+| 01 | Spore Cathedral | Amphibian glottis | VOICE |
+| 02 | Mycelium Choir | Subatomic oscillation | MOTION |
+| 03 | Event Horizon | Molten rubber | PUNCTUATION |
+| 04 | Ancient Skin Drum | Chitinic trills | SPACE |
+| 05 | Blackglass Insects | Bent glass | BODY |
+| 06 | Interstellar Autopsy | Cellular squelch | VOICE |
+| 07 | Swamp Magnetics | Liquid membranes | MOTION |
+| 08 | Copper Forest Shrine | Low ritual horn | PUNCTUATION |
+| 09 | Abyssal Carrier | Organic signal corruption | SPACE |
+| 10 | Signal From Below | Wormhole resonance | BODY |
+| 11 | Cave of Thorns | Fractal phasing | VOICE |
+| 12 | Ceremony At Zero | Symbiotic pulse | MOTION |
+| 13 | Plasma Organism | Slow tectonic folds | PUNCTUATION |
+| 14 | Dead Transmission | Vowel metamorphosis | SPACE |
+| 15 | Thirteen Witnesses | Cavern harmonium | BODY |
+| 16 | Forest Spirit Spiral | Hollow woodwind | VOICE |
+| 17 | Violet Fungal Tide | Spectral pollen | MOTION |
+| 18 | Hypersleep Failure | Ritual bone flute | PUNCTUATION |
+| 19 | Neural Parasite | Alien bird-cry | SPACE |
+| 20 | Iron Bell Cathedral | Undersea sonar | BODY |
+| 21 | Hollow Constellation | Fungal organ | VOICE |
+| 22 | Blackwater Speaker | Formant polyphony | MOTION |
+| 23 | Alien Dream Sequence | Forest clicking | PUNCTUATION |
+| 24 | Ceremonial Stone | Psychedelic spiral | SPACE |
+| 25 | Shadow Biome | Subterranean throat | BODY |
+| 26 | The Silent Reactor | Amphibian glottis | VOICE |
+| 27 | Pulsar Graveyard | Subatomic oscillation | MOTION |
+| 28 | Bone Rattle Run | Molten rubber | PUNCTUATION |
+| 29 | Vessel of Echoes | Chitinic trills | SPACE |
+| 30 | Dark Matter Pulse | Bent glass | BODY |
+| 31 | Fossil Frequency | Cellular squelch | VOICE |
+| 32 | Shamanic Dream Choir | Liquid membranes | MOTION |
+| 33 | Wormhole Weather | Low ritual horn | PUNCTUATION |
+| 34 | Organic Relay | Organic signal corruption | SPACE |
+| 35 | Midnight Mandala | Wormhole resonance | BODY |
+| 36 | Shamanic Fracture | Fractal phasing | VOICE |
+| 37 | Vox Ex Machina | Symbiotic pulse | MOTION |
+| 38 | Spectral Cicada | Slow tectonic folds | PUNCTUATION |
+| 39 | Hypnotic Root Cavern | Vowel metamorphosis | SPACE |
+| 40 | Temple of Fragments | Cavern harmonium | BODY |
+| 41 | Nebula Corridors | Hollow woodwind | VOICE |
+| 42 | Fractal Serpent Garden | Spectral pollen | MOTION |
+| 43 | Gelatinous Orbit | Ritual bone flute | PUNCTUATION |
+| 44 | Occult Harmonics | Alien bird-cry | SPACE |
+| 45 | Liquid Oracle Transmission | Undersea sonar | BODY |
+| 46 | Ghost Signal Choir | Fungal organ | VOICE |
+| 47 | Primitive Interference | Formant polyphony | MOTION |
+| 48 | Insectoid Machine | Forest clicking | PUNCTUATION |
+| 49 | Last World Drone | Psychedelic spiral | SPACE |
 
-## Contrasting A/B combinations
-
-- A 00 Obsidian Invocation + B 05 Blackglass Insects — hollow body / prickly swarm
-- A 02 Mycelium Choir + B 25 Shadow Biome — voice / crackling forest
-- A 07 Swamp Magnetics + B 33 Wormhole Weather — wet membrane / spectral air
-- A 11 Cave of Thorns + B 14 Dead Transmission — organ / disintegrating radio
-- A 16 Forest Spirit Spiral + B 31 Fossil Frequency — insect / elastic current
-- A 21 Hollow Constellation + B 38 Spectral Cicada — pad / microscopic motion
-- A 24 Ceremonial Stone + B 46 Ghost Signal Choir — friction / haunted voice
-- A 28 Bone Rattle Run + B 43 Gelatinous Orbit — noise bursts / mushroom swarm
-
-All sound sources are procedural and original. No DarkPsy FX466 media used.
+Recommended contrasting pairings: A00+B23, A02+B48, A07+B33, A11+B42, A20+B14, A26+B39.
+No G-Sonique proprietary sound libraries or copyrighted recordings are used.

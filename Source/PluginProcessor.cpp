@@ -150,7 +150,7 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  add("motifGate","Motif Gate",0.f,1.f,.56f);
  add("motifAccent","Ritual Accents",0.f,1.f,.65f);
  add("motifGlide","Pitch Glide",0.f,1.f,.25f);
- add("motifFX","Creature FX",0.f,1.f,.25f);
+ add("motifFX","Resonant Events",0.f,1.f,.25f);
  add("mudCut","Low-Mid Cleanup",0.f,1.f,.52f);
  add("wetLowCut","FX Low Cut",0.f,1.f,.64f);
  add("focus","Stereo Focus",0.f,1.f,.68f);
@@ -159,6 +159,10 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  a.push_back(std::make_unique<AudioParameterFloat>(ParameterID{"biomeRate",1},"Biome Evolution (Hz)",
    NormalisableRange<float>(.002f,.35f,0.f,2.8f),.034f));
  add("biomeChaos","Biome Complexity",0.f,1.f,.60f);
+ // v10: optional expressive resonant interaction, never continuous noise.
+ add("xenoFormant","Alien Formants",0.f,1.f,.20f);
+ add("xenoCross","Organism Coupling",0.f,1.f,.10f);
+ add("xenoWrithe","Body Mutation",0.f,1.f,.44f);
 
  return {a.begin(),a.end()};
 }
@@ -228,6 +232,7 @@ void NoctivoreProcessor::processBlock(AudioBuffer<float>& output,MidiBuffer& eve
  p.motifAccent=get("motifAccent");p.motifGlide=get("motifGlide");p.motifFX=get("motifFX");
  p.mudCut=get("mudCut");p.wetLowCut=get("wetLowCut");p.focus=get("focus");
  p.biomeDepth=get("biomeDepth");p.biomeRate=get("biomeRate");p.biomeChaos=get("biomeChaos");
+ p.xenoFormant=get("xenoFormant");p.xenoCross=get("xenoCross");p.xenoWrithe=get("xenoWrithe");
  p.fx.division=(int)get("division");
  p.fx.delayMix=get("delayMix");p.fx.delayFeedback=get("delayFeedback");p.fx.delayTone=get("delayTone");
  p.fx.delayWarp=get("delayWarp");p.fx.delaySpread=get("delaySpread");p.fx.delayDiffusion=get("delayDiffusion");

@@ -116,12 +116,16 @@ NoctivoreEditor::NoctivoreEditor(NoctivoreProcessor& p)
  dial(b,"biomeChaos","BIOME COMPLEXITY",2);
  dial(b,"sub","SUB BODY",2);dial(b,"pulseRate","PULSE BEATS",2);dial(b,"spectralTilt","DARK / BRIGHT",2);
  dial(b,"stereo","WIDTH",2);dial(b,"drive","SATURATION",2);dial(b,"volume","OUTPUT",2);
+ auto& x=section(Atlas,"02B / XENOBIOME MORPHOLOGY",slate,3);
+ dial(x,"xenoFormant","ALIEN VOCAL TRACT",3);
+ dial(x,"xenoCross","ORGANISM COUPLING",3);
+ dial(x,"xenoWrithe","BODY MUTATION",3);
  auto& c=section(Atlas,"03 / RHYTHMIC GATE LAB",clay,3);
  select(c,"motif","GATE PATTERN",{"Off","Underbrush","Offbeat","Tribal","Broken","Breathing","Shadow"});
  select(c,"motifDivision","SYNC GRID",{"1/8","1/16","1/32","Triplet"});
  dial(c,"motifPitch","GROOVE VARIATION",1);
  dial(c,"motifGate","RHYTHMIC GATE",1);dial(c,"motifAccent","ODD ACCENTS",1);
- dial(c,"motifGlide","GATE SWING",1);dial(c,"motifFX","GHOST TEXTURE",1);dial(c,"mudCut","MUD CONTROL",1);
+ dial(c,"motifGlide","GATE SWING",1);dial(c,"motifFX","RESONANT EVENTS",1);dial(c,"mudCut","MUD CONTROL",1);
  dial(c,"wetLowCut","FX LOW CUT",1);dial(c,"focus","STEREO FOCUS",1);
  // Option B: deep metal/FM/filter sound design grouped in three sculpted tiles.
  auto& f=section(Forge,"01 / ALIEN FM + RESONANCE",clay,3);

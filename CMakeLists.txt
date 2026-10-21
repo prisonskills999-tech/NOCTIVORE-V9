@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(NOCTIVORE_FX VERSION 9.0.0 LANGUAGES C CXX)
+project(NOCTIVORE_FX VERSION 10.0.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -21,10 +21,10 @@ else()
 endif()
 juce_add_plugin(NOCTIVORE_FX
  COMPANY_NAME "Noctivore Audio"
- BUNDLE_ID "audio.noctivore.shadowbiome"
+ BUNDLE_ID "audio.noctivore.xenobiome"
  PLUGIN_MANUFACTURER_CODE NcFx
- PLUGIN_CODE SbV9
- PRODUCT_NAME "NOCTIVORE FX SHADOW BIOME"
+ PLUGIN_CODE Xb10
+ PRODUCT_NAME "NOCTIVORE FX XENOBIOME"
  FORMATS VST3
  IS_SYNTH TRUE
  NEEDS_MIDI_INPUT TRUE
@@ -56,4 +56,4 @@ add_custom_command(TARGET NOCTIVORE_FX_VST3 POST_BUILD
  COMMAND ${CMAKE_COMMAND} -E copy_directory
          "${CMAKE_CURRENT_SOURCE_DIR}/Banks"
          "$<TARGET_FILE_DIR:NOCTIVORE_FX_VST3>/../Resources/Banks"
- COMMENT "Bundling 200 NOCTIVORE V9 Shadow Biome 48k WAV multisamples")
+ COMMENT "Bundling 200 NOCTIVORE V10 Xenobiome 48k WAV multisamples")

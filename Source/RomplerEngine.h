@@ -48,6 +48,8 @@ struct Params {
  float motifPitch=.36f, motifGate=.56f, motifAccent=.65f, motifGlide=.18f,motifFX=.16f;
  float focus=.68f, mudCut=.52f, wetLowCut=.64f;
  float biomeDepth=.72f,biomeRate=.034f,biomeChaos=.60f;
+ // v10: physically inspired noise-free cross excitation and resonant vocal tract.
+ float xenoFormant=.20f, xenoCross=.10f, xenoWrithe=.44f;
 
 
  PsySpace::Controls fx{};
@@ -173,7 +175,7 @@ public:
   v->bodyPhase=0;v->fmPhase=0;v->modPhase=0;v->prevMod=0;
   v->metalPos=0;v->metalDamp=0;v->fxPhase=0;v->fxStep=-1;v->filterEnv=0;v->filterAge=0;v->motionEnv=0;
   std::fill(v->metalLine.begin(),v->metalLine.end(),0.f);
-  v->lp2=0;v->bp2=0;v->airLP=0;v->motifPitch=0;v->ghostLP=0;
+  v->lp2=0;v->bp2=0;v->xenoLp1=v->xenoBp1=v->xenoLp2=v->xenoBp2=0;v->airLP=0;v->motifPitch=0;v->ghostLP=0;
   v->noiseState=(uint32_t)(v->age*747796405ULL+note*2891336453ULL+17);v->breath=0;
   v->layerOffset=(float)samples[(size_t)bank][(size_t)z].rate*(.10f+.15f*(float)((note*7+v->age)%11)/10.f);
   v->oneShot=bank<50?banks[(size_t)bank].oneShot:false;
@@ -313,6 +315,11 @@ public:
     const float mixA=std::cos(morph*pi*.5f),mixB=std::sin(morph*pi*.5f);
     const float baseA=readAt(s,v.position),baseB=readAt(sb,v.positionB);
     float sample=mixA*baseA+mixB*baseB;
+    // Two source organisms interact instead of merely fading between tracks.
+    // Pure, correlated cross-excitation: no stochastic hiss/noise generator.
+    const float cross=clampf(p.xenoCross,0.f,1.f);
+    const float interaction=std::tanh(baseA*baseB*(3.0f+1.7f*cross));
+    sample+=cross*.31f*interaction;
     const float movement=clampf(p.movement,0.f,1.f);
     const float organic=clampf(p.organic,0.f,1.f);
     // Three interacting slow biome cycles. Complexity varies their relative
@@ -324,7 +331,8 @@ public:
     const float bio1=std::sin(bioPhase+complexity*1.2f*std::sin(bioPhase*.38f+v.motionPhase));
     const float bio2=std::sin(bioPhase*(1.75f+1.6f*complexity)+v.motionPhase*1.11f);
     const float bio3=std::sin(bioPhase*(3.6f+2.3f*complexity)+2.f*std::sin(bioPhase*.62f+v.motionPhase));
-    const float biome=life*(.55f*bio1+.27f*bio2+.18f*bio3);
+    const float wr=clampf(p.xenoWrithe,0.f,1.f);
+    const float biome=life*((.55f-.12f*wr)*bio1+(.27f+.04f*wr)*bio2+(.18f+.08f*wr)*bio3);
     // Source mixing is also modulated by Life, not just an inaudible detune.
     sample=sample*(1.f+.12f*biome);
     v.motionPhase+=dt*(.17f+movement*1.70f);
@@ -402,12 +410,30 @@ public:
     const float mod=std::sin(v.modPhase+clampf(p.fmFeedback,0.f,.95f)*v.prevMod*2.5f);
     v.prevMod=mod;
     v.fmPhase=wrapPhase(v.fmPhase+2.f*pi*carrier*dt);
-    const float fmAmount=clampf(p.fmIndex+.6f*destinations[5]+aggression*1.5f,0.f,16.f);
+    const float fmAmount=clampf(p.fmIndex+.6f*destinations[5]+aggression*1.5f+.85f*wr*std::fabs(bio2),0.f,16.f);
     const float fmA=std::sin(v.fmPhase+fmAmount*mod);
     const float fmB=std::sin(v.fmPhase*1.019f+(fmAmount*.7f)*std::sin(v.modPhase*(1.17f+p.fmInharmonic*.46f)));
     const float fmSignal=(.68f*fmA+.32f*fmB)*(.12f+.88f*v.motionEnv);
     float fmMix=clampf(p.fmMix+aggression*.07f,0.f,1.f);
     sample=sample*(1.f-fmMix*.48f)+fmSignal*fmMix*.75f;
+    // Morphing pseudo-vocal tract with two narrow, stable resonant peaks.
+    // Reacts to living biome and cross-layer motion without broadband noise.
+    const float xeno=clampf(p.xenoFormant,0.f,1.f);
+    if(xeno>.0001f){
+      const float vowelPos=clampf(.5f+.27f*bio1+.18f*bio3+.15f*wr*std::sin(v.motionPhase*.4f),0.f,1.f);
+      const float f1=270.f+830.f*vowelPos;
+      const float f2=1150.f+1650.f*(1.f-vowelPos);
+      auto vocal=[&](float hz,float& lp,float& bp,float input){
+        const float g=clampf(2.f*std::sin(pi*hz*dt),.0001f,.55f);
+        const float hp=input-lp-.34f*bp;
+        bp=clampf(bp+g*hp,-3.f,3.f);
+        lp=clampf(lp+g*bp,-3.f,3.f);
+        return bp;
+      };
+      float vocal1=vocal(f1,v.xenoLp1,v.xenoBp1,sample);
+      float vocal2=vocal(f2,v.xenoLp2,v.xenoBp2,sample);
+      sample=sample*(1.f-.22f*xeno)+(.61f*vocal1+.39f*vocal2)*.44f*xeno;
+    }
     // Physical-style damped resonator. Persistent delay provides real metallic
     // sustain; partials from inharmonic FM add bright scraped-metal motion.
     const float metalAmt=clampf(p.metalMix+.12f*destinations[7]+aggression*.035f,0.f,1.f);
@@ -453,15 +479,13 @@ public:
     dry=saturated*(1.f-.62f*cleanFraction)+dry*.73f*(.62f*cleanFraction);
     const float edge=std::tanh((clean-v.lp)*2.1f)*(.04f+.09f*drive);
     dry+=edge*(1.f-.70f*clampf(p.clarity,0.f,1.f));
-    // Non-pitched ghost/breath accents instead of cartoony FM chirps.
-    // High-pass stochastic air: musically rhythmic but never melodic.
+    // NOISE-FREE XENOBIOME: harmonic ghost events follow the rhythmic gate
+    // without injecting white/pink noise. The event is ring-modulated from
+    // the actual sample, with an exponential window and warm band-limited FM.
     if(p.motif>0 && p.motifFX>.0001f && accent>.32f){
       const float ghostEnv=(1.f-std::exp(-stepPhase*48.f))*std::exp(-stepPhase*14.f);
-      v.noiseState=1664525u*v.noiseState+1013904223u;
-      const float n=((v.noiseState>>8)*(1.f/8388608.f)-1.f);
-      v.ghostLP+=(n-v.ghostLP)*(.014f+.05f*complexity);
-      const float ghost=n-v.ghostLP;
-      dry+=.10f*clampf(p.motifFX,0.f,1.f)*accent*ghostEnv*ghost;
+      const float ghost=std::sin(v.fmPhase*1.13f+.52f*std::sin(v.modPhase));
+      dry+=.095f*clampf(p.motifFX,0.f,1.f)*accent*ghostEnv*ghost;
     }
 
     // Gentle air shelf made from the actual 48 kHz samples, not hard noise.
@@ -475,12 +499,10 @@ public:
     v.bodyPhase+=dt*fundamental*pi; // sub oscillator at half fundamental
     if(v.bodyPhase>2*pi)v.bodyPhase-=2*pi;
     float sub=(.21f*std::sin(v.bodyPhase)+.065f*std::sin(2.f*v.bodyPhase)) * clampf(p.sub,0.f,1.f);
-    // Soft fluttering airflow behind the sample, synthesized per voice.
-    // LCG is deterministic and allocation free, one 32-bit update per sample.
-    v.noiseState=v.noiseState*1664525u+1013904223u;
-    float noise=((v.noiseState>>8)*(1.f/8388608.f)-1.f);
-    v.breath+=(noise-v.breath)*(.003f+.013f*organic);
-    float air=v.breath*organic*(.10f+.13f*life)*(.75f+.25f*drift+.55f*biome);
+    // No persistent stochastic breath layer; it previously followed the gate
+    // on every bank, producing the unwanted moving white/pink-noise blanket.
+    // All micro-motion comes from the sample's resonant material and biome.
+    const float air=0.f;
     sub*=v.oneShot?.33f:1.f;
     float gain=v.level*v.vel*.46f;
     // Tempo-aware forest/psytrance polymetric breathing, available in every
@@ -566,6 +588,7 @@ private:
   float vel=0,position=0,positionB=0,level=0,releaseLevel=1,pitch=0,target=0,lp=0,bp=0;
   float motionPhase=0,layerOffset=0,bodyPhase=0,breath=0;
   float lp2=0,bp2=0,filterEnv=0,filterAge=0,motionEnv=0,airLP=0;
+  float xenoLp1=0,xenoBp1=0,xenoLp2=0,xenoBp2=0;
   float fmPhase=0,modPhase=0,prevMod=0,metalDamp=0,motifPitch=0,fxPhase=0,ghostLP=0;int fxStep=-1;
   std::array<float,4096> metalLine{};int metalPos=0;
   float grainPhase=0.f;bool grainSecondHalf=false;
