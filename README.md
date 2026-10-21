@@ -1,4 +1,4 @@
-# NOCTIVORE FX v10 — XENOBIOME
+# NOCTIVORE FX v10.1 — XENOBIOME LIVING LOWS
 
 **Original darkpsy/forest-psy soundscape instrument for Windows 11 VST3 (JUCE 8).**
 
@@ -28,3 +28,10 @@ cmake --build build --config Release --target NOCTIVORE_FX_VST3
 ```
 
 Original sounds and architecture; no G-Sonique code or recordings. This is inspired by the exploratory darkpsy FX instrument concept, not a sample-exact FX466 clone.
+
+## What's new in 10.1
+**Deep Life:** At low MIDI pitches, a secondary read-head preserves organic recording-speed motion, with noise-free tuned upper partials (3rd/5th/7th). The effect fades away by note 57. No melodic pitch leaps.
+**Linked Motion:** One slow biome gesture correlates A/B morph, FM colour, vowel formants, both filter cutoffs, layers and pan while leaving all 4 independent LFOs and the sync gate.
+Preset values added; original automation IDs preserved. New separate VST3 identity does not overwrite v10.
+Suggested low-register audition: notes 24–43; Deep Life 0.75, Linked Motion 0.55, Biome Life 0.80, Biome Speed 0.03 Hz, Gate 0.5.
+Windows VST3 build must complete on GitHub and be tested in Ableton.

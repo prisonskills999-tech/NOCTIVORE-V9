@@ -163,6 +163,8 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  add("xenoFormant","Alien Formants",0.f,1.f,.20f);
  add("xenoCross","Organism Coupling",0.f,1.f,.10f);
  add("xenoWrithe","Body Mutation",0.f,1.f,.44f);
+ add("lowRegisterLife","Low Register Life",0.f,1.f,.72f);
+ add("coupledMotion","Coupled Motion",0.f,1.f,.53f);
 
  return {a.begin(),a.end()};
 }
@@ -233,6 +235,7 @@ void NoctivoreProcessor::processBlock(AudioBuffer<float>& output,MidiBuffer& eve
  p.mudCut=get("mudCut");p.wetLowCut=get("wetLowCut");p.focus=get("focus");
  p.biomeDepth=get("biomeDepth");p.biomeRate=get("biomeRate");p.biomeChaos=get("biomeChaos");
  p.xenoFormant=get("xenoFormant");p.xenoCross=get("xenoCross");p.xenoWrithe=get("xenoWrithe");
+ p.lowRegisterLife=get("lowRegisterLife");p.coupledMotion=get("coupledMotion");
  p.fx.division=(int)get("division");
  p.fx.delayMix=get("delayMix");p.fx.delayFeedback=get("delayFeedback");p.fx.delayTone=get("delayTone");
  p.fx.delayWarp=get("delayWarp");p.fx.delaySpread=get("delaySpread");p.fx.delayDiffusion=get("delayDiffusion");

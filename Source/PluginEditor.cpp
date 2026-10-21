@@ -120,6 +120,8 @@ NoctivoreEditor::NoctivoreEditor(NoctivoreProcessor& p)
  dial(x,"xenoFormant","ALIEN VOCAL TRACT",3);
  dial(x,"xenoCross","ORGANISM COUPLING",3);
  dial(x,"xenoWrithe","BODY MUTATION",3);
+ dial(x,"lowRegisterLife","DEEP LIFE",3);
+ dial(x,"coupledMotion","LINKED MOTION",3);
  auto& c=section(Atlas,"03 / RHYTHMIC GATE LAB",clay,3);
  select(c,"motif","GATE PATTERN",{"Off","Underbrush","Offbeat","Tribal","Broken","Breathing","Shadow"});
  select(c,"motifDivision","SYNC GRID",{"1/8","1/16","1/32","Triplet"});
@@ -311,6 +313,8 @@ void NoctivoreEditor::applyScene(int which){
  setParameter("biomeDepth",.54f+.05f*(float)(which%7));
  setParameter("biomeRate",.012f+.004f*(float)(which%7));
  setParameter("biomeChaos",.28f+.11f*(float)(which%6));
+ setParameter("lowRegisterLife",.58f+.05f*(float)(which%7));
+ setParameter("coupledMotion",.38f+.08f*(float)(which%6));
  for(int i=2;i<=4;++i){auto prefix="lfo"+String(i);
   setParameter((prefix+"Depth").toRawUTF8(),.10f+.04f*(float)i);
   setParameter((prefix+"Rate").toRawUTF8(),.001f+.0022f*(float)i);
