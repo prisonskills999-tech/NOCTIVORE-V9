@@ -309,6 +309,29 @@ NoctivoreEditor::NoctivoreEditor(NoctivoreProcessor& p)
  artButton("Previous source B",955,152,24,38,[this]{stepChoice("bankB",-1,51);});
  artButton("Next source B",1143,152,24,38,[this]{stepChoice("bankB",1,51);});
  artButton("Load patch",970,201,35,42,[this]{loadPreset();});
+ // Small symbols painted under Linked Motion select LFO 1 wave shapes.
+ for(int i=0;i<4;++i){
+  const int index=i;
+  artButton("LFO 1 wave shape",375.f+i*50.f,396.f,42.f,42.f,
+   [this,index]{setParameter("wave",(float)index);});
+ }
+ // Biome organism glyphs select contrasting texture engines.
+ for(int i=0;i<4;++i){
+  const int alg[]={0,1,3,4};
+  const int index=i;
+  artButton("Organism texture mode",856.f+i*68.f,396.f,51.f,47.f,
+   [this,index,alg]{setParameter("textureMode",(float)alg[index]);});
+ }
+ // Entire painted 16-step gate is user-programmable, automatable and saved.
+ for(int i=0;i<16;++i){
+  const auto key=juce::String::formatted("gateStep%02d",i+1);
+  artButton("Gate step "+juce::String(i+1),1151.f+i*14.2f,381.f,13.6f,44.f,
+   [this,key]{
+     if(auto* v=processor.state.getRawParameterValue(key))
+       setParameter(key.toRawUTF8(),v->load()>.5f?0.f:1.f);
+   });
+ }
+
  showPage(Atlas);
  setResizable(true,true);setResizeLimits(1010,715,1600,1132);
  setSize(1192,844);
@@ -536,6 +559,14 @@ void NoctivoreEditor::timerCallback(){
  int div=std::clamp((int)processor.state.getRawParameterValue("motifDivision")->load(),0,3);
  int next=(int)std::floor(pos*divisions[div]);
  currentGateStep=((next%16)+16)%16;
+ // Skip unrelated hotspots; the extra 16 gate keys are appended last.
+ if(artButtons.size()>=16){
+  const size_t start=artButtons.size()-16;
+  for(size_t i=0;i<16;++i){
+    const auto key=juce::String::formatted("gateStep%02d",(int)i+1);
+    artButtons[start+i].button->selected=processor.state.getRawParameterValue(key)->load()>.5f;
+  }
+ }
  repaint();
 }
 
@@ -578,8 +609,10 @@ void NoctivoreEditor::drawAnimation(Graphics& g){
    const float x=1156.f+(float)i*13.95f;
    const float h=28.f*(.25f+.75f*(.5f+.5f*std::sin(i*1.8f+get("motif")*2.f)));
    const bool active=i==currentGateStep;
+   const auto key=juce::String::formatted("gateStep%02d",i+1);
+   const bool enabled=processor.state.getRawParameterValue(key)->load()>.5f;
    g.setColour((active?juce::Colour::fromRGB(245,194,98):juce::Colour::fromRGB(151,170,105))
-      .withAlpha(active?.68f:.10f));
+      .withAlpha(enabled?(active?.80f:.18f):.035f));
    g.fillRoundedRectangle(x,414.f-h,8.4f,h,2.f);
   }
  }
