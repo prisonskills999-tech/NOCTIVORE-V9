@@ -165,6 +165,11 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  add("xenoWrithe","Body Mutation",0.f,1.f,.54f);
  add("lowRegisterLife","Low Register Life",0.f,1.f,.72f);
  add("coupledMotion","Coupled Motion",0.f,1.f,.53f);
+ for(int i=0;i<16;++i){
+  auto key=juce::String::formatted("gateStep%02d",i+1);
+  auto label=juce::String("Forest Gate Step ")+juce::String(i+1);
+  add(key.toRawUTF8(),label.toRawUTF8(),0.f,1.f,1.f);
+ }
 
  return {a.begin(),a.end()};
 }
@@ -239,6 +244,9 @@ void NoctivoreProcessor::processBlock(AudioBuffer<float>& output,MidiBuffer& eve
  p.biomeDepth=get("biomeDepth");p.biomeRate=get("biomeRate");p.biomeChaos=get("biomeChaos");
  p.xenoFormant=get("xenoFormant");p.xenoCross=get("xenoCross");p.xenoWrithe=get("xenoWrithe");
  p.lowRegisterLife=get("lowRegisterLife");p.coupledMotion=get("coupledMotion");
+ for(int i=0;i<16;++i){auto key=juce::String::formatted("gateStep%02d",i+1);
+  p.gateSteps[(size_t)i]=get(key.toRawUTF8());
+ }
  p.fx.division=(int)get("division");
  p.fx.delayMix=get("delayMix");p.fx.delayFeedback=get("delayFeedback");p.fx.delayTone=get("delayTone");
  p.fx.delayWarp=get("delayWarp");p.fx.delaySpread=get("delaySpread");p.fx.delayDiffusion=get("delayDiffusion");
