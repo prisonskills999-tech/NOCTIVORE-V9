@@ -52,6 +52,8 @@ struct Params {
  float xenoFormant=.31f, xenoCross=.12f, xenoWrithe=.54f;
  // V10.1: tuned life below MIDI note 57 and correlated slow organic motion.
  float lowRegisterLife=.72f, coupledMotion=.53f;
+ // V10.5 user-editable 16 step gate: default all steps active.
+ std::array<float,16> gateSteps{{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}};
 
 
  PsySpace::Controls fx{};
@@ -251,14 +253,17 @@ public:
    // Swing shifts alternating steps WITHOUT changing pitch or grid rate.
    float swing=clampf(p.motifGlide,0.f,1.f)*.27f;
    stepPhase=clampf(stepPhase+(stepNum%2==1?swing:-swing),0.f,.999f);
-   const float accent=p.motif==0?1.f:grooves[(size_t)grooveIndex][(size_t)stepNum];
+   const float gateEnabled=clampf(p.gateSteps[(size_t)stepNum],0.f,1.f);
+   const float accent=p.motif==0?1.f:grooves[(size_t)grooveIndex][(size_t)stepNum]*gateEnabled;
    float grooveDensity=clampf(p.motifPitch,0.f,1.f);
    const float gateShape=(1.f-std::exp(-stepPhase*38.f)) *
      (1.f-clampf((stepPhase-(.58f-.18f*grooveDensity))/.42f,0.f,1.f));
    const float pulse=clampf(p.motifGate,0.f,1.f);
    const float gateStrength=(.26f+.74f*accent)*(.84f+.16f*grooveDensity);
+   const float edgeFade=clampf(stepPhase*32.f,0.f,1.f)*clampf((1.f-stepPhase)*32.f,0.f,1.f);
    const float phraseGate=p.motif==0?1.f:
-     (1.f-pulse*(.94f-gateShape*gateStrength));
+     (1.f-pulse*(.94f-gateShape*gateStrength))
+     *(1.f-.99f*pulse*(1.f-gateEnabled)*edgeFade);
    float mixL=0,mixR=0;
    for(auto& v:voices){
     if(!v.stage||!v.sample||!v.sample->loaded())continue;
