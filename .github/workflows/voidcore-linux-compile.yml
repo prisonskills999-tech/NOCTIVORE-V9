@@ -3,7 +3,7 @@ name: VOIDCORE GUI C++ compile test
 on:
   # Run Linux GUI verification on demand; no automatic private-runner charges.
   push:
-    branches: [feature/voidcore-astral-full-reskin]
+    branches: [feature/voidcore-hifi-bank-diversity]
   workflow_dispatch:
 
 permissions:
