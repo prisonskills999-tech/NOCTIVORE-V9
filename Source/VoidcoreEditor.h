@@ -58,6 +58,7 @@ private:
  };
  std::vector<Positioned> ui;
  std::array<Click*,16> steps{};
+ std::array<Click*,4> pageButtons{},lfoButtons{};
  std::array<std::array<float,192>,2> previews{};
  void updatePreview(int);
  std::unique_ptr<juce::FileChooser> chooser;
