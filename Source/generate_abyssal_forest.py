@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""NOCTIVORE v10.6 — original noise-free experimental 48 kHz PCM16 atlas."""
+"""NOCTIVORE v10.9 — original noise-free experimental 48 kHz PCM16 atlas."""
 from pathlib import Path
 import numpy as np
 from scipy.io import wavfile
@@ -11,7 +11,11 @@ ROOTS=(36,48,60,72)
 ROLES=('Interference mycelium','Glass-skinned microbes','Hollow creature vowels',
 'Polytemporal pheromones','Spectral folds','Micro-insect chorus',
 'Wet pulse organisms','Fungal transmissions','Deep swamp membranes',
-'Fractal forest antennae')
+'Fractal forest antennae',
+'Predator vocal throat','Fungal Morse clusters','Swamp vowel siphon',
+'Vermicular code chatter','Psycore hollow membranes',
+'Root pulse phasing','Mushroom intelligence calls','Slime field harmonics',
+'Ghost insect phrases','Distant creature antennas')
 
 def create(bank,note,category,model):
     base=original.create(bank,note,category,model).astype(np.float64)/32768.
@@ -51,8 +55,37 @@ def create(bank,note,category,model):
         sculpt=.5*np.sin(phase*.51+2.4*drift)*env+.5*np.sin(phase*1.43+1.9*slow2)*e2
     elif model==8:
         sculpt=.64*np.sin(phase*.24+2.7*drift)+.36*fm*(.25+.75*env)
-    else:
+    elif model==9:
         sculpt=.34*np.sin(phase*.72+4.*drift)+.31*fm+.35*side*(.4+.6*env)
+    elif model==10:
+        # Deep speaking throat, no spring-onset resonator or melody.
+        sculpt=.51*np.sin(phase*.53+4.2*drift+2.5*np.sin(phase*.27)) + .49*sub*swell
+    elif model==11:
+        mors=(.5+.5*np.cos(2*np.pi*(1.1+pulses*.5)*t+.7*drift))**6
+        sculpt=.74*np.sin(phase*2.23+1.1*slow2)*mors+.26*np.sin(phase*.38+2*drift)
+    elif model==12:
+        sculpt=.56*np.sin(phase*.33+4.1*slow2)*(.3+.7*env)+.44*fm*env
+    elif model==13:
+        murm=(.5+.5*np.sin(2*np.pi*(1.13*pulses)*t+2.2*drift))**3
+        sculpt=.43*fm+.57*np.sin(phase*1.37+3.5*slow2)*murm
+    elif model==14:
+        formant=np.sin(phase*.41+2.2*np.sin(phase*.21+drift))
+        sculpt=np.tanh(1.5*formant+.8*fm)*(.25+.75*swell)
+    elif model==15:
+        drift2=np.sin(2*np.pi*(low*.45)*t+1.7*drift)
+        sculpt=.52*np.sin(phase*.19+4.1*drift2)+.48*np.sin(phase*.95+2.3*drift)
+        sculpt*=.45+.55*env
+    elif model==16:
+        syll=(.5+.5*np.sin(2*np.pi*(.75*pulses)*t+3.*slow2))**4
+        sculpt=.28*sub+.38*np.sin(phase*.62+3.5*drift)*syll+.34*side*.4
+    elif model==17:
+        sculpt=.61*np.sin(phase*.31+1.8*slow2)+.39*fm*(.2+.8*env)
+    elif model==18:
+        chirp=(.5+.5*np.sin(2*np.pi*(pulses*1.71)*t+2.8*slow2))**6
+        sculpt=.46*side*chirp+.38*np.sin(phase*.21+1.9*drift)+.16*fm
+    else:
+        throb=.5+.5*np.sin(2*np.pi*(low*1.4)*t+.9*np.sin(2*np.pi*mid*t))
+        sculpt=(.5*fm+.32*sub+.18*side)*(.25+.75*throb)
     material=(.47+.14*(bank%4))*base+(.53-.14*(bank%4))*sculpt*.72
     material*=.68+.32*swell
     fadein=1.-np.exp(-t/(.16+.07*(bank%4)))
@@ -74,13 +107,13 @@ def main():
     entries=original.bank_info()
     for bank,(_,category,kind,one_shot) in enumerate(entries):
         for note in ROOTS:
-            wavfile.write(out/f'{bank:02d}_{note}.wav',SR,create(bank,note,int(kind),bank%10))
+            wavfile.write(out/f'{bank:02d}_{note}.wav',SR,create(bank,note,int(kind),bank%20))
         if bank%10==9:print('Created',bank+1,'of 50 banks',flush=True)
-    (out/'MANIFEST.txt').write_text('NOCTIVORE v10.6 — 200 original 48kHz/PCM16, noise-free experimental organisms.\\n')
+    (out/'MANIFEST.txt').write_text('NOCTIVORE v10.9 — 200 original 48kHz/PCM16, noise-free experimental organisms.\\n')
     with (root/'SOUND_ATLAS.md').open('w') as outmd:
-        outmd.write('# NOCTIVORE v10.6 — ABYSSAL ECOLOGY\\n\\n50 banks / 200 original samples.\\n\\n')
+        outmd.write('# NOCTIVORE v10.9 — ABYSSAL ECOLOGY\\n\\n50 banks / 200 original samples.\\n\\n')
         for idx,(name,_,_,_) in enumerate(entries):
-            outmd.write(f'- {idx:02d} **{name}** — {ROLES[idx%10]}\\n')
+            outmd.write(f'- {idx:02d} **{name}** — {ROLES[idx%20]}\\n')
         outmd.write('\\nOriginal deterministic synthesis; no copied or third-party recordings.\\n')
     print('All 200 regenerated',flush=True)
 
