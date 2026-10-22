@@ -31,7 +31,7 @@ assert 'add("character","XENO Exciter Amount",0.f,1.f,0.f)' in processor
 assert 'choose("sourceSolo","Pure Source Audition",{"Normal Mix","Pure Source"})' in processor
 assert 'p.character=get("character");p.sourceSolo=get("sourceSolo");' in processor
 assert 'knob("character","XENO"' in editor
-assert 'click("PURE SOURCE"' in editor and 'set("sourceSolo"' in editor
+assert ('click("PURE SOURCE"' in editor or 'allClick("PURE SOURCE"' in editor) and 'set("sourceSolo"' in editor
 assert "sourceSoloButton" in header
 
 # No default signal chain is allowed to impose the same wet/distorted layer

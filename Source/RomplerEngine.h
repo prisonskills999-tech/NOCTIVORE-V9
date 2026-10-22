@@ -60,6 +60,8 @@ struct Params {
  float performanceMod=0.f;
  // Independent exciter amount and sample-only audition switch.
  float character=0.f,sourceSolo=0.f;
+ float tuneA=0.f,tuneB=0.f,levelA=1.f,levelB=1.f;
+ float toneLow=.5f,toneMid=.5f,toneHigh=.5f;
  // V10.5 user-editable 16 step gate: default all steps active.
  std::array<float,16> gateSteps{{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}};
 
@@ -194,7 +196,7 @@ public:
    const float hz=clampf(25.f*std::pow(760.f,cutoff),25.f,(float)sr*.42f);
    filterGTable[j]=std::tan(pi*hz/(float)sr);
   }
-  spaceFX.prepare(sr);mixLowL=mixLowR=0;mixMidL=mixMidR=0;
+  spaceFX.prepare(sr);mixLowL=mixLowR=0;mixMidL=mixMidR=0;toneLoL=toneLoR=toneHiL=toneHiR=0.f;
   lfoPhase=0;for(auto& l:modulators)l={};globalTime=0;motifBeats=0;hostBeatSynced=false;held.fill(false);sustained.fill(false);sustainDown=false;smoothedGate=1.f;smoothedAccent=1.f;smoothedSoloFx=0.f;masterGain=1.f;
  }
  void setParameters(const Params& values){
@@ -332,6 +334,11 @@ public:
   const float pitchSlew=1.f-std::exp(-dt/std::max(.002f,p.glide));
   const float lowCoeff=1.f-std::exp(-2.f*pi*125.f*dt);
   const float midCoeff=1.f-std::exp(-2.f*pi*625.f*dt);
+  const float toneLoGain=std::pow(10.f,(clampf(p.toneLow,0.f,1.f)-.5f)*1.8f);
+  const float toneMiGain=std::pow(10.f,(clampf(p.toneMid,0.f,1.f)-.5f)*1.8f);
+  const float toneHiGain=std::pow(10.f,(clampf(p.toneHigh,0.f,1.f)-.5f)*1.8f);
+  const float lowEq=1.f-std::exp(-2.f*pi*190.f*dt);
+  const float highEq=1.f-std::exp(-2.f*pi*2400.f*dt);
   const float filterReleaseDecay=std::exp(-dt/std::max(.01f,p.filterEnvRelease));
   const float motionReleaseDecay=std::exp(-dt/std::max(.01f,p.motionEnvRelease));
    const float modSlew=1.f-std::exp(-dt/.012f);
@@ -413,12 +420,12 @@ public:
     v.pitch+=(v.target-v.pitch)*coeff;
     // MIDI input sets the pitch. No scripted pitch gestures at all.
     const float gesture=0.f;
-    float semitones=v.pitch-(float)s.root+(bend+p.bend)*p.bendRange+gesture;
+    float semitones=v.pitch-(float)s.root+(bend+p.bend)*p.bendRange+gesture+p.tuneA;
     semitones+=clampf(destinations[2],-1.f,1.f)*2.f;
     float micro=clampf(p.organic,0.f,1.f)*.030f*std::sin(v.motionPhase);
     float step=(float)s.rate*dt*std::exp2((semitones+micro)/12.f);
     step=clampf(step,.01f,20.f);
-    const float semitonesB=v.pitch-(float)sb.root+(bend+p.bend)*p.bendRange+gesture
+    const float semitonesB=v.pitch-(float)sb.root+(bend+p.bend)*p.bendRange+gesture+p.tuneB
       +clampf(destinations[2],-1.f,1.f)*2.f;
     float stepB=clampf((float)sb.rate*dt*std::exp2((semitonesB+micro)/12.f),.01f,20.f);
     if(p.reverse>.5f){step=-step;stepB=-stepB;}
@@ -489,7 +496,8 @@ public:
       +.35f*destinations[6],0.f,1.f);
     v.smoothMorph+=(requestedMorph-v.smoothMorph)*controlSlew;
     const float morph=v.smoothMorph;
-    const float mixA=std::cos(morph*pi*.5f),mixB=std::sin(morph*pi*.5f);
+    const float mixA=std::cos(morph*pi*.5f)*clampf(p.levelA,0.f,1.5f),
+                mixB=std::sin(morph*pi*.5f)*clampf(p.levelB,0.f,1.5f);
     const float baseA=readAt(s,v.position),baseB=readAt(sb,v.positionB);
     float sample=mixA*baseA+mixB*baseB;
      if(v.bankFade>0.f && v.oldSample && v.oldSampleB){
@@ -514,6 +522,25 @@ public:
       if(v.bankFade<=0.f)v.oldSample=v.oldSampleB=nullptr;
      }
      const float pureSource=sample; // Before FM, added organisms, filter and FX.
+     // Unlike the old inert grain parameter, GRAIN now crossfades in a
+     // continuously moving delayed sample head. No buffer discontinuities.
+     const float grainAmount=clampf(p.grain,0.f,1.f);
+     if(grainAmount>.0001f){
+      const float aOffset=(float)s.rate*(.008f+.095f*grainAmount)*
+                          (.5f+.5f*std::sin(v.motionPhase));
+      const float bOffset=(float)sb.rate*(.008f+.095f*grainAmount)*
+                          (.5f+.5f*std::sin(v.motionPhase+.9f));
+      const float shifted=mixA*readAt(s,v.position-aOffset)+
+                          mixB*readAt(sb,v.positionB-bOffset);
+      sample=sample*(1.f-.78f*grainAmount)+shifted*(.78f*grainAmount);
+     }
+     // TEXTURE supplies overt organic amplitude movement in every algorithm.
+     // Zero is identical to the input bank; there is no shared default layer.
+     const float texturing=clampf(p.texture,0.f,1.f);
+     if(texturing>.0001f){
+      const float phase=.5f+.5f*std::sin(globalTime*(1.0f+2.5f*texturing)+v.motionPhase);
+      sample*=1.f-.72f*texturing*phase;
+     }
      const float character=clampf(p.character,0.f,1.f);
      if(lowLife>.0001f && droneLoop){
        // Recorded-speed motion survives pitch transposition, without any hiss.
@@ -698,7 +725,8 @@ public:
     // Stable two-stage SVFs, with serial, parallel or band-split routing.
     float baseCut=clampf(p.cutoff + .27f*destinations[3]*moveDepth +envAmt*.35f + (accent-.5f)*.11f*p.motifAccent*(p.motif>0?1.f:0.f)
                   +p.keytrack*(v.pitch-60.f)/120.f
-                  +.035f*organic*std::sin(std::sin(v.motionPhase)*.67f)+.19f*biome+.14f*linked,.008f,1.f);
+                  +.035f*organic*std::sin(std::sin(v.motionPhase)*.67f)+.19f*biome+.14f*linked
+                  -.48f*clampf(p.character,0.f,1.f)+.09f*p.character*bio1,.008f,1.f);
     float otherCut=clampf(p.cutoff2+.27f*destinations[4]*moveDepth+envAmt*.28f
       -.13f*biome-.09f*linked-.09f*colony*cellular,.008f,1.f);
     auto filt=[&](float input,float cutoff,float resonance,int mode,float& ic2,float& ic1){
@@ -734,6 +762,14 @@ public:
     }
     float drive=clampf(p.drive+aggression*.22f,0.f,1.f);
     float dry=filtered*.84f+clean*.16f;
+    // Dedicated intentional overdrive: completely off at zero; audible on
+    // its own at any CLARITY setting, without an always-on saturation layer.
+    const float pushed=clampf(p.filterDrive,0.f,1.f);
+    if(pushed>.0001f){
+      const float wetDrive=std::tanh(dry*(1.f+5.f*pushed))/
+                          std::max(.1f,std::tanh(1.f+5.f*pushed));
+      dry=dry*(1.f-.82f*pushed)+wetDrive*(.82f*pushed);
+    }
     dry+=p.spectralTilt*(clean-v.lp)*.6f;
     // Clarity macro preserves uncompressed detail while still allowing edge.
     const float cleanFraction=clampf(p.clarity,0.f,1.f);
@@ -855,8 +891,15 @@ public:
    // More headroom and less blanket drive than Earthforge v6 master limiter.
    // Soft limiting is retained to make accidental dense chords manageable.
    const float masterBoost=.93f;
-   const float rawL=(mixL+wetL)*amp*masterBoost;
-   const float rawR=(mixR+wetR)*amp*masterBoost;
+   const float preL=mixL+wetL,preR=mixR+wetR;
+   toneLoL+=(preL-toneLoL)*lowEq;toneLoR+=(preR-toneLoR)*lowEq;
+   toneHiL+=(preL-toneHiL)*highEq;toneHiR+=(preR-toneHiR)*highEq;
+   const float eqL=toneLoL*toneLoGain+(toneHiL-toneLoL)*toneMiGain+
+                    (preL-toneHiL)*toneHiGain;
+   const float eqR=toneLoR*toneLoGain+(toneHiR-toneLoR)*toneMiGain+
+                    (preR-toneHiR)*toneHiGain;
+   const float rawL=eqL*amp*masterBoost;
+   const float rawR=eqR*amp*masterBoost;
    // Transparent linked peak guard: exactly linear for normal levels,
    // unlike the always-on master distortion from previous versions.
    const float peak=std::max(std::fabs(rawL),std::fabs(rawR));
@@ -916,6 +959,7 @@ private:
  double motifBeats=0.;bool hostBeatSynced=false;
  float mixLowL=0,mixLowR=0,mixMidL=0,mixMidR=0;
  float smoothedGate=1.f,smoothedAccent=1.f,smoothedSoloFx=0.f,masterGain=1.f;
+ float toneLoL=0.f,toneLoR=0.f,toneHiL=0.f,toneHiR=0.f;
  PsySpace spaceFX;std::string bankFolder;
 };
 }
