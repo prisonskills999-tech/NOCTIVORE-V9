@@ -103,7 +103,7 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  choose("bankB","Source B Bank",names,7);
  choose("textureMode","Texture Algorithm",{"Flow","Grain Cloud","Orbital","Pulsar","Liquid Warp","Time Freeze"});
  add("morph","Source Crossfade",0,1,.20f);
- add("morphMotion","Autonomous Morph",0,1,.14f);
+ add("morphMotion","Autonomous Morph",0,1,0.f);
  add("morphRate","Morph Rate (Hz)",.005f,1.2f,.065f);
  add("texture","Algorithm Intensity",0,1,.42f);
  add("grain","Grain Density",0,1,.36f);
@@ -139,14 +139,14 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  add("macroAtmosphere","Macro Atmosphere",0.f,1.f,.64f);
  add("macroAggression","Macro Aggression",0.f,1.f,0.f);
  // V7: independent musical groove and high-fidelity controls.
- add("trancePulse","Psy Pulse",0.f,1.f,.17f);
+ add("trancePulse","Psy Pulse",0.f,1.f,0.f);
  add("tranceRate","Pulse Speed",.25f,8.f,2.f);
  add("psySpiral","Psy Spiral",0.f,1.f,.24f);
  add("psySpiralRate","Spiral Rate (Hz)",.005f,2.f,.16f);
- add("hiFiAir","Hi-Fi Air",0.f,1.f,.32f);
+ add("hiFiAir","Hi-Fi Air",0.f,1.f,0.f);
  add("clarity","Master Clarity",0.f,1.f,1.f);
  // V9 rhythmic-only shadow gate (legacy parameters retained for automation).
- choose("motif","Ritual Motif",{"Off","Serpent","Ritual","Insect","Portal","Fracture","Hollow"},1);
+ choose("motif","Ritual Motif",{"Off","Serpent","Ritual","Insect","Portal","Fracture","Hollow"},0);
  choose("motifDivision","Motif Grid",{"1/8","1/16","1/32","Triplet"},1);
  add("motifPitch","Pitch Leap",0.f,1.f,.42f);
  add("motifGate","Motif Gate",0.f,1.f,.42f);
@@ -169,7 +169,7 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  add("coupledMotion","Coupled Motion",0.f,1.f,.53f);
  add("performanceMod","Performance Mod Wheel",0.f,1.f,0.f);
  choose("voiceLimit","CPU / Polyphony",{"8 voices","12 voices","16 voices","24 voices"},1);
- add("colony","Mutant Colony",0.f,1.f,.33f);
+ add("colony","Mutant Colony",0.f,1.f,0.f);
  add("creatures","Living Creatures",0.f,1.f,.39f);
  add("psyFold","Spectral Fold",0.f,1.f,.22f);
  add("symbiosis","Source Symbiosis",0.f,1.f,0.f);
