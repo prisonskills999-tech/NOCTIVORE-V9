@@ -188,6 +188,12 @@ public:
  void prepare(double sampleRate){
   Sample::prepareSinc();
   sr=std::max(8000.,sampleRate);for(auto& v:voices)v={};
+  // Build the TPT coefficient curve off the audio thread, once per host SR.
+  for(size_t j=0;j<filterGTable.size();++j){
+   const float cutoff=(float)j/1024.f;
+   const float hz=clampf(25.f*std::pow(760.f,cutoff),25.f,(float)sr*.42f);
+   filterGTable[j]=std::tan(pi*hz/(float)sr);
+  }
   spaceFX.prepare(sr);mixLowL=mixLowR=0;mixMidL=mixMidR=0;
   lfoPhase=0;for(auto& l:modulators)l={};globalTime=0;motifBeats=0;hostBeatSynced=false;held.fill(false);sustained.fill(false);sustainDown=false;smoothedGate=1.f;smoothedAccent=1.f;smoothedSoloFx=0.f;masterGain=1.f;
  }
@@ -699,8 +705,11 @@ public:
       // Zero-delay-feedback topology-preserving SVF. The previous explicit
       // integrator approached instability at 48k with high cutoff/resonance
       // and added a consistent harsh ringing to unrelated source banks.
-      const float hz=clampf(25.f*std::pow(760.f,cutoff),25.f,(float)sr*.42f);
-      const float g=std::tan(pi*hz*dt);
+      const float idxFloat=clampf(cutoff,0.f,1.f)*1024.f;
+      const int idx=std::clamp((int)idxFloat,0,1023);
+      const float u=idxFloat-(float)idx;
+      const float g=filterGTable[(size_t)idx]+
+        (filterGTable[(size_t)idx+1]-filterGTable[(size_t)idx])*u;
       const float k=clampf(1.60f-resonance*1.12f,.48f,1.8f);
       const float a1=1.f/(1.f+g*(g+k));
       const float a2=g*a1,a3=g*a2;
@@ -897,6 +906,7 @@ private:
  static float wrapPhase(float phase){return phase>=2.f*pi?std::fmod(phase,2.f*pi):phase;}
  struct ModState {float phase=0.f,random=0.f,smooth=0.f;uint32_t seed=1234567u;};
  double sr=44100.;Params p;
+ std::array<float,1025> filterGTable{};
  std::array<ModState,4> modulators{};
  std::array<std::array<Sample,4>,51> samples{};
  std::array<Voice,voiceCount> voices{};
