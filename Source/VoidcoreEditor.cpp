@@ -264,6 +264,11 @@ void VoidcoreEditor::buildCore(){
  banks.add("User");
  choice("bank",banks,58,177,305,33,Core);
  choice("bankB",banks,838,177,305,33,Core);
+ // Real bank navigation with APVTS host automation.
+ click("<",64,271,29,42,Core,[this]{shift("bank",-1);});
+ click(">",327,271,29,42,Core,[this]{shift("bank",1);});
+ click("<",845,271,29,42,Core,[this]{shift("bankB",-1);});
+ click(">",1109,271,29,42,Core,[this]{shift("bankB",1);});
  knob("start","START",112,404,95,Core);
  knob("xenoFormant","THROAT",285,404,95,Core,1);
  knob("texture","TEXTURE",915,404,95,Core);
@@ -461,36 +466,56 @@ void VoidcoreEditor::drawBase(Graphics& g){
   g.drawLine(cx,cy,cx+radius*std::cos(a),cy+radius*std::sin(a),1.5f);
  }
 }
+void VoidcoreEditor::soundSphere(Graphics& g,Point<float> centre,float radius,Colour tint,float activity){
+ // Visual-only, driven by GUI clock and a smoothed atomic peak.
+ const float x=centre.x,y=centre.y,energy=clamp01(activity);
+ const float r=radius*(1.f+.025f*std::sin(clock*1.45f)+.045f*energy);
+ ColourGradient shell(tint.withAlpha(.45f+.20f*energy),x-r*.47f,y-r*.65f,
+                      voidBlack,x+r*.75f,y+r*.82f,true);
+ g.setGradientFill(shell);g.fillEllipse(x-r,y-r,r*2.f,r*2.f);
+ g.setColour(tint.withAlpha(.26f+.18f*energy));
+ g.drawEllipse(x-r*.98f,y-r*.98f,1.96f*r,1.96f*r,1.4f);
+ for(int ring=0;ring<4;++ring){
+  const float inner=r*(.39f+.16f*ring);
+  g.setColour((ring%2?frost:tint).withAlpha(.08f+.07f*energy));
+  g.drawEllipse(x-inner,y-inner,inner*2.f,inner*2.f,1.1f);
+ }
+ for(int k=0;k<3;++k){
+  const float orbit=clock*(.17f+.06f*k)+k*2.0944f;
+  const float ry=r*(.39f+.13f*k);
+  Path ellipse;
+  ellipse.addCentredArc(x,y,r*(.95f+.12f*k),ry,orbit*.45f,
+                        orbit,orbit+pi*1.34f,true);
+  neonLine(g,ellipse,tint.withAlpha(.30f+.17f*energy),1.2f);
+  const float px=x+std::cos(orbit)*r*(.91f+.08f*k);
+  const float py=y+std::sin(orbit)*ry;
+  g.setColour(frost.withAlpha(.70f));
+  g.fillEllipse(px-2.4f,py-2.4f,4.8f,4.8f);
+ }
+ for(int k=0;k<11;++k){
+  const float theta=k*2.f*pi/11.f+clock*(k%2?.11f:-.09f);
+  const float distance=r*(.24f+.055f*(k%6));
+  g.setColour(tint.withAlpha(.11f+.23f*energy));
+  g.drawLine(x+std::cos(theta)*distance,y+std::sin(theta)*distance,
+             x+std::cos(theta+.7f)*distance*1.8f,
+             y+std::sin(theta+.7f)*distance*1.8f,1.0f);
+ }
+ const float pupil=r*(.23f+.06f*energy);
+ g.setColour(voidBlack);g.fillEllipse(x-pupil,y-pupil,pupil*2.f,pupil*2.f);
+ g.setColour(frost.withAlpha(.55f+.30f*energy));
+ g.drawEllipse(x-pupil,y-pupil,pupil*2.f,pupil*2.f,1.35f);
+}
 void VoidcoreEditor::visualEye(Graphics& g,float x,float y,float radius){
- const float pulse=.5f+.5f*std::sin(clock*1.3f);
- const float audio=std::sqrt(clamp01(smoothedPeak*2.5f));
- const float outer=radius*(1.f+.03f*pulse+.07f*audio);
- for(int k=0;k<7;++k){
-  const float r=outer*(.31f+.11f*k);
-  g.setColour((k%3==0?blood:acid).withAlpha(.08f+.11f*pulse));
-  g.drawEllipse(x-r,y-r,r*2.f,r*2.f,k%2?1.f:2.4f);
- }
- for(int k=0;k<20;++k){
-  const float theta=(float)k*2.f*pi/20.f+clock*.10f*(k%2?1.f:-1.f);
-  const float r0=outer*.47f,r1=outer*(.8f+.16f*std::sin(k*1.43f+clock*.51f));
-  g.setColour((k%3==0?blood:acid).withAlpha(.25f+.15f*audio));
-  g.drawLine(x+r0*std::cos(theta),y+r0*std::sin(theta),x+r1*std::cos(theta+.23f),y+r1*std::sin(theta+.23f),1.1f);
- }
- Path almond;
- almond.startNewSubPath(x-outer*.78f,y);
- almond.cubicTo(x-outer*.25f,y-outer*.77f,x+outer*.38f,y-outer*.83f,x+outer*.78f,y);
- almond.cubicTo(x+outer*.38f,y+outer*.83f,x-outer*.25f,y+outer*.77f,x-outer*.78f,y);
- almond.closeSubPath();
- ColourGradient skin(blood.withAlpha(.28f),x,y-outer,Colour::fromRGB(25,6,11),x,y+outer,false);
- g.setGradientFill(skin);g.fillPath(almond);
- g.setColour(blood.withAlpha(.91f));g.strokePath(almond,PathStrokeType(2.f));
- const float iris=outer*(.19f+.035f*pulse+.04f*audio);
- g.setColour(blood.withAlpha(.48f));g.fillEllipse(x-iris*1.6f,y-iris*1.6f,iris*3.2f,iris*3.2f);
- g.setColour(Colour::fromRGB(6,12,10));g.fillEllipse(x-iris,y-iris,iris*2.f,iris*2.f);
- g.setColour(acid.withAlpha(.78f));g.drawEllipse(x-iris,y-iris,iris*2.f,iris*2.f,1.8f);
- const float pupilW=iris*.28f;
- g.setColour(blood);g.fillEllipse(x-pupilW,y-iris*1.55f,2*pupilW,iris*3.1f);
- g.setColour(Colour::fromRGB(255,194,174));g.drawLine(x,y-iris*1.20f,x,y+iris*1.2f,2.f);
+ soundSphere(g,{x,y},radius,acid,smoothedPeak);
+ const float mix=clamp01(value("morph")),turn=clock*.27f,distance=radius*1.06f;
+ const Point<float> a{x+std::cos(turn)*distance,y+std::sin(turn)*distance*.39f};
+ const Point<float> b{x-std::cos(turn)*distance,y-std::sin(turn)*distance*.39f};
+ soundSphere(g,a,20.f+7.f*(1.f-mix),acid,smoothedPeak);
+ soundSphere(g,b,20.f+7.f*mix,blood,smoothedPeak);
+ g.setColour(frost);g.setFont(Font("Consolas",22.f,Font::bold));
+ g.drawFittedText("V O I D C O R E",(int)(x-147.f),(int)(y-16.f),294,33,Justification::centred,1);
+ g.setColour(acid.withAlpha(.85f));g.setFont(Font(11.f,Font::bold));
+ g.drawFittedText("XENO  /  SOUND SPHERE",(int)(x-125.f),(int)(y+33.f),250,23,Justification::centred,1);
 }
 void VoidcoreEditor::sourceWave(Graphics& g,Rectangle<float> r,bool second){
  g.setColour(Colour::fromRGB(2,13,11));g.fillRoundedRectangle(r,5.f);
@@ -511,6 +536,13 @@ void VoidcoreEditor::sourceWave(Graphics& g,Rectangle<float> r,bool second){
   else{top.lineTo(x,y);bottom.lineTo(x,z);}
  }
  neonLine(g,top,c.withAlpha(.95f),1.2f);neonLine(g,bottom,c.withAlpha(.45f),1.05f);
+ // Orbit highlights accompany the actual WAV waveform.
+ const float orbX=r.getCentreX(),orbY=r.getCentreY();
+ g.setColour(c.withAlpha(.07f+.08f*std::sqrt(clamp01(smoothedPeak))));
+ g.drawEllipse(orbX-47.f,orbY-47.f,94.f,94.f,1.f);
+ const float phase=clock*.34f+(second?pi:0.f);
+ const float px=orbX+std::cos(phase)*45.f,py=orbY+std::sin(phase)*33.f;
+ g.setColour(c.withAlpha(.60f));g.fillEllipse(px-3.f,py-3.f,6.f,6.f);
  // Cursor visibly sweeps the real source waveform while the engine produces sound.
  if(smoothedPeak>.0005f){
   const float xx=r.getX()+r.getWidth()*std::fmod(clock*(.13f+.035f*value("movement")),1.f);
@@ -627,14 +659,14 @@ void VoidcoreEditor::effects(Graphics& g,Rectangle<float> r,int which){
 void VoidcoreEditor::drawCore(Graphics& g){
  panel(g,{34,142,350,321},"SOURCE A  /  ORGANISM",acid);
  panel(g,{816,142,350,321},"SOURCE B  /  MATERIAL",blood);
- panel(g,{401,142,398,365},"NEURAL MORPH",acid);
+ panel(g,{401,142,398,365},"XENO  /  SOUND SPHERE",acid);
  sourceWave(g,{57,230,305,131},false);
  sourceWave(g,{837,230,306,131},true);
  visualEye(g,600.f,297.f,135.f);
  g.setColour(frost);g.setFont(Font(14.f,Font::bold));
  g.drawText("A",444,448,24,32,Justification::centred);
  g.drawText("B",733,448,24,32,Justification::centred);
- panel(g,{35,510,1131,161},"PERFORMANCE MACROS",blood);
+ panel(g,{35,510,1131,161},"PERFORMANCE  /  LIVING MACROS",acid);
  scope(g,{42,689,1068,57},0,acid);
  const float peak=std::sqrt(clamp01(smoothedPeak));
  g.setColour(grey.withAlpha(.7f));g.drawRoundedRectangle(1120.f,688.f,39.f,59.f,4.f,1.f);
