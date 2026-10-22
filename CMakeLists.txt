@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(NOCTIVORE_FX VERSION 10.9.0 LANGUAGES C CXX)
+project(NOCTIVORE_FX VERSION 11.0.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -21,10 +21,10 @@ else()
 endif()
 juce_add_plugin(NOCTIVORE_FX
  COMPANY_NAME "Noctivore Audio"
- BUNDLE_ID "audio.noctivore.creatureforest"
+ BUNDLE_ID "audio.voidcore.spectral"
  PLUGIN_MANUFACTURER_CODE NcFx
- PLUGIN_CODE Ab19
- PRODUCT_NAME "NOCTIVORE FX CREATURE FOREST"
+ PLUGIN_CODE Vc11
+ PRODUCT_NAME "VOIDCORE"
  FORMATS VST3
  IS_SYNTH TRUE
  NEEDS_MIDI_INPUT TRUE
@@ -39,7 +39,7 @@ option(NOCTIVORE_GENERIC_EDITOR "Use JUCE generic parameter editor" OFF)
 juce_generate_juce_header(NOCTIVORE_FX)
 target_sources(NOCTIVORE_FX PRIVATE
  Source/PluginProcessor.h Source/PluginProcessor.cpp
- Source/PluginEditor.h Source/PluginEditor.cpp Source/PaintedForest.h
+ Source/VoidcoreEditor.h Source/VoidcoreEditor.cpp
  Source/RomplerEngine.h Source/PsySpace.h Source/BankCatalog.h)
 target_compile_definitions(NOCTIVORE_FX PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0
  PRIVATE NOCTIVORE_GENERIC_EDITOR=$<BOOL:${NOCTIVORE_GENERIC_EDITOR}>)
@@ -58,13 +58,3 @@ add_custom_command(TARGET NOCTIVORE_FX_VST3 POST_BUILD
          "$<TARGET_FILE_DIR:NOCTIVORE_FX_VST3>/../Resources/Banks"
  COMMENT "Bundling 200 NOCTIVORE V10 Xenobiome 48k WAV multisamples")
 
-# Prevent a deceptively successful build without the original painting.
-if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/Assets/painted_forest.jpg")
- message(FATAL_ERROR "Artwork missing. Upload Assets/painted_forest.jpg to the repository.")
-endif()
-add_custom_command(TARGET NOCTIVORE_FX_VST3 POST_BUILD
- COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:NOCTIVORE_FX_VST3>/../Resources/GUI"
- COMMAND ${CMAKE_COMMAND} -E copy_if_different
-  "${CMAKE_CURRENT_SOURCE_DIR}/Assets/painted_forest.jpg"
-  "$<TARGET_FILE_DIR:NOCTIVORE_FX_VST3>/../Resources/GUI/painted_forest.jpg"
- COMMENT "Bundling the original painted interface image")
