@@ -444,6 +444,18 @@ void VoidcoreEditor::drawBase(Graphics& g){
  g.fillAll(voidBlack);
  ColourGradient bg(Colour::fromRGB(10,34,23),0.f,80.f,Colour::fromRGB(4,7,7),W,H,false);
  g.setGradientFill(bg);g.fillRect(0,0,(int)W,(int)H);
+ // Procedural Matrix starfield. No pictures: controls stay fully interactive.
+ for(int k=0;k<78;++k){
+  const float xx=std::fmod(17.f+k*173.37f,W-24.f)+12.f;
+  const float yy=std::fmod(k*97.23f+clock*(4.f+(k%5)*2.f),H-143.f)+132.f;
+  const float shimmer=.5f+.5f*std::sin(clock*(.4f+k%4*.17f)+k*2.31f);
+  g.setColour((k%9==0?frost:acid).withAlpha(.055f+.15f*shimmer));
+  g.fillEllipse(xx,yy,(k%7==0?2.1f:1.1f),(k%7==0?2.1f:1.1f));
+  if(k%11==0){
+   g.setColour(acid.withAlpha(.04f+.04f*shimmer));
+   g.drawVerticalLine((int)xx,yy-20.f,yy);
+  }
+ }
  // Uneven bio-mechanical ribbing; procedurally drawn to avoid phantom knobs
  // and ensure every real control aligns with the hit-test geometry.
  for(int k=0;k<30;++k){
@@ -723,7 +735,7 @@ void VoidcoreEditor::paintStatus(Graphics& g){
  g.setColour(playing?acid:grey);
  g.drawText(playing?"● LIVE":"● IDLE",200.f,765.f,96.f,19.f,Justification::centredLeft);
  g.setColour(frost.withAlpha(.75f));
- g.drawFittedText("VOIDCORE  /  REAL-TIME ORGANISM ENGINE",745,761,420,24,Justification::centredRight,1);
+ g.drawFittedText("VOIDCORE  /  MATRIX XENO ENGINE  /  LIVE JUCE VST3",675,761,490,24,Justification::centredRight,1);
 }
 void VoidcoreEditor::paint(Graphics& g){
  Graphics::ScopedSaveState state(g);
