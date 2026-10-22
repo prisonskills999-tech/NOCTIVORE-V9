@@ -217,6 +217,15 @@ public:
   if(!left||!right||count<=0)return;
   const float dt=1.f/(float)sr;
   float amp=clampf(p.volume,0.f,1.5f);
+  // Block-constant coefficients: avoid exp/pow per voice per sample.
+  const float accentSlew=1.f-std::exp(-dt/.006f);
+  const float gateSlew=1.f-std::exp(-dt/.005f);
+  const float fractureSlew=1.f-std::exp(-dt/.007f);
+  const float pitchSlew=1.f-std::exp(-dt/std::max(.002f,p.glide));
+  const float lowCoeff=1.f-std::exp(-2.f*pi*125.f*dt);
+  const float midCoeff=1.f-std::exp(-2.f*pi*625.f*dt);
+  const float filterReleaseDecay=std::exp(-dt/std::max(.01f,p.filterEnvRelease));
+  const float motionReleaseDecay=std::exp(-dt/std::max(.01f,p.motionEnvRelease));
   for(int i=0;i<count;++i){
    std::array<float,11> destinations{};
    // Per-target accumulation allows true simultaneous four-LFO routing.
@@ -271,7 +280,7 @@ public:
    stepPhase=clampf(stepPhase+(stepNum%2==1?swing:-swing),0.f,.999f);
    const float gateEnabled=clampf(p.gateSteps[(size_t)stepNum],0.f,1.f);
    const float rawAccent=p.motif==0?1.f:grooves[(size_t)grooveIndex][(size_t)stepNum]*gateEnabled;
-   smoothedAccent+=(rawAccent-smoothedAccent)*(1.f-std::exp(-dt/.006f));
+   smoothedAccent+=(rawAccent-smoothedAccent)*accentSlew;
    const float accent=smoothedAccent;
    float grooveDensity=clampf(p.motifPitch,0.f,1.f);
    const float gateShape=(1.f-std::exp(-stepPhase*38.f)) *
@@ -282,14 +291,14 @@ public:
    const float gateTarget=p.motif==0?1.f:
      (1.f-pulse*(.94f-gateShape*gateStrength))
      *(1.f-.99f*pulse*(1.f-gateEnabled)*edgeFade);
-   smoothedGate+=(gateTarget-smoothedGate)*(1.f-std::exp(-dt/.005f));
+   smoothedGate+=(gateTarget-smoothedGate)*gateSlew;
    const float phraseGate=smoothedGate;
    float mixL=0,mixR=0;
    for(auto& v:voices){
     if(!v.stage||!v.sample||!v.sample->loaded())continue;
     const auto& s=*v.sample;
     const auto& sb=*v.sampleB;
-    float coeff=1.f-std::exp(-dt/std::max(.002f,p.glide));
+    const float coeff=pitchSlew;
     v.pitch+=(v.target-v.pitch)*coeff;
     // MIDI input sets the pitch. No scripted pitch gestures at all.
     const float gesture=0.f;
@@ -449,8 +458,8 @@ public:
           std::exp(-(v.filterAge-fAttack)/std::max(.01f,p.filterEnvDecay));
       v.motionEnv=clampf(v.motionEnv+dt/std::max(.003f,p.motionEnvAttack),0.f,1.f);
     }else{
-      v.filterEnv*=std::exp(-dt/std::max(.01f,p.filterEnvRelease));
-      v.motionEnv*=std::exp(-dt/std::max(.01f,p.motionEnvRelease));
+      v.filterEnv*=filterReleaseDecay;
+      v.motionEnv*=motionReleaseDecay;
     }
     const float envAmt=v.filterEnv*clampf(p.filterEnvDepth,-1.f,1.f);
     const float moveDepth=.15f+v.motionEnv*clampf(p.motionEnvDepth,0.f,1.f);
@@ -622,7 +631,7 @@ public:
     if(mode==4){
      float clockPhase=std::fmod(globalTime*tempo/60.f*clampf(p.pulseRate,.25f,16.f),1.f);
      const float target=clockPhase<.36f?.98f:.12f;
-     v.fractureGain+=(target-v.fractureGain)*(1.f-std::exp(-dt/.007f));
+     v.fractureGain+=(target-v.fractureGain)*fractureSlew;
      gain*=1.f-clampf(p.texture,0.f,1.f)*.84f*(1.f-v.fractureGain);
     }
     gain*=clampf(1.f+destinations[0]*.45f,0.f,1.5f);
@@ -656,8 +665,6 @@ public:
    // Focus network: adjustable low-mid cleanup in DRY audio only.
    // Slow and fast low-passes isolate the 120–600 Hz buildup; the high pass
    // on the wet path lives INSIDE PsySpace and does not remove bass from dry.
-   float lowCoeff=1.f-std::exp(-2.f*pi*125.f*dt);
-   float midCoeff=1.f-std::exp(-2.f*pi*625.f*dt);
    mixLowL+=(mixL-mixLowL)*lowCoeff;mixLowR+=(mixR-mixLowR)*lowCoeff;
    mixMidL+=(mixL-mixMidL)*midCoeff;mixMidR+=(mixR-mixMidR)*midCoeff;
    const float cut=.69f*clampf(p.mudCut,0.f,1.f);
