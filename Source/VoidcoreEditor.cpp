@@ -386,7 +386,16 @@ void VoidcoreEditor::mutation(bool gentle){
    par->beginChangeGesture();par->setValueNotifyingHost(target);par->endChangeGesture();
   }
  }
- lastScene=gentle?"EVOLVED ORGANISM":"MUTATED ORGANISM";
+ // Full mutation visits a different synthesis family, not simply a nearby
+ // variation of the same sonic material. EVOlVE preserves source selections.
+ if(!gentle){
+  const int a=random.nextInt(50);
+  const int b=(a+1+random.nextInt(9))%50;
+  set("bank",(float)a);
+  set("bankB",(float)b);
+  set("textureMode",(float)random.nextInt(6));
+ }
+ lastScene=gentle?"EVOLVED ORGANISM":"MUTATED XENO SOUNDSCAPE";
 }
 void VoidcoreEditor::preset(int index){
  const float presets[4][8]={{.18f,.65f,.28f,.70f,.76f,.64f,.60f,.20f},
@@ -400,6 +409,27 @@ void VoidcoreEditor::preset(int index){
    p->beginChangeGesture();p->setValueNotifyingHost(presets[index][i]);p->endChangeGesture();
   }
  }
+ // Scenes must select different audio materials and space/texture topology,
+ // not merely recolour a collection of similar macro values.
+ static constexpr int sources[4][3]={
+  {2,9,2},  // Alien radio + dimensional glitch + orbital texture
+  {3,5,1},  // Creature throat + insect hive + grain cloud
+  {6,7,3},  // Pulsar gate + wormhole sweep + pulsar mode
+  {0,8,0}   // Subvoid gravity + nebula choir + flow
+ };
+ static constexpr float fx[4][4]={
+  {.78f,.19f,.49f,.17f},
+  {.52f,.32f,.18f,.34f},
+  {.66f,.22f,.38f,.22f},
+  {.65f,.11f,.20f,.69f}
+ };
+ set("bank",(float)sources[index][0]);
+ set("bankB",(float)sources[index][1]);
+ set("textureMode",(float)sources[index][2]);
+ set("cutoff",fx[index][0]);
+ set("resonance",fx[index][1]);
+ set("delayMix",fx[index][2]);
+ set("reverbMix",fx[index][3]);
  lastScene=StringArray{"ALIEN RADIO","PREDATOR","PULSE FIELD","DEEP SIGNAL"}[index];
 }
 void VoidcoreEditor::save(){
