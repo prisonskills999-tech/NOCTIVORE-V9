@@ -208,6 +208,11 @@ void VoidcoreEditor::timerCallback(){
  }
  if(cachedA!=(int)value("bank"))updatePreview(0);
  if(cachedB!=(int)value("bankB"))updatePreview(1);
+ for(int mode=0;mode<3;++mode)
+  if(auto* button=filterModeButtons[(size_t)mode]){
+   const bool active=(int)value("filterMode")==mode;
+   if(button->selected!=active){button->selected=active;button->repaint();}
+  }
  // JUCE child components repaint independently of their parent: animate each
  // visible control without touching audio processing or modifying parameters.
  for(auto& node:ui){
@@ -251,34 +256,77 @@ void VoidcoreEditor::fader(const char* id,float x,float y,float w,float h,Page p
  ui.push_back({std::move(c),{x,y,w,h},(int)pg});
 }
 void VoidcoreEditor::buildCore(){
+ // Astral Bloom: photographic 3:2 layout, but every rendered control is a real
+ // JUCE child. All parameter writes use the host-notifying APVTS path.
  for(int i=0;i<4;++i){
   const Page target=(Page)i;
-  allClick(pageNames[(size_t)i],667.f+i*120.f,29.f,110.f,33.f,[this,target]{setPage(target);});
+  allClick(pageNames[(size_t)i],778.f+i*102.f,20.f,94.f,32.f,[this,target]{setPage(target);});
   pageButtons[(size_t)i]=dynamic_cast<Click*>(ui.back().control.get());
  }
- allClick("SAVE",437,73,75,28,[this]{save();});
- allClick("LOAD",522,73,75,28,[this]{load();});
- allClick("MUTATE",607,73,88,28,[this]{mutation(false);},1);
- allClick("EVOLVE",705,73,86,28,[this]{mutation(true);});
- // Main page: only the controls that actually shape the instrument.
+ allClick("SAVE",403,20,65,32,[this]{save();});
+ allClick("LOAD",475,20,65,32,[this]{load();});
+ allClick("INIT",547,20,65,32,[this]{preset(0);});
+ allClick("RANDOM",619,20,84,32,[this]{mutation(false);});
+ allClick("EVOLVE",709,20,63,32,[this]{mutation(true);});
  StringArray banks;
  for(const auto& bank:noctivore::banks)banks.add(bank.name);
  banks.add("User");
- choice("bank",banks,58,177,305,33,Core);
- choice("bankB",banks,838,177,305,33,Core);
- // Real bank navigation with APVTS host automation.
- click("<",64,271,29,42,Core,[this]{shift("bank",-1);});
- click(">",327,271,29,42,Core,[this]{shift("bank",1);});
- click("<",845,271,29,42,Core,[this]{shift("bankB",-1);});
- click(">",1109,271,29,42,Core,[this]{shift("bankB",1);});
- knob("start","START",112,404,95,Core);
- knob("xenoFormant","THROAT",285,404,95,Core,1);
- knob("texture","TEXTURE",915,404,95,Core);
- knob("xenoCross","COUPLE",1084,404,95,Core,1);
- fader("morph",463,444,274,42,Core);
- const char* ids[]={"cutoff","resonance","creatures","biomeDepth","reverbMix","volume"};
- const char* labels[]={"FILTER","RES","CREATURE","EVOLVE","SPACE","OUTPUT"};
- for(int i=0;i<6;++i)knob(ids[i],labels[i],142.f+182.f*i,600.f,109.f,Core,i==1||i==5);
+ // The source menu shows the *real* sample bank name. Arrows change the
+ // host-automatable selection, never a visual-only picture.
+ choice("bank",banks,55,127,135,28,Core);
+ choice("bankB",banks,229,127,134,28,Core);
+ click("<",28,127,24,28,Core,[this]{shift("bank",-1);});
+ click(">",193,127,24,28,Core,[this]{shift("bank",1);});
+ click("<",202,215,23,29,Core,[this]{shift("bankB",-1);});
+ click(">",364,215,23,29,Core,[this]{shift("bankB",1);});
+ // Small sound-sphere knobs follow actual existing DSP parameters.
+ knob("start","START",67,293,53,Core);
+ knob("xenoFormant","THROAT",131,293,53,Core);
+ knob("grain","GRAIN",187,293,53,Core);
+ knob("texture","TEXTURE",249,293,53,Core);
+ knob("xenoCross","COUPLE",310,293,53,Core);
+ knob("symbiosis","BOND",366,293,53,Core);
+ fader("morph",62,320,307,26,Core);
+ // Source A and B waveforms are decoded from 48k factory WAVs.
+ // Filter model, its selectable operating modes, and envelope/saturation.
+ choice("filterMode",{"Low Pass","Band Pass","High Pass"},865,130,218,27,Core);
+ knob("cutoff","CUTOFF",923,246,99,Core);
+ knob("resonance","RES",1032,280,62,Core);
+ knob("filterDrive","DRIVE",1116,280,62,Core);
+ for(int i=0;i<3;++i){
+  const juce::String name=juce::StringArray{"LP","BP","HP"}[i];
+  click(name,1104,171.f+i*34.f,68,28,Core,[this,i]{set("filterMode",(float)i);});
+  filterModeButtons[(size_t)i]=dynamic_cast<Click*>(ui.back().control.get());
+ }
+ // LFO1: explicitly bound to real modulation routing, shape and depth.
+ choice("wave",{"Sine","Triangle","Saw","Square","Sample & Hold","Fractal"},34,393,160,29,Core);
+ choice("lfo1Sync",{"Free","1 bar","1/2 bar","1/4 bar","1/8 bar","1/16 bar"},207,393,161,29,Core);
+ knob("rate","RATE",77,522,62,Core);
+ knob("depth","DEPTH",170,522,62,Core);
+ knob("movement","MOTION",269,522,62,Core);
+ // Amplifier envelope visible beneath the real ADSR graph.
+ knob("attack","ATTACK",47,695,60,Core);
+ knob("decay","DECAY",118,695,60,Core);
+ knob("sustain","SUSTAIN",190,695,60,Core);
+ knob("release","RELEASE",263,695,60,Core);
+ // FX controls are persistent effect-mix parameters, not fake FX switches.
+ choice("division",{"1/4","1/8","1/8 dotted","1/16","1/16 dotted","1/32","1/4 triplet","1/8 triplet"},845,376,204,28,Core);
+ knob("reverbMix","REV MIX",854,527,56,Core);
+ knob("reverbSize","SIZE",933,527,56,Core);
+ knob("reverbDecay","DECAY",1009,527,56,Core);
+ knob("delayMix","DELAY",1084,527,56,Core);
+ // Evolving macro row with genuine host-automatable DSP parameters.
+ knob("macroAtmosphere","ATMOS",341,687,67,Core);
+ knob("coupledMotion","MOTION",430,687,67,Core);
+ knob("spectralTilt","TONE",519,687,67,Core);
+ knob("biomeDepth","EVOLUTION",606,681,89,Core);
+ knob("stereo","DIMENSION",698,687,67,Core);
+ knob("xenoWrithe","TEXTURE",791,687,67,Core);
+ knob("clarity","CLARITY",878,687,67,Core);
+ // Output controls retain the VST3 parameter IDs for old projects.
+ choice("mode",{"Polyphonic","Mono","Legato"},921,608,154,26,Core);
+ knob("volume","VOLUME",965,685,84,Core);
+ knob("pan","PAN",1144,692,60,Core);
 }
 void VoidcoreEditor::buildDeeper(){
  // MOTION: one selected LFO at a time, one ADSR, editable 16-step gate.
@@ -352,7 +400,7 @@ void VoidcoreEditor::buildDeeper(){
  keys->setColour(MidiKeyboardComponent::keyDownOverlayColourId,acid.withAlpha(.8f));
  keys->setColour(MidiKeyboardComponent::mouseOverKeyOverlayColourId,acid.withAlpha(.23f));
  addAndMakeVisible(*keys);
- ui.push_back({std::move(keys),{58,700,1084,53},(int)System});
+ ui.push_back({std::move(keys),{270,748,668,40},-1});
 }
 void VoidcoreEditor::updatePreview(int which){
  const int index=std::clamp((int)value(which?"bankB":"bank"),0,50);
