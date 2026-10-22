@@ -175,6 +175,7 @@ NoctivoreEditor::NoctivoreEditor(NoctivoreProcessor& p)
  dial(f,"metalDecay","RING TIME",1);dial(f,"metalTone","MATERIAL",1);
  dial(f,"colony","MUTANT COLONY",3);dial(f,"creatures","CREATURE DENSITY",3);
  dial(f,"psyFold","PSY SPECTRAL FOLD",1);dial(f,"symbiosis","SOURCE SYMBIOSIS",0);
+ dial(f,"predator","PREDATOR THROAT",1);dial(f,"insectCode","SPORE CODE",0);dial(f,"burrow","BURROW INTERFERENCE",3);
  auto& fi=section(Forge,"02 / DUAL FILTER NETWORK",moss,3);
  select(fi,"filterMode","FILTER 1",{"Low Pass","Band Pass","High Pass"});
  select(fi,"filter2Mode","FILTER 2",{"Off","Low Pass","Band Pass","High Pass","Notch"});
@@ -309,15 +310,15 @@ NoctivoreEditor::NoctivoreEditor(NoctivoreProcessor& p)
  artDial("motifGlide","Gate Swing",1346,346);
  artDial("motifGate","Rhythmic Gate",1411,346);
  artDial("xenoFormant","Alien Vocal Formants",135,526);
- artDial("xenoWrithe","Talk",201,526);
+ artDial("predator","Predator Talk",201,526);
  artDial("fmIndex","Harmonics",269,526);
  artDial("xenoCross","Wet",337,526);
  artDial("xenoCross","Coupling",414,606);
  artDial("morph","Organism Transfer",514,606);
  artDial("morphMotion","Variation",588,606);
- artDial("spectralTilt","Body Shape",683,574);
+ artDial("burrow","Burrowing Body Shape",683,574);
  artDial("grain","Body Stretch",755,574);
- artDial("scatter","Disrupt",825,574);
+ artDial("insectCode","Spore Disruption",825,574);
  artDial("motionEnvRelease","Regenerate",896,574);
  artDial("fmRatio","FM Ratio",1004,530);
  artDial("fmIndex","FM Index",1064,530);
@@ -464,6 +465,9 @@ void NoctivoreEditor::mutate(bool subtle){
  setParameter("metalMix",r.nextFloat()*.012f);
  setParameter("metalDecay",.32f+r.nextFloat()*.63f);
  setParameter("colony",.2f+r.nextFloat()*.75f);
+ setParameter("predator",.12f+r.nextFloat()*.86f);
+ setParameter("insectCode",.10f+r.nextFloat()*.90f);
+ setParameter("burrow",.15f+r.nextFloat()*.80f);
  setParameter("creatures",.1f+r.nextFloat()*.85f);
  setParameter("psyFold",.04f+r.nextFloat()*.65f);
  setParameter("symbiosis",.1f+r.nextFloat()*.75f);
@@ -530,6 +534,15 @@ void NoctivoreEditor::applyScene(int which){
  setParameter("creatures",.25f+.105f*(float)(which%6));
  setParameter("psyFold",.08f+.08f*(float)(which%5));
  setParameter("symbiosis",.17f+.12f*(float)(which%6));
+ // Distinct scenes: spores, predator, burrow and spectral warps are not uniform.
+ static constexpr float tribes[12][3]={
+  {.18f,.88f,.18f},{.78f,.18f,.72f},{.20f,.94f,.64f},
+  {.88f,.36f,.80f},{.67f,.85f,.17f},{.82f,.24f,.66f},
+  {.23f,.96f,.28f},{.92f,.36f,.90f},{.30f,.72f,.73f},
+  {.55f,.93f,.41f},{.79f,.25f,.88f},{.62f,.67f,.91f}};
+ setParameter("predator",tribes[which%12][0]);
+ setParameter("insectCode",tribes[which%12][1]);
+ setParameter("burrow",tribes[which%12][2]);
  for(int i=2;i<=4;++i){auto prefix="lfo"+String(i);
   setParameter((prefix+"Depth").toRawUTF8(),.10f+.04f*(float)i);
   setParameter((prefix+"Rate").toRawUTF8(),.001f+.0022f*(float)i);
