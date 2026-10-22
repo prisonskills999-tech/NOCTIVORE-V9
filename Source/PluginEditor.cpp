@@ -37,27 +37,29 @@ NoctivoreEditor::ArtKnob::ArtKnob(AudioProcessorValueTreeState& st,const String&
  attachment=std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(st,id,*this);
 }
 void NoctivoreEditor::ArtKnob::paint(Graphics& g){
- auto r=getLocalBounds().toFloat();float cx=r.getCentreX(),cy=r.getCentreY(),rad=.44f*std::min(r.getWidth(),r.getHeight());
- float norm=getMaximum()>getMinimum()?(float)((getValue()-getMinimum())/(getMaximum()-getMinimum())):0.f;
- norm=std::clamp(norm,0.f,1.f);
- float first=MathConstants<float>::pi*1.18f,last=MathConstants<float>::pi*2.82f;
- Path p;p.addCentredArc(cx,cy,rad,rad,0,first,first+norm*(last-first),true);
- g.setColour(Colour::fromRGB(242,197,105).withAlpha(isMouseOverOrDragging()?.92f:.34f));
- g.strokePath(p,PathStrokeType(isMouseOverOrDragging()?2.3f:1.1f));
+ const auto r=getLocalBounds().toFloat();
+ const float cx=r.getCentreX(),cy=r.getCentreY();
+ const float rad=.44f*std::min(r.getWidth(),r.getHeight());
+ const float norm=getMaximum()>getMinimum()?std::clamp((float)((getValue()-getMinimum())/(getMaximum()-getMinimum())),0.f,1.f):0.f;
+ const float begin=juce::MathConstants<float>::pi*1.18f,end=juce::MathConstants<float>::pi*2.82f;
+ const float theta=begin+norm*(end-begin);
+ const auto gold=juce::Colour::fromRGB(242,190,94);
+ const float inner=rad*.78f;
+ // Opaque clay face hides the baked-in, immovable pointer of the screenshot.
+ juce::ColourGradient face(juce::Colour::fromRGB(121,88,49),cx-inner,cy-inner,juce::Colour::fromRGB(25,28,18),cx+inner,cy+inner,false);
+ g.setGradientFill(face);g.fillEllipse(cx-inner,cy-inner,inner*2.f,inner*2.f);
+ g.setColour(juce::Colour::fromRGB(12,16,10));g.drawEllipse(cx-inner,cy-inner,2.f*inner,2.f*inner,2.5f);
+ g.setColour(gold.withAlpha(.55f));g.drawEllipse(cx-inner+2,cy-inner+2,inner*2.f-4,inner*2.f-4,1.f);
+ juce::Path arc;arc.addCentredArc(cx,cy,rad*.93f,rad*.93f,0,begin,theta,true);
+ g.setColour(gold.withAlpha(.9f));g.strokePath(arc,juce::PathStrokeType(3.2f));
+ const float a=theta-juce::MathConstants<float>::halfPi;
+ g.setColour(juce::Colour::fromRGB(255,221,138));g.drawLine(cx,cy,cx+std::cos(a)*inner*.83f,cy+std::sin(a)*inner*.83f,3.f);
+ g.fillEllipse(cx-2,cy-2,4.f,4.f);
  if(isMouseOverOrDragging()){
-   g.setColour(Colour::fromRGB(20,23,17).withAlpha(.92f));
-   g.fillRoundedRectangle(0.f,0.f,r.getWidth(),16.f,3.f);
-   g.setColour(Colour::fromRGB(235,218,174));g.setFont(Font(10.f,Font::bold));
-   g.drawText(String(getValue(),2),0,0,getWidth(),16,Justification::centred);
+  g.setColour(juce::Colour::fromRGB(18,22,16).withAlpha(.97f));g.fillRoundedRectangle(0.f,0.f,r.getWidth(),17.f,3.f);
+  g.setColour(juce::Colour::fromRGB(254,217,160));g.setFont(juce::Font(10.f,juce::Font::bold));
+  g.drawText(juce::String(getValue(),2),0,0,getWidth(),17,juce::Justification::centred);
  }
-}
-void NoctivoreEditor::ArtHotspot::paintButton(Graphics& g,bool hovered,bool down){
- if(!(hovered||down||selected))return;
- const auto r=getLocalBounds().toFloat().reduced(1.f);
- g.setColour(Colour::fromRGB(203,155,77).withAlpha(down?.31f:selected?.20f:.13f));
- g.fillRoundedRectangle(r,6.f);
- g.setColour(Colour::fromRGB(247,205,108).withAlpha(down?.95f:.66f));
- g.drawRoundedRectangle(r,6.f,1.2f);
 }
 NoctivoreEditor::ArtFader::ArtFader(AudioProcessorValueTreeState& st,const String& id,const String& text){
  setSliderStyle(Slider::LinearVertical);
@@ -544,7 +546,9 @@ void NoctivoreEditor::showPage(Page next){
 void NoctivoreEditor::layout(Section& section_,Rectangle<int> area){
  section_.bounds=area;
  auto inset=area.reduced(9,13);
- inset.removeFromTop(25);
+ inset.removeFromTop(31);
+ if(page==Motion && section_.children.size()==5)
+  inset.removeFromBottom(std::max(26,juce::roundToInt(48.f*(float)getHeight()/1055.f)));
  int count=(int)section_.children.size();
  int cols=std::max(1,section_.columns),rows=std::max(1,(count+cols-1)/cols);
  const int cw=std::max(15,inset.getWidth()/cols),ch=std::max(22,inset.getHeight()/rows);
@@ -579,8 +583,8 @@ void NoctivoreEditor::resized(){
   if(atlas){
    section_.bounds={}; // No additional widgets laid over the illustrated front page.
   }else if(page==Motion){
-   if(index<4)layout(section_,R(35.f+index*359.f,260.f,345.f,453.f));
-   else layout(section_,R(36,744,1420,90));
+   if(index<4)layout(section_,R(35.f+index*359.f,249.f,345.f,430.f));
+   else layout(section_,R(36.f,695.f,1420.f,133.f));
   }else{
    layout(section_,R(36.f+index*477.f,259.f,460.f,559.f));
   }
@@ -609,67 +613,86 @@ void NoctivoreEditor::timerCallback(){
 }
 
 void NoctivoreEditor::drawAnimation(Graphics& g){
- juce::Graphics::ScopedSaveState saved(g);
- const float sx=(float)getWidth()/1491.f,sy=(float)getHeight()/1055.f;
- g.addTransform(juce::AffineTransform::scale(sx,sy));
- auto get=[this](const char* id)->float{
-  if(auto* v=processor.state.getRawParameterValue(id))return v->load();
-  return 0.f;
- };
- const float life=std::clamp(get("biomeDepth"),0.f,1.f);
- const float speed=std::max(.003f,get("biomeRate"));
- const float motion=std::sin(2.f*juce::MathConstants<float>::pi*speed*uiSeconds);
- const float brightness=.14f+.28f*smoothedPeak+.16f*life*(.5f+.5f*motion);
- // The hand-painted forest creature glows from actual sound level and Life.
+ juce::Graphics::ScopedSaveState save(g);
+ g.addTransform(juce::AffineTransform::scale((float)getWidth()/1491.f,(float)getHeight()/1055.f));
+ auto val=[this](const char* id)->float{
+  if(auto* p=processor.state.getRawParameterValue(id))return p->load();return 0.f;};
+ const float life=std::clamp(val("biomeDepth"),0.f,1.f);
+ const float coupled=std::clamp(val("coupledMotion"),0.f,1.f);
+ const float peak=std::clamp(smoothedPeak,0.f,1.f);
+ const float breathing=.5f+.5f*std::sin(uiSeconds*(1.0f+.75f*life));
+ const float pulse=.4f+.35f*breathing+.25f*std::sqrt(peak);
+ const auto gold=juce::Colour::fromRGB(251,191,92);
+ const auto green=juce::Colour::fromRGB(166,213,115);
+ const float cx=720.f,cy=424.f;
+ // Visible moving center: mask printed static art below with opaque organic disk.
+ g.setColour(juce::Colour::fromRGB(23,28,17).withAlpha(.98f));
+ g.fillEllipse(cx-33.f,cy-33.f,66.f,66.f);
+ for(int n=0;n<3;++n){
+  const float rad=23.f+n*10.f+7.f*pulse;
+  g.setColour((n%2?green:gold).withAlpha(.55f+.12f*pulse-.09f*n));
+  g.drawEllipse(cx-rad,cy-rad,2.f*rad,2.f*rad,1.8f);
+ }
+ juce::Path swirl;
+ for(int i=0;i<130;++i){
+  const float t=(float)i/129.f;
+  const float angle=uiSeconds*(.85f+.65f*coupled)+(4.5f+t)*juce::MathConstants<float>::pi*t;
+  const float rr=(8.f+25.f*pulse)*t;
+  const float x=cx+std::cos(angle)*rr,y=cy+std::sin(angle)*rr;
+  if(i==0)swirl.startNewSubPath(x,y);else swirl.lineTo(x,y);
+ }
+ g.setColour(gold.withAlpha(.94f));g.strokePath(swirl,juce::PathStrokeType(2.8f));
+ // Moving spore orbit, breath-driven even at ultra-slow musical LFO rates.
+ for(int i=0;i<13;++i){
+  const float phase=(float)i*1.37f+uiSeconds*(.13f+.07f*(i%4))*(1.f+.5f*coupled);
+  const float radius=58.f+14.f*(i%4)+11.f*breathing;
+  const float x=cx+radius*std::cos(phase),y=cy+radius*.64f*std::sin(phase*1.13f);
+  const float size=2.2f+1.6f*(.5f+.5f*std::sin(uiSeconds+i));
+  g.setColour((i%2?gold:green).withAlpha(.45f+.39f*breathing));
+  g.fillEllipse(x-size,y-size,size*2.f,size*2.f);
+ }
  for(int i=0;i<2;++i){
-  const float x=i==0?697.f:737.f,y=349.f;
-  g.setColour(juce::Colour::fromRGB(245,173,83).withAlpha(brightness*.46f));
-  g.fillEllipse(x-13.f,y-13.f,26.f,26.f);
-  g.setColour(juce::Colour::fromRGB(254,205,102).withAlpha(brightness));
-  g.fillEllipse(x-5.f,y-5.f,10.f,10.f);
+  const float x=i?741.f:698.f,y=350.f;
+  const float r=7.f+10.f*pulse;
+  g.setColour(gold.withAlpha(.32f+.30f*pulse));g.fillEllipse(x-r,y-r,r*2.f,r*2.f);
+  g.setColour(juce::Colour::fromRGB(255,232,144));g.fillEllipse(x-4.f,y-4.f,8.f,8.f);
  }
- // An original animated spiral inside the static painting, not an image spinner.
- {
-  const float cx=720.f,cy=453.f,phase=uiSeconds*(.18f+.35f*get("coupledMotion"));
-  juce::Path line;
-  for(int i=0;i<70;++i){
-   const float t=(float)i/69.f,theta=phase+4.f*juce::MathConstants<float>::pi*t;
-   const float rr=24.f*t;
-   const float xx=cx+rr*std::cos(theta),yy=cy+rr*std::sin(theta);
-   if(i==0)line.startNewSubPath(xx,yy);else line.lineTo(xx,yy);
-  }
-  g.setColour(juce::Colour::fromRGB(239,181,93).withAlpha(.25f+.28f*life));
-  g.strokePath(line,juce::PathStrokeType(1.5f));
- }
- // Current gate step follows Ableton's beat position while Live is playing.
- if(get("motif")>0.5f){
+ if(val("motif")>.5f){
   for(int i=0;i<16;++i){
    const float x=1156.f+(float)i*13.95f;
-   const float h=28.f*(.25f+.75f*(.5f+.5f*std::sin(i*1.8f+get("motif")*2.f)));
-   const bool active=i==currentGateStep;
-   const auto key=juce::String::formatted("gateStep%02d",i+1);
-   const bool enabled=processor.state.getRawParameterValue(key)->load()>.5f;
-   g.setColour((active?juce::Colour::fromRGB(245,194,98):juce::Colour::fromRGB(151,170,105))
-      .withAlpha(enabled?(active?.80f:.18f):.035f));
-   g.fillRoundedRectangle(x,414.f-h,8.4f,h,2.f);
+   auto* v=processor.state.getRawParameterValue(juce::String::formatted("gateStep%02d",i+1));
+   const bool on=v==nullptr||v->load()>.5f,active=i==currentGateStep;
+   const float h=19.f+9.f*std::sin(i*.77f+uiSeconds*.2f);
+   g.setColour((active?gold:green).withAlpha(on?(active?.98f:.34f):.06f));
+   g.fillRoundedRectangle(x,415.f-h,9.4f,h,2.f);
+   if(active)g.fillEllipse(x+1,373,8,8);
   }
  }
- // Stereo output meters read directly from the audio thread's atomic meter.
- const float level=std::clamp(smoothedPeak,0.f,1.f);
+ const float meter=std::sqrt(peak);
  for(int i=0;i<2;++i){
-  const float h=68.f*std::sqrt(level);
-  g.setColour(juce::Colour::fromRGB(i==0?175:213,205,106).withAlpha(.74f));
-  g.fillRoundedRectangle(1282.f+i*21.f,998.f-h,10.f,h,2.f);
+  g.setColour(green.withAlpha(.95f));
+  g.fillRoundedRectangle(1291.f+i*22.f,996.f-76.f*meter,11.f,76.f*meter,2.f);
  }
 }
 void NoctivoreEditor::drawSubpage(Graphics& g){
- if(originalPainting.isValid()){
-  g.drawImage(originalPainting,getLocalBounds().toFloat());
-  g.setColour(juce::Colour::fromRGB(14,18,12).withAlpha(.88f));
-  g.fillRect(getLocalBounds());
- }else{
-  g.fillAll(juce::Colour::fromRGB(17,20,15));
+ // Completely opaque separate backdrop; never draw the old Atlas screenshot.
+ g.fillAll(juce::Colour::fromRGB(15,20,14));
+ {
+  juce::Graphics::ScopedSaveState frame(g);
+  g.addTransform(juce::AffineTransform::scale((float)getWidth()/1491.f,(float)getHeight()/1055.f));
+  juce::ColourGradient earth(juce::Colour::fromRGB(36,42,27),0.f,0.f,juce::Colour::fromRGB(12,17,11),1491.f,1055.f,false);
+  g.setGradientFill(earth);g.fillRect(0,0,1491,1055);
+  for(int k=0;k<18;++k){
+   float y=32.f+58.f*k;juce::Path p;p.startNewSubPath(0.f,y);
+   p.cubicTo(380.f,y-28.f,800.f,y+24.f,1491.f,y-11.f);
+   g.setColour((k%2?painted::moss:painted::ochre).withAlpha(.049f));
+   g.strokePath(p,juce::PathStrokeType(1.1f));
+  }
+  painted::mushroom(g,1418.f,158.f,1.5f,painted::clay);
+  painted::mushroom(g,67.f,832.f,1.1f,painted::moss);
+  painted::creature(g,1131.f,123.f,.55f);
  }
+
  juce::Graphics::ScopedSaveState state(g);
  const float sx=(float)getWidth()/1491.f,sy=(float)getHeight()/1055.f;
  g.addTransform(juce::AffineTransform::scale(sx,sy));
@@ -720,7 +743,7 @@ void NoctivoreEditor::drawSubpage(Graphics& g){
    }
    const int wave=(int)raw(waveId);
    const float depth=std::clamp(raw(depthId),0.f,1.f);
-   const float x=57.f+i*359.f,y=657.f;
+   const float x=57.f+i*359.f,y=643.f;
    juce::Path graph;
    for(int k=0;k<=88;++k){
     const float t=(float)k/88.f;
@@ -749,6 +772,15 @@ void NoctivoreEditor::drawSubpage(Graphics& g){
  const float level=std::clamp(smoothedPeak,0.f,1.f);
  g.setColour(moss);
  g.fillRoundedRectangle({1281.f,985.f-53.f*level,13.f,53.f*level},2.f);
+ // Rotating organism on each deep-edit page; the old GUI image is absent.
+ const float angle=uiSeconds*(.53f+processor.state.getRawParameterValue("biomeDepth")->load());
+ for(int k=0;k<8;++k){
+  const float a=angle+(float)k*juce::MathConstants<float>::twoPi/8.f;
+  const float x=1210.f+42.f*std::cos(a),y=87.f+25.f*std::sin(a);
+  g.setColour((k%2?ochre:moss).withAlpha(.53f+.40f*level));
+  g.fillEllipse(x-3.7f,y-3.7f,7.4f,7.4f);
+ }
+ painted::spiral(g,1210.f,87.f,27.f+12.f*level,ochre.withAlpha(.7f),2.2f);
 }
 void NoctivoreEditor::paint(Graphics& g){
  if(paintedPage()){
