@@ -84,6 +84,47 @@ void VoidcoreEditor::Dial::paint(Graphics& g){
  g.drawFittedText(String(getValue(),getMaximum()>5?1:2),0,roundToInt(h*.85f),
                   roundToInt(w),roundToInt(h*.14f),Justification::centred,1);
 }
+void VoidcoreEditor::OrbPad::apply(const MouseEvent& e){
+ const float x=std::clamp(e.position.x/std::max(1.f,(float)getWidth()),0.f,1.f);
+ const float y=1.f-std::clamp(e.position.y/std::max(1.f,(float)getHeight()),0.f,1.f);
+ if(auto* p=processor.state.getParameter("morph"))p->setValueNotifyingHost(x);
+ if(auto* p=processor.state.getParameter("biomeDepth"))p->setValueNotifyingHost(y);
+ repaint();
+}
+void VoidcoreEditor::OrbPad::mouseDown(const MouseEvent& e){
+ dragging=true;
+ if(auto* p=processor.state.getParameter("morph"))p->beginChangeGesture();
+ if(auto* p=processor.state.getParameter("biomeDepth"))p->beginChangeGesture();
+ apply(e);
+}
+void VoidcoreEditor::OrbPad::mouseDrag(const MouseEvent& e){
+ if(dragging)apply(e);
+}
+void VoidcoreEditor::OrbPad::mouseUp(const MouseEvent& e){
+ if(!dragging)return;
+ apply(e);
+ if(auto* p=processor.state.getParameter("morph"))p->endChangeGesture();
+ if(auto* p=processor.state.getParameter("biomeDepth"))p->endChangeGesture();
+ dragging=false;
+}
+void VoidcoreEditor::OrbPad::paint(Graphics& g){
+ const auto* m=processor.state.getRawParameterValue("morph");
+ const auto* d=processor.state.getRawParameterValue("biomeDepth");
+ const float xx=(m?m->load():.5f)*getWidth();
+ const float yy=(1.f-(d?d->load():.5f))*getHeight();
+ const Colour green=Colour::fromRGB(53,255,105);
+ const Colour white=Colour::fromRGB(246,255,247);
+ const float rad=dragging?11.f:7.f;
+ g.setColour(green.withAlpha(dragging?.70f:.34f));
+ g.drawEllipse(xx-rad,yy-rad,rad*2.f,rad*2.f,1.2f);
+ g.setColour(white.withAlpha(.80f));
+ g.fillEllipse(xx-2.f,yy-2.f,4.f,4.f);
+ if(dragging){
+  g.setColour(green.withAlpha(.40f));
+  g.drawLine(xx,0.f,xx,(float)getHeight(),1.f);
+  g.drawLine(0.f,yy,(float)getWidth(),yy,1.f);
+ }
+}
 VoidcoreEditor::Choice::Choice(NoctivoreProcessor& p,const String& id,const StringArray& items){
  addItemList(items,1);
  setJustificationType(Justification::centredLeft);
@@ -279,7 +320,14 @@ void VoidcoreEditor::buildCore(){
  }
  allClick("SAVE",403,20,65,32,[this]{save();});
  allClick("LOAD",475,20,65,32,[this]{load();});
- allClick("INIT",547,20,65,32,[this]{preset(0);});
+ allClick("INIT",547,20,65,32,[this]{
+  for(auto* parameter:processor.getParameters()){
+   parameter->beginChangeGesture();
+   parameter->setValueNotifyingHost(parameter->getDefaultValue());
+   parameter->endChangeGesture();
+  }
+  lastScene="INITIAL PATCH";
+ });
  allClick("RANDOM",619,20,84,32,[this]{mutation(false);});
  allClick("EVOLVE",709,20,63,32,[this]{mutation(true);});
  StringArray banks;
@@ -301,6 +349,9 @@ void VoidcoreEditor::buildCore(){
  knob("xenoCross","COUPLE",310,293,53,Core);
  knob("symbiosis","BOND",366,293,53,Core);
  fader("morph",62,320,307,26,Core);
+ auto orb=std::make_unique<OrbPad>(processor);
+ addAndMakeVisible(*orb);
+ ui.push_back({std::move(orb),{479,231,242,155},(int)Core});
  // Source A and B waveforms are decoded from 48k factory WAVs.
  // Filter model, its selectable operating modes, and envelope/saturation.
  choice("filterMode",{"Low Pass","Band Pass","High Pass"},865,130,218,27,Core);
@@ -923,6 +974,8 @@ void VoidcoreEditor::drawCore(Graphics& g){
  g.setColour(frost);g.setFont(Font(9.f,Font::bold));
  g.drawText("L",1066,718,13,10,Justification::centred);
  g.drawText("R",1087,718,13,10,Justification::centred);
+ g.setColour(frost.withAlpha(.84f));g.setFont(Font(11.f,Font::bold));
+ g.drawFittedText(lastScene,464,518,266,26,Justification::centred,1);
  drawKeyboardShell(g);
 }
 void VoidcoreEditor::drawDeep(Graphics& g){
