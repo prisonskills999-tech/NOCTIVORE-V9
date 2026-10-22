@@ -7,6 +7,11 @@ on:
 permissions:
   contents: read
 
+# Multiple pushes must not waste private-repository Actions minutes.
+concurrency:
+  group: voidcore-xeno-vst3-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-windows-vst3:
     name: VST3 ${{ matrix.edition }}
