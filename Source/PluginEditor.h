@@ -19,10 +19,14 @@ private:
   void drawButtonBackground(juce::Graphics&,juce::Button&,const juce::Colour&,bool,bool) override;
   void drawComboBox(juce::Graphics&,int,int,bool,int,int,int,int,juce::ComboBox&) override;
  } skin;
- struct Dial final : juce::Component {
-  juce::Slider knob;
-  juce::Label name;
+ struct ArtKnob final : juce::Slider {
   std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attachment;
+  ArtKnob(juce::AudioProcessorValueTreeState&,const juce::String&,const juce::String&);
+  void paint(juce::Graphics&) override;
+ };
+ struct Dial final : juce::Component {
+  ArtKnob knob;
+  juce::Label name;
   Dial(juce::AudioProcessorValueTreeState&,const juce::String&,const juce::String&,int);
   void resized() override;
   void paint(juce::Graphics&) override;
@@ -33,11 +37,6 @@ private:
   std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> attachment;
   Selector(juce::AudioProcessorValueTreeState&,const juce::String&,const juce::String&,const juce::StringArray&);
   void resized() override;
-  void paint(juce::Graphics&) override;
- };
- struct ArtKnob final : juce::Slider {
-  std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attachment;
-  ArtKnob(juce::AudioProcessorValueTreeState&,const juce::String&,const juce::String&);
   void paint(juce::Graphics&) override;
  };
  struct ArtFader final : juce::Slider {
