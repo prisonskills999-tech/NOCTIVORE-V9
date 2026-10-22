@@ -46,7 +46,8 @@ for declaration in (
     assert declaration in processor, f"Unexpected shared coloration default: {declaration}"
 assert "fx.reverbMix*(1.f+.09f*p.macroAtmosphere)" in engine
 assert "fx.reverbMix+.09f*p.macroAtmosphere" not in engine
-assert "const float g=std::tan(pi*hz*dt);" in engine
+assert "filterGTable[j]=std::tan(pi*hz/(float)sr);" in engine
+assert "const float g=filterGTable[(size_t)idx]+" in engine
 assert "float hp=input-lp-q*bp;" not in engine
 assert "float smoothedSoloFx=" not in engine  # member is initialized as part of group
 assert "smoothedSoloFx=0.f;" in engine
