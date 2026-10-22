@@ -189,7 +189,7 @@ public:
   v->bodyPhase=0;v->fmPhase=0;v->modPhase=0;v->prevMod=0;
   v->stealL=previousL;v->stealR=previousR;v->stealFade=stolen?1.f:0.f;
   v->lastL=v->lastR=0.f;v->fractureGain=1.f;
-   v->cellPhase=v->organismPhase=v->organismTonePhase=v->foldLP=0.f;
+   v->cellPhase=v->organismPhase=v->organismTonePhase=v->foldLP=v->cleanBlend=0.f;
    v->predatorPhase=v->insectPhase=v->signalPhase=0.f;
   v->aliveA=v->aliveB=0.f;
   v->metalPos=0;v->metalDamp=0;v->fxPhase=0;v->fxStep=-1;v->filterEnv=0;v->filterAge=0;v->motionEnv=0;
@@ -329,13 +329,12 @@ public:
       if(x>end-overlap && x<end){
        const float u=clampf((x-(end-overlap))/overlap,0.f,1.f);
        const float a=u*u*(3.f-2.f*u);
-       const float near=p.resampling==0?source.linear(x):source.cubic(x);
-       const float far=p.resampling==0?source.linear(begin+x-(end-overlap))
-                                         :source.cubic(begin+x-(end-overlap));
+       const float near=source.cubic(x);
+       const float far=source.cubic(begin+x-(end-overlap));
        return (1.f-a)*near+a*far;
       }
      }
-     return p.resampling==0?source.linear(x):source.cubic(x);
+     return source.cubic(x);
     };
     auto advance=[&](const Sample& source,float& pos,float delta){
      pos+=delta;
@@ -405,39 +404,18 @@ public:
     const float drift=std::sin(v.motionPhase)+.34f*std::sin(v.motionPhase*.53f+1.2f);
     float layer=mixA*readAt(s,v.position+v.layerOffset*(1.f+.10f*movement*drift+.25f*biome))
                +mixB*readAt(sb,v.positionB+v.layerOffset*(float)sb.rate/(float)s.rate*(1.f+.10f*movement*drift+.25f*biome));
-    // Overlapping, windowed grains with separately randomized capture anchors.
-    // Freeze keeps its anchors locked; Cloud/Fracture continually reseed them.
+    // No grain anchor resets, sample holding or block-dependent random splices.
+    // Cloud/Fracture/Freeze use continuous read heads with smooth crossfades.
     const int mode=std::clamp(p.textureMode,0,5);
     if(mode==1||mode==4||mode==5){
-     const float duration=.065f+.58f*(1.f-clampf(p.grain+.5f*destinations[8],0.f,1.f));
-     v.grainPhase+=dt/duration;
-     bool reset=false;
-     if(v.grainPhase>=1.f){v.grainPhase-=std::floor(v.grainPhase);reset=true;}
-     bool half=v.grainPhase>=.5f;
-     auto reanchor=[&](int head){
-      v.noiseState=v.noiseState*1664525u+1013904223u;
-      float rnd=((v.noiseState>>8)*(1.f/8388608.f)-1.f);
-      float offset=rnd*clampf(p.scatter,0.f,1.f)*2.8f;
-      if(mode==5)offset*=.18f;
-      v.anchorA[(size_t)head]=v.position+offset*(float)s.rate;
-      v.anchorB[(size_t)head]=v.positionB+offset*(float)sb.rate;
-     };
-     if(mode!=5){
-      if(reset)reanchor(0);
-      if(half&&!v.grainSecondHalf)reanchor(1);
-     }
-     v.grainSecondHalf=half;
-     const float a=v.grainPhase,b=std::fmod(a+.5f,1.f);
-     const float wa=std::sin(pi*a)*std::sin(pi*a);
-     const float wb=std::sin(pi*b)*std::sin(pi*b);
-     auto head=[&](int j,float phase){
-      return mixA*readAt(s,v.anchorA[(size_t)j]+phase*duration*(float)sr*step)
-           + mixB*readAt(sb,v.anchorB[(size_t)j]+phase*duration*(float)sr*stepB);
-     };
-     float grains=(head(0,a)*wa+head(1,b)*wb)/(wa+wb+1.e-5f);
-     const float amount=mode==5?(.75f+.25f*p.texture):clampf(p.texture,0.f,1.f);
-     sample=sample*(1.f-amount)+grains*amount;
-    }
+      const float texture=clampf(p.texture,0.f,1.f);
+      const float phase=2.f*pi*(.047f+.14f*texture)*globalTime+v.motionPhase*.12f;
+      const float second=mixA*readAt(s,v.position+v.layerOffset*(1.f+.09f*std::sin(phase)))
+        +mixB*readAt(sb,v.positionB+v.layerOffset*(float)sb.rate/(float)s.rate*(1.f+.09f*std::sin(phase)));
+      const float target=.23f*texture*(.6f+.4f*std::sin(phase)*std::sin(phase));
+      v.cleanBlend+=(target-v.cleanBlend)*(1.f-std::exp(-dt/.02f));
+      sample=sample*(1.f-v.cleanBlend)+second*v.cleanBlend;
+    }else v.cleanBlend+=(0.f-v.cleanBlend)*(1.f-std::exp(-dt/.02f));
     advance(s,v.position,step);
     advance(sb,v.positionB,stepB);
     float time=.02f;
@@ -544,14 +522,7 @@ public:
          2.f*burrow*std::sin(v.cellPhase*.61f));
       sample+=burrow*(.10f+.19f*burrow)*mix*(.35f+.65f*sweep);
     }
-    // Dynamic harmonic folding with gentle anti-alias low-pass smoothing.
-    const float fold=clampf(p.psyFold,0.f,1.f);
-    if(fold>.0001f){
-      const float warped=std::sin(sample*(1.4f+3.8f*fold)+.65f*cellular*fold);
-      const float coeff=clampf(2.f*pi*std::min((float)sr*.2f,2400.f+carrier*2.7f)*dt,.001f,.70f);
-      v.foldLP+=coeff*(warped-v.foldLP);
-      sample=sample*(1.f-.24f*fold)+v.foldLP*(.24f*fold);
-    }
+    // Wavefolding completely removed; legacy parameter retained for session recall.
     // Morphing pseudo-vocal tract with two narrow, stable resonant peaks.
     // Reacts to living biome and cross-layer motion without broadband noise.
     const float xeno=clampf(p.xenoFormant,0.f,1.f);
@@ -733,7 +704,7 @@ private:
   int note=-1,bank=0,stage=0;
   float vel=0,position=0,positionB=0,level=0,releaseLevel=1,pitch=0,target=0,lp=0,bp=0;
   float motionPhase=0,layerOffset=0,bodyPhase=0,breath=0,aliveA=0,aliveB=0;
-   float cellPhase=0,organismPhase=0,organismTonePhase=0,foldLP=0;
+   float cellPhase=0,organismPhase=0,organismTonePhase=0,foldLP=0,cleanBlend=0;
    float predatorPhase=0,insectPhase=0,signalPhase=0;
   float lp2=0,bp2=0,filterEnv=0,filterAge=0,motionEnv=0,airLP=0;
   float xenoLp1=0,xenoBp1=0,xenoLp2=0,xenoBp2=0;
