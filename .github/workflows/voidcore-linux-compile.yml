@@ -24,6 +24,11 @@ jobs:
           python3 tests/verify_voidcore_ui.py
           python3 tests/verify_astral_skin.py
 
+      - name: Measure HiFi anti-alias resampling
+        run: |
+          c++ -std=c++17 -O2 -I. tests/test_hifi_resampler.cpp -o /tmp/voidcore-hifi
+          /tmp/voidcore-hifi
+
       - name: Install Linux JUCE dependencies
         run: |
           sudo apt-get update
