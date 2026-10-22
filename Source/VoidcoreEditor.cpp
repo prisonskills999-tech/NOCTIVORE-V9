@@ -378,10 +378,11 @@ void VoidcoreEditor::buildCore(){
  knob("texture","TEXTURE",1120,473,71,Core);
  // 16-click performance strip controls the live gating engine.
  choice("motif",{"Off","Serpent","Ritual","Insect","Portal","Fracture","Hollow"},85,551,142,26,Core);
- knob("tranceRate","RATE",278,558,55,Core);
+ knob("trancePulse","PULSE",278,558,55,Core);
  for(int i=0;i<16;++i){
   const auto id=String::formatted("gateStep%02d",i+1);
   click(String(i+1),324.f+43.f*i,550.f,36.f,28.f,Core,[this,id]{
+   if(value("motif")<.5f)set("motif",1.f);
    set(id.toRawUTF8(),value(id.toRawUTF8())>.5f?0.f:1.f);
   });
   steps[(size_t)i]=dynamic_cast<Click*>(ui.back().control.get());
