@@ -55,6 +55,8 @@ struct Params {
  int maxVoices=12;
  // V10.6: no noise generator, transient strike, or preprogrammed MIDI jumps.
  float colony=.33f, creatures=.39f, psyFold=.22f, symbiosis=.26f;
+ // v10.9 — three contrasting dark-forest organisms, always sample-linked.
+ float predator=.63f, insectCode=.57f, burrow=.46f;
  float performanceMod=0.f;
  // V10.5 user-editable 16 step gate: default all steps active.
  std::array<float,16> gateSteps{{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}};
@@ -188,6 +190,7 @@ public:
   v->stealL=previousL;v->stealR=previousR;v->stealFade=stolen?1.f:0.f;
   v->lastL=v->lastR=0.f;v->fractureGain=1.f;
    v->cellPhase=v->organismPhase=v->organismTonePhase=v->foldLP=0.f;
+   v->predatorPhase=v->insectPhase=v->signalPhase=0.f;
   v->aliveA=v->aliveB=0.f;
   v->metalPos=0;v->metalDamp=0;v->fxPhase=0;v->fxStep=-1;v->filterEnv=0;v->filterAge=0;v->motionEnv=0;
   std::fill(v->metalLine.begin(),v->metalLine.end(),0.f);
@@ -504,6 +507,43 @@ public:
       const float throat=std::sin(v.organismTonePhase+.84f*std::sin(v.modPhase*.57f+bio3));
       sample+=.17f*creatureAmt*window*throat*(.35f+.65f*v.motionEnv);
     }
+    // The ecology has three different foreground characters, not one ambient bed.
+    // 1) PREDATOR: a slow, unstable throat with formants derived from the key.
+    // 2) SPORE CODE: independently drifting micro-chirps that speak in phrases.
+    // 3) BURROW: downward breathing interference made from BOTH sample layers.
+    // All oscillators run continuously. Raised-cosine envelopes eliminate clicks.
+    const float predator=clampf(p.predator,0.f,1.f);
+    const float insect=clampf(p.insectCode,0.f,1.f);
+    const float burrow=clampf(p.burrow,0.f,1.f);
+    if(predator>.0001f){
+      float slow=.17f+.38f*predator+.13f*std::fabs(cellular);
+      v.predatorPhase=wrapPhase(v.predatorPhase+2.f*pi*std::min((float)sr*.22f,
+         carrier*(1.18f+.57f*bio1+.11f*slow))*dt);
+      const float throat=std::sin(v.predatorPhase
+        + (1.8f+3.4f*predator)*std::sin(v.modPhase*.41f+2.3f*bio2));
+      const float breathing=.65f+.35f*std::sin(v.cellPhase*.67f+bio3);
+      const float window=breathing*breathing;
+      sample+=throat*(.15f+.18f*predator)*predator*window*(.3f+.7f*v.motionEnv);
+    }
+    if(insect>.0001f){
+      // Insect calls are scattered in time, never quantized into musical notes.
+      const float speed=.23f+2.05f*insect+.11f*std::sin(v.cellPhase);
+      v.signalPhase+=dt*speed;
+      if(v.signalPhase>=1.f)v.signalPhase-=std::floor(v.signalPhase);
+      const float event=std::sin(pi*v.signalPhase);
+      const float env=event*event*event*event; // continuous at event boundary
+      const float glide=1.6f+.45f*std::sin(v.cellPhase*.53f+v.motionPhase);
+      v.insectPhase=wrapPhase(v.insectPhase+2.f*pi*std::min((float)sr*.24f,carrier*glide)*dt);
+      const float chirp=std::sin(v.insectPhase+1.5f*insect*std::sin(v.modPhase*.73f));
+      sample+=.25f*insect*env*chirp*(.48f+.52f*v.motionEnv);
+    }
+    if(burrow>.0001f){
+      const float phase=2.f*pi*(.09f+.32f*burrow)*globalTime+v.motionPhase*.13f;
+      const float sweep=.5f+.5f*std::sin(phase+1.6f*bio2);
+      const float mix=std::sin((2.3f+3.2f*burrow)*(baseA*.63f+baseB*.37f)+
+         2.f*burrow*std::sin(v.cellPhase*.61f));
+      sample+=burrow*(.10f+.19f*burrow)*mix*(.35f+.65f*sweep);
+    }
     // Dynamic harmonic folding with gentle anti-alias low-pass smoothing.
     const float fold=clampf(p.psyFold,0.f,1.f);
     if(fold>.0001f){
@@ -694,6 +734,7 @@ private:
   float vel=0,position=0,positionB=0,level=0,releaseLevel=1,pitch=0,target=0,lp=0,bp=0;
   float motionPhase=0,layerOffset=0,bodyPhase=0,breath=0,aliveA=0,aliveB=0;
    float cellPhase=0,organismPhase=0,organismTonePhase=0,foldLP=0;
+   float predatorPhase=0,insectPhase=0,signalPhase=0;
   float lp2=0,bp2=0,filterEnv=0,filterAge=0,motionEnv=0,airLP=0;
   float xenoLp1=0,xenoBp1=0,xenoLp2=0,xenoBp2=0;
   float fmPhase=0,modPhase=0,prevMod=0,metalDamp=0,motifPitch=0,fxPhase=0,ghostLP=0;int fxStep=-1;
