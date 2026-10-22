@@ -39,8 +39,12 @@ option(NOCTIVORE_GENERIC_EDITOR "Use JUCE generic parameter editor" OFF)
 juce_generate_juce_header(NOCTIVORE_FX)
 target_sources(NOCTIVORE_FX PRIVATE
  Source/PluginProcessor.h Source/PluginProcessor.cpp
- Source/VoidcoreEditor.h Source/VoidcoreEditor.cpp
  Source/RomplerEngine.h Source/PsySpace.h Source/BankCatalog.h)
+# Keep the fallback build genuinely independent of custom editor compilation.
+if(NOT NOCTIVORE_GENERIC_EDITOR)
+ target_sources(NOCTIVORE_FX PRIVATE
+  Source/VoidcoreEditor.h Source/VoidcoreEditor.cpp)
+endif()
 target_compile_definitions(NOCTIVORE_FX PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0
  PRIVATE NOCTIVORE_GENERIC_EDITOR=$<BOOL:${NOCTIVORE_GENERIC_EDITOR}>)
 if(MSVC)
