@@ -529,7 +529,7 @@ public:
       const float aOffset=(float)s.rate*(.008f+.095f*grainAmount)*
                           (.5f+.5f*std::sin(v.motionPhase));
       const float bOffset=(float)sb.rate*(.008f+.095f*grainAmount)*
-                          (.5f+.5f*std::sin(v.motionPhase*1.0f+.9f));
+                          (.5f+.5f*std::sin(v.motionPhase+.9f));
       const float shifted=mixA*readAt(s,v.position-aOffset)+
                           mixB*readAt(sb,v.positionB-bOffset);
       sample=sample*(1.f-.78f*grainAmount)+shifted*(.78f*grainAmount);
