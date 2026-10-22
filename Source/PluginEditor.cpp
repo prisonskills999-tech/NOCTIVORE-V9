@@ -511,7 +511,9 @@ void NoctivoreEditor::applyScene(int which){
  const auto& s=data[(size_t)which];
  setParameter("bank",(float)s.a);setParameter("bankB",(float)s.b);
  setParameter("textureMode",(float)s.algorithm);
- setParameter("fmMix",s.fm*.4f);setParameter("metalMix",s.metal*.06f);
+ // Contrast between hollow vocal/creature, coded insect and dark FM scenes.
+ setParameter("fmMix",s.fm*(which%3==0?1.75f:1.10f));
+ setParameter("metalMix",s.metal*.045f);
  setParameter("fmIndex",s.index);setParameter("morph",s.morph);
  setParameter("macroAtmosphere",s.atm);setParameter("macroAggression",s.fury);
  setParameter("filter2Mode",2.f);setParameter("filterRoute",(float)(which%3));
@@ -532,13 +534,14 @@ void NoctivoreEditor::applyScene(int which){
  setParameter("psySpiral",.20f+.042f*(float)(which%6));
  setParameter("clarity",.93f);setParameter("hiFiAir",.33f);
  setParameter("biomeDepth",.54f+.05f*(float)(which%7));
- setParameter("biomeRate",.012f+.004f*(float)(which%7));
+ setParameter("biomeRate",.018f+.012f*(float)(which%7));
  setParameter("biomeChaos",.28f+.11f*(float)(which%6));
  setParameter("lowRegisterLife",.58f+.05f*(float)(which%7));
  setParameter("coupledMotion",.38f+.08f*(float)(which%6));
+ setParameter("morphMotion",.23f+.045f*(float)(which%6));
  setParameter("colony",.25f+.12f*(float)(which%6));
  setParameter("creatures",.25f+.105f*(float)(which%6));
- setParameter("psyFold",.08f+.08f*(float)(which%5));
+ setParameter("psyFold",.22f+.12f*(float)(which%5));
  setParameter("symbiosis",.17f+.12f*(float)(which%6));
  // Distinct scenes: spores, predator, burrow and spectral warps are not uniform.
  static constexpr float tribes[12][3]={
@@ -573,7 +576,9 @@ void NoctivoreEditor::showPage(Page next){
  for(auto& a:actions)a.setVisible(!art);
  scenes.setVisible(true);sceneLabel.setVisible(!art);
  for(auto& c:controls)if(c->getName().startsWith("PERMANENT_"))c->setVisible(!art);
- keyboard.setAlpha(art?.43f:1.f);
+ // Atlas uses the painted keys as the visible surface; MIDI mouse handling
+ // remains active but the generic piano overlay no longer ghosts through.
+ keyboard.setAlpha(art?.015f:1.f);
  if(getWidth()>0 && getHeight()>0)resized();
  repaint();
 }
