@@ -85,13 +85,15 @@ public:
   float diffusion=std::clamp(c.delayDiffusion,0.f,1.f)*.30f;
   float spread=std::clamp(c.delaySpread,0.f,1.f);
   float fb=std::clamp(c.delayFeedback,0.f,.92f);
-  float writeL=std::tanh((inL+fb*(darkL*(1-spread)+darkR*spread)+diffusion*diffL[0])*.88f);
-  float writeR=std::tanh((inR+fb*(darkR*(1-spread)+darkL*spread)+diffusion*diffR[0])*.88f);
+  float writeL=(inL+fb*(darkL*(1-spread)+darkR*spread)+diffusion*diffL[0])*.83f;
+  float writeR=(inR+fb*(darkR*(1-spread)+darkL*spread)+diffusion*diffR[0])*.83f;
   diffL[0]=darkL;diffR[0]=darkR;
-  delayL[delayPos]=writeL;delayR[delayPos]=writeR;
+  // Continuous overload protection without saturating every normal sample.
+   delayL[delayPos]=writeL/std::sqrt(1.f+.13f*writeL*writeL);
+   delayR[delayPos]=writeR/std::sqrt(1.f+.13f*writeR*writeR);
   if(++delayPos>=delayL.size())delayPos=0;
-  float wetDL=std::tanh((feedbackL*.86f+feedbackR*.14f)*1.25f);
-  float wetDR=std::tanh((feedbackR*.86f+feedbackL*.14f)*1.25f);
+  float wetDL=(feedbackL*.86f+feedbackR*.14f)*.95f;
+  float wetDR=(feedbackR*.86f+feedbackL*.14f)*.95f;
 
   // Up to 120ms pre-delay plus short independent early reflections.
   size_t preCount=preL.size();
@@ -136,14 +138,15 @@ public:
    // Finite, bounded feedback; shimmer adds only subtle bright overtone energy.
    float harmonic=std::clamp(c.shimmer,0.f,1.f)*.075f*(t[k]-t[(k+3)%8]);
    auto& line=lines[k];
-   line.data[line.pos]=std::tanh(mixed[k]*(.353553391f*tailGain)+injection+harmonic);
+   const float feedback=mixed[k]*(.353553391f*tailGain)+injection+harmonic;
+    line.data[line.pos]=feedback/std::sqrt(1.f+.13f*feedback*feedback);
    if(++line.pos>=line.data.size())line.pos=0;
   }
   // Orthogonal-ish output taps: stereo tails are different, not duplicated mono.
   float rvL=(t[0]+t[2]-t[3]+t[5]-t[7])*.28f;
   float rvR=(t[1]-t[2]+t[4]-t[5]+t[6])*.28f;
-  rvL=std::tanh(rvL*1.7f+earlyL*.17f);
-  rvR=std::tanh(rvR*1.7f+earlyR*.17f);
+  rvL=rvL*.82f+earlyL*.12f;
+  rvR=rvR*.82f+earlyR*.12f;
   // Slowly sweeping four-stage allpass cloud: phase animation without
   // boosting narrow metallic resonances. Stages use opposite stereo sweeps.
   const float spiral=std::clamp(c.psySpiral,0.f,1.f);
