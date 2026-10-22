@@ -319,7 +319,9 @@ public:
      v->aliveA=v->position;v->aliveB=v->positionB;}
    v->grainPhase=0.f;v->grainSecondHalf=false;
    v->debris={};v->debrisCountdown=.07f;
-   v->bodyPosA=v->position;v->bodyPosB=v->positionB;v->bodyLP=0.f;
+   v->bodyPosA=std::max(v->position,(float)v->sample->data.size()*.20f);
+   v->bodyPosB=std::max(v->positionB,(float)v->sampleB->data.size()*.20f);
+   v->bodyLP=0.f;
    v->impactPosA=v->position;v->impactPosB=v->positionB;
    v->impactProgress=1.f;v->impactCountdown=.08f;
    v->impactLength=.2f;v->impactSpeed=.5f;v->impactPitch=0.f;
@@ -570,8 +572,8 @@ public:
       if(v.debrisCountdown<=0.f){
        v.debrisCountdown=(.43f-.28f*debrisAmount)*(.55f+1.4f*random01());
        for(auto& g:v.debris)if(g.progress>=1.f){
-        g.posA=(float)s.data.size()*(.13f+.62f*random01());
-        g.posB=(float)sb.data.size()*(.13f+.62f*random01());
+        g.posA=(float)s.data.size()*(.20f+.58f*random01());
+        g.posB=(float)sb.data.size()*(.20f+.58f*random01());
         g.progress=0.f;
         g.increment=dt/(.11f+.22f*random01()+.14f*debrisAmount);
         const float randomPitch=(random01()-.5f)*9.f*clampf(p.texture,0.f,1.f);
@@ -600,8 +602,8 @@ public:
                             (.50f+1.40f*random01());
        v.impactProgress=0.f;
        v.impactLength=.095f+.19f*random01();
-       v.impactPosA=(float)s.data.size()*(.08f+.70f*random01());
-       v.impactPosB=(float)sb.data.size()*(.08f+.70f*random01());
+       v.impactPosA=(float)s.data.size()*(.20f+.58f*random01());
+       v.impactPosB=(float)sb.data.size()*(.20f+.58f*random01());
        v.impactSpeed=std::exp2((-5.f-15.f*drop+4.f*(random01()-.5f))/12.f);
        v.impactPitch=2.f*pi*(39.f+2.1f*(float)(v.note%19));
        v.impactPhase=0.f;
