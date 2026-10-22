@@ -24,11 +24,11 @@ struct Params {
  float attack=.28f,decay=3.2f,sustain=.93f,release=4.4f;
  float cutoff=.95f, resonance=.14f,glide=.07f,space=.34f,volume=.76f,pan=0.f;
  float lfoRate=.009f,lfoDepth=0.f,bendRange=2.f,bend=0.f;
- float sampleStart=0.f,reverse=0.f,drive=.16f,stereo=1.13f;
- float organic=.73f, layers=.59f, movement=.52f, sub=.19f;
+ float sampleStart=0.f,reverse=0.f,drive=.04f,stereo=1.13f;
+ float organic=.55f, layers=.32f, movement=.42f, sub=.10f;
  // V5 dual-bank soundscape engine (new parameters appended for V4 state compatibility).
  int bankB=7, textureMode=0;
- float morph=.20f, morphMotion=.14f, morphRate=.065f, texture=.42f;
+ float morph=0.f, morphMotion=.06f, morphRate=.065f, texture=.42f;
  float grain=.30f, scatter=.31f, pulseRate=2.f, spectralTilt=0.f;
  // V6 Earthforge: four independent, host-syncable modulators, including
  // 0.001 Hz cycles (one cycle per 16.7 minutes) and ultra-fine depths.
@@ -39,12 +39,12 @@ struct Params {
  float motionEnvAttack=.5f,motionEnvRelease=4.f,motionEnvDepth=.6f;
  float fmMix=.014f,fmRatio=1.0f,fmIndex=.85f,fmFeedback=.025f,fmInharmonic=.035f;
  float metalMix=0.f,metalTune=.30f,metalDecay=.45f,metalTone=.30f;
- float macroAtmosphere=.64f,macroAggression=.13f;
+ float macroAtmosphere=.48f,macroAggression=.02f;
  // V7: musical hypnotic motion and open, less saturated high-fidelity output.
- float trancePulse=.17f,tranceRate=2.f,psySpiral=.24f,psySpiralRate=.16f;
- float hiFiAir=.32f,clarity=.91f;
+ float trancePulse=.08f,tranceRate=2.f,psySpiral=.24f,psySpiralRate=.16f;
+ float hiFiAir=.24f,clarity=1.f;
  // V9: tempo-locked non-melodic gates, accents and controlled space.
- int motif=1, motifDivision=1; // Off or six non-pitched rhythmic gates
+ int motif=0, motifDivision=1; // Off or six non-pitched rhythmic gates
  float motifPitch=.36f, motifGate=.42f, motifAccent=.65f, motifGlide=.18f,motifFX=0.f;
  float focus=.68f, mudCut=.52f, wetLowCut=.64f;
  float biomeDepth=.72f,biomeRate=.034f,biomeChaos=.60f;
@@ -54,9 +54,9 @@ struct Params {
  float lowRegisterLife=.72f, coupledMotion=.53f;
  int maxVoices=12;
  // V10.6: no noise generator, transient strike, or preprogrammed MIDI jumps.
- float colony=.33f, creatures=.39f, psyFold=.22f, symbiosis=.26f;
+ float colony=.18f, creatures=.12f, psyFold=.0f, symbiosis=.10f;
  // v10.9 — three contrasting dark-forest organisms, always sample-linked.
- float predator=.63f, insectCode=.57f, burrow=.46f;
+ float predator=.08f, insectCode=.06f, burrow=.06f;
  float performanceMod=0.f;
  // V10.5 user-editable 16 step gate: default all steps active.
  std::array<float,16> gateSteps{{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}};
@@ -437,9 +437,14 @@ public:
      const float cellular=std::sin(v.cellPhase+2.3f*colony*std::sin(v.cellPhase*.41f+bio3))
         *(.63f+.37f*bio1);
      const float osc=std::sin(2.f*pi*p.morphRate*globalTime+v.motionPhase*.37f);
-    const float requestedMorph=clampf(p.morph + .5f*p.morphMotion*(osc+.24f*std::sin(2.f*pi*p.morphRate*.39f*globalTime))
-                    +.35f*destinations[6]+.13f*linked+.12f*colony*cellular
-                    +.20f*clampf(p.biomeDepth,0.f,1.f)*std::sin(2.f*pi*p.biomeRate*globalTime+v.motionPhase*.13f),0.f,1.f);
+    const float initialMorph=clampf(p.morph,0.f,1.f);
+    // Bank selection should expose the actual bank, without permanently
+    // contaminating source A with the bank B modulation oscillators.
+    const float morphWindow=std::sin(pi*initialMorph);
+    const float requestedMorph=clampf(initialMorph+morphWindow*(
+      .38f*p.morphMotion*(osc+.15f*std::sin(2.f*pi*p.morphRate*.39f*globalTime))
+      +.29f*destinations[6]+.075f*linked+.04f*colony*cellular
+      +.085f*p.biomeDepth*std::sin(2.f*pi*p.biomeRate*globalTime+v.motionPhase*.13f)),0.f,1.f);
     v.smoothMorph+=(requestedMorph-v.smoothMorph)*controlSlew;
     const float morph=v.smoothMorph;
     const float mixA=std::cos(morph*pi*.5f),mixB=std::sin(morph*pi*.5f);
@@ -515,20 +520,20 @@ public:
     const float atmosphere=clampf(p.macroAtmosphere,0.f,1.f);
     // Two-operator inharmonic FM: no samples or wavetables required.
     const float carrier=std::min(7200.f,fundamentalHz(v.pitch+gesture+(bend+p.bend)*p.bendRange+clampf(destinations[2],-1.f,1.f)*2.f));
-    const float fmFreq=std::min((float)sr*.17f,carrier*(p.fmRatio+.19f*p.fmInharmonic));
+    const float fmFreq=std::min((float)sr*.11f,carrier*(p.fmRatio+.19f*p.fmInharmonic));
     v.modPhase=wrapPhase(v.modPhase+2.f*pi*fmFreq*dt);
     const float mod=std::sin(v.modPhase+clampf(p.fmFeedback,0.f,.95f)*v.prevMod*2.5f);
     v.prevMod=mod;
     v.fmPhase=wrapPhase(v.fmPhase+2.f*pi*carrier*dt);
-    const float fmAmount=clampf(p.fmIndex+.6f*destinations[5]+aggression*1.5f
-       +.85f*wr*std::fabs(bio2)+.85f*linked+.95f*colony*cellular,0.f,6.5f);
+    const float fmAmount=clampf(p.fmIndex+.32f*destinations[5]+aggression*.8f
+       +.28f*wr*std::fabs(bio2)+.27f*linked+.19f*colony*cellular,0.f,3.0f);
     const float fmA=std::sin(v.fmPhase+fmAmount*mod);
-    const float fmB=std::sin(v.fmPhase*1.019f+(fmAmount*.7f)*std::sin(v.modPhase*(1.17f+p.fmInharmonic*.46f)));
+    const float fmB=std::sin(v.fmPhase+(fmAmount*.46f)*std::sin(v.modPhase+bio2*.36f));
     const float fmSignal=(.68f*fmA+.32f*fmB)*(.12f+.88f*v.motionEnv);
-    const float requestedFmMix=clampf(p.fmMix+aggression*.07f,0.f,1.f);
+    const float requestedFmMix=clampf(p.fmMix+aggression*.025f,0.f,.80f);
     v.smoothFmMix+=(requestedFmMix-v.smoothFmMix)*controlSlew;
     const float fmMix=v.smoothFmMix;
-    sample=sample*(1.f-fmMix*.48f)+fmSignal*fmMix*.75f;
+    sample=sample*(1.f-fmMix*.62f)+fmSignal*fmMix*.53f;
      // Tuned 3rd/5th/7th partials restore low-register articulation; no noise.
      if(lowLife>.0001f){
        const float creature=
@@ -536,7 +541,7 @@ public:
         +.29f*std::sin(5.f*v.fmPhase+.45f*std::sin(v.modPhase*.74f)+bio2*.4f)
         +.16f*std::sin(7.f*v.fmPhase+.22f*bio3);
        const float breathe=.65f+.35f*(.5f+.5f*bio2);
-       sample+=creature*lowLife*(.20f+.065f*coupling)*breathe
+       sample+=creature*lowLife*(.075f+.03f*coupling)*breathe
                    *(.40f+.60f*v.motionEnv);
      }
     // Irregular creature calls stay tied to the held fundamental (not MIDI arps).
@@ -552,7 +557,7 @@ public:
       const float freq=std::min((float)sr*.18f,carrier*ratio);
       v.organismTonePhase=wrapPhase(v.organismTonePhase+2.f*pi*freq*dt);
       const float throat=std::sin(v.organismTonePhase+.84f*std::sin(v.modPhase*.57f+bio3));
-      sample+=.17f*creatureAmt*window*throat*(.35f+.65f*v.motionEnv);
+      sample+=.10f*creatureAmt*window*throat*(.35f+.65f*v.motionEnv);
     }
     // The ecology has three different foreground characters, not one ambient bed.
     // 1) PREDATOR: a slow, unstable throat with formants derived from the key.
@@ -570,7 +575,7 @@ public:
         + (1.8f+3.4f*predator)*std::sin(v.modPhase*.41f+2.3f*bio2));
       const float breathing=.65f+.35f*std::sin(v.cellPhase*.67f+bio3);
       const float window=breathing*breathing;
-      sample+=throat*(.15f+.18f*predator)*predator*window*(.3f+.7f*v.motionEnv);
+      sample+=throat*(.095f+.08f*predator)*predator*window*(.3f+.7f*v.motionEnv);
     }
     if(insect>.0001f){
       // Insect calls are scattered in time, never quantized into musical notes.
@@ -582,14 +587,14 @@ public:
       const float glide=1.6f+.45f*std::sin(v.cellPhase*.53f+v.motionPhase);
       v.insectPhase=wrapPhase(v.insectPhase+2.f*pi*std::min((float)sr*.24f,carrier*glide)*dt);
       const float chirp=std::sin(v.insectPhase+1.5f*insect*std::sin(v.modPhase*.73f));
-      sample+=.25f*insect*env*chirp*(.48f+.52f*v.motionEnv);
+      sample+=.12f*insect*env*chirp*(.48f+.52f*v.motionEnv);
     }
     if(burrow>.0001f){
       const float phase=2.f*pi*(.09f+.32f*burrow)*globalTime+v.motionPhase*.13f;
       const float sweep=.5f+.5f*std::sin(phase+1.6f*bio2);
       const float mix=std::sin((2.3f+3.2f*burrow)*(baseA*.63f+baseB*.37f)+
          2.f*burrow*std::sin(v.cellPhase*.61f));
-      sample+=burrow*(.10f+.19f*burrow)*mix*(.35f+.65f*sweep);
+      sample+=burrow*(.05f+.12f*burrow)*mix*(.35f+.65f*sweep);
     }
     // Spectral wavefolding bypassed entirely to avoid bitcrushing artifacts.
     // Morphing pseudo-vocal tract with two narrow, stable resonant peaks.
@@ -631,14 +636,19 @@ public:
     float otherCut=clampf(p.cutoff2+.27f*destinations[4]*moveDepth+envAmt*.28f
       -.13f*biome-.09f*linked-.09f*colony*cellular,.008f,1.f);
     auto filt=[&](float input,float cutoff,float resonance,int mode,float& lp,float& bp){
-      float hz=25.f*std::pow(760.f,cutoff);
-      float g=clampf(2.f*std::sin(pi*hz*dt),.001f,.70f);
-      float q=clampf(1.60f-resonance*1.46f,.14f,1.8f);
-      lp+=g*bp;
-      float hp=std::tanh(input*1.4f)*.715f-lp-q*bp;
-      bp+=g*hp;
-      lp=clampf(lp,-4.f,4.f);bp=clampf(bp,-4.f,4.f);
-      switch(mode){case 1:return bp;case 2:return hp;case 3:return hp+lp;default:return lp;}
+      // Topology-preserving SVF; no unconditional distortion in the filter.
+      const float hz=std::min((float)sr*.44f,20.f*std::pow(930.f,cutoff));
+      const float g=std::tan(pi*hz*dt);
+      const float k=2.f-1.72f*clampf(resonance,0.f,1.f);
+      const float a1=1.f/(1.f+g*(g+k));
+      const float a2=g*a1,a3=g*a2;
+      const float v3=input-lp;
+      const float v1=a1*bp+a2*v3;
+      const float v2=lp+a2*bp+a3*v3;
+      bp=clampf(2.f*v1-bp,-8.f,8.f);
+      lp=clampf(2.f*v2-lp,-8.f,8.f);
+      const float hp=input-k*v1-v2;
+      switch(mode){case 1:return v1;case 2:return hp;case 3:return hp+v2;default:return v2;}
     };
     const float clean=sample;
     const bool split=p.filterRoute==2 && p.filter2Mode>0;
@@ -654,10 +664,11 @@ public:
     dry+=p.spectralTilt*(clean-v.lp)*.6f;
     // Clarity macro preserves uncompressed detail while still allowing edge.
     const float cleanFraction=clampf(p.clarity,0.f,1.f);
-    float saturated=std::tanh(dry*(1.16f+drive*2.0f+p.filterDrive*1.2f))*.75f;
-    dry=saturated*(1.f-.62f*cleanFraction)+dry*.73f*(.62f*cleanFraction);
-    const float edge=std::tanh((clean-v.lp)*2.1f)*(.04f+.09f*drive);
-    dry+=edge*(1.f-.70f*clampf(p.clarity,0.f,1.f));
+    const float amount=clampf((drive*.72f+p.filterDrive*.49f)*(1.f-.73f*cleanFraction),0.f,.90f);
+    const float saturation=std::tanh(dry*(1.f+amount*2.3f))/(1.f+.36f*amount);
+    dry=dry*(1.f-amount*.40f)+saturation*(amount*.40f);
+    const float edge=std::tanh((clean-v.lp)*1.2f)*amount*.07f;
+    dry+=edge;
     // NOISE-FREE XENOBIOME: harmonic ghost events follow the rhythmic gate
     // without injecting white/pink noise. The event is ring-modulated from
     // the actual sample, with an exponential window and warm band-limited FM.
@@ -672,7 +683,7 @@ public:
     dry+=(sample-v.airLP)*.10f*clampf(p.hiFiAir,0.f,1.f);
     float layerGain=clampf(p.layers+atmosphere*.18f,0.f,1.f)*(.29f+.32f*organic);
     layerGain*=clampf(1.f+.35f*biome+.18f*linked,.40f,1.5f);
-    float stereoLayer=std::tanh(layer*(1.25f+drive*2.2f))*.76f*layerGain;
+    float stereoLayer=(layer*(1.f-.65f*drive)+std::tanh(layer*(1.f+drive*2.f))*.65f*drive)*.65f*layerGain;
     // Organic fundamental/subharmonic, never overly prominent for percussive banks.
     float fundamental=std::clamp(440.f*std::exp2((v.pitch-69.f)/12.f),20.f,1500.f);
     v.bodyPhase+=dt*fundamental*pi; // sub oscillator at half fundamental
@@ -761,9 +772,14 @@ public:
    // A softly limited master bus retains transient punch and space width.
    // More headroom and less blanket drive than Earthforge v6 master limiter.
    // Soft limiting is retained to make accidental dense chords manageable.
-   float masterBoost=1.05f+.20f*(1.f-clampf(p.clarity,0.f,1.f));
-   left[i]+=std::tanh((mixL+wetL)*amp*masterBoost)*.96f;
-   right[i]+=std::tanh((mixR+wetR)*amp*masterBoost)*.96f;
+   auto transparentLimit=[](float x){
+     const float magnitude=std::fabs(x);
+     if(magnitude<=.90f)return x;
+     const float over=magnitude-.90f;
+     return std::copysign(.90f+.10f*over/(over+.10f),x);
+    };
+    left[i]+=transparentLimit((mixL+wetL)*amp);
+    right[i]+=transparentLimit((mixR+wetR)*amp);
   }
  }
 private:
@@ -780,7 +796,7 @@ private:
   float fmPhase=0,modPhase=0,prevMod=0,metalDamp=0,motifPitch=0,fxPhase=0,ghostLP=0;int fxStep=-1;
   std::array<float,4096> metalLine{};int metalPos=0;
   float grainPhase=0.f,fractureGain=1.f,stealL=0,stealR=0,stealFade=0,lastL=0,lastR=0;
-  float smoothMorph=.2f,smoothFmMix=0.f,smoothFold=0.f;
+  float smoothMorph=0.f,smoothFmMix=0.f,smoothFold=0.f;
   bool grainSecondHalf=false;
   std::array<float,2> anchorA{},anchorB{};uint32_t noiseState=1;
   bool keyDown=false,oneShot=false;uint64_t age=0;
