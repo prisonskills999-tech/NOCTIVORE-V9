@@ -28,7 +28,7 @@ struct Params {
  float organic=.73f, layers=.59f, movement=.52f, sub=.19f;
  // V5 dual-bank soundscape engine (new parameters appended for V4 state compatibility).
  int bankB=7, textureMode=0;
- float morph=.20f, morphMotion=.14f, morphRate=.065f, texture=.42f;
+ float morph=0.f, morphMotion=0.f, morphRate=.065f, texture=.42f;
  float grain=.30f, scatter=.31f, pulseRate=2.f, spectralTilt=0.f;
  // V6 Earthforge: four independent, host-syncable modulators, including
  // 0.001 Hz cycles (one cycle per 16.7 minutes) and ultra-fine depths.
@@ -476,9 +476,11 @@ public:
      const float cellular=std::sin(v.cellPhase+2.3f*colony*std::sin(v.cellPhase+bio3))
         *(.63f+.37f*bio1);
      const float osc=std::sin(2.f*pi*p.morphRate*globalTime+std::sin(v.motionPhase)*.37f);
-    const float requestedMorph=clampf(p.morph + .5f*p.morphMotion*(osc+.24f*std::sin(2.f*pi*p.morphRate*.39f*globalTime))
-                    +.35f*destinations[6]+.13f*linked+.12f*colony*cellular
-                    +.20f*clampf(p.biomeDepth,0.f,1.f)*std::sin(2.f*pi*p.biomeRate*globalTime+std::sin(v.motionPhase)*.13f),0.f,1.f);
+    const float requestedMorph=clampf(p.morph
+      +p.morphMotion*(.5f*(osc+.24f*std::sin(2.f*pi*p.morphRate*.39f*globalTime))
+       +.13f*linked+.12f*colony*cellular
+       +.20f*clampf(p.biomeDepth,0.f,1.f)*std::sin(2.f*pi*p.biomeRate*globalTime+std::sin(v.motionPhase)*.13f))
+      +.35f*destinations[6],0.f,1.f);
     v.smoothMorph+=(requestedMorph-v.smoothMorph)*controlSlew;
     const float morph=v.smoothMorph;
     const float mixA=std::cos(morph*pi*.5f),mixB=std::sin(morph*pi*.5f);
@@ -794,8 +796,9 @@ public:
     float spread=clampf(p.stereo,0,1.5f)*(((v.note%7)-3)/12.f);
     float a=clampf(pan+spread,-1,1);
     v.smoothSolo+=(clampf(p.sourceSolo,0.f,1.f)-v.smoothSolo)*controlSlew;
-    const float pureL=pureSource*gain*std::sqrt(.5f*(1.f-a));
-    const float pureR=pureSource*gain*std::sqrt(.5f*(1.f+a));
+    const float pureGain=v.level*v.vel*.46f*(.70f+.30f*attackShape);
+    const float pureL=pureSource*pureGain*std::sqrt(.5f*(1.f-a));
+    const float pureR=pureSource*pureGain*std::sqrt(.5f*(1.f+a));
     const float coloredL=(dry*(1-layerGain*.4f)+stereoLayer*.44f+sub+air)*gain*std::sqrt(.5f*(1.f-a));
     const float outL=coloredL*(1.f-v.smoothSolo)+pureL*v.smoothSolo;
     const float coloredR=(dry*(1-layerGain*.4f)+stereoLayer*.98f+sub-air*.36f)*gain*std::sqrt(.5f*(1.f+a));
