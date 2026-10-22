@@ -339,6 +339,18 @@ public:
  void render(float* left,float* right,int count){
   if(!left||!right||count<=0)return;
   const float dt=1.f/(float)sr;
+  // Block-constant coefficients avoid millions of pow/exp calls per second
+  // during polyphonic granular playback and keep transient scheduling stable.
+  const float drop=clampf(p.drop,0.f,1.f);
+  const float bodyAmount=clampf(p.body,0.f,1.f);
+  const float bodySpeed=std::exp2((-5.f-19.f*drop)/12.f);
+  const float bodyCoeff=1.f-std::exp(-2.f*pi*(320.f+270.f*bodyAmount)*dt);
+  const float gritAmount=clampf(p.grit,0.f,1.f);
+  const float gritPreCoeff=1.f-std::exp(-2.f*pi*3400.f*dt);
+  const float gritPostCoeff=1.f-std::exp(-2.f*pi*5400.f*dt);
+  const float darkAmount=clampf(p.dark,0.f,1.f);
+  const float darkHz=12500.f*std::exp(-2.15f*darkAmount);
+  const float darkCoeff=1.f-std::exp(-2.f*pi*darkHz*dt);
   float amp=clampf(p.volume,0.f,1.5f);
   // Block-constant coefficients: avoid exp/pow per voice per sample.
   const float accentSlew=1.f-std::exp(-dt/.006f);
@@ -553,18 +565,14 @@ public:
        if(pos<9.f)pos=9.f;
       }
      };
-     const float drop=clampf(p.drop,0.f,1.f);
-     const float bodyAmount=clampf(p.body,0.f,1.f);
      if(bodyAmount>.0001f){
       // Sample-derived, pitched-down correlated body, not an unrelated sine.
-      const float speed=std::exp2((-5.f-19.f*drop)/12.f);
       const float rawBody=mixA*readAt(s,v.bodyPosA)+
                           mixB*readAt(sb,v.bodyPosB);
-      const float bodyCoeff=1.f-std::exp(-2.f*pi*(320.f+270.f*bodyAmount)*dt);
       v.bodyLP+=(rawBody-v.bodyLP)*bodyCoeff;
       sample=sample*(1.f-.13f*bodyAmount)+v.bodyLP*(.90f*bodyAmount);
-      advanceFragment(s,v.bodyPosA,step*speed);
-      advanceFragment(sb,v.bodyPosB,stepB*speed);
+      advanceFragment(s,v.bodyPosA,step*bodySpeed);
+      advanceFragment(sb,v.bodyPosB,stepB*bodySpeed);
      }
      const float debrisAmount=clampf(p.grain,0.f,1.f);
      if(debrisAmount>.001f){
@@ -877,10 +885,7 @@ public:
 
     // GRIT is low-mid parallel analog-style abrasion, rather than an always
     // active bright hardclipper. Pre/post bandwidth controls keep fizz down.
-    const float gritAmount=clampf(p.grit,0.f,1.f);
     if(gritAmount>.001f){
-     const float gritPreCoeff=1.f-std::exp(-2.f*pi*3400.f*dt);
-     const float gritPostCoeff=1.f-std::exp(-2.f*pi*5400.f*dt);
      v.gritPre+=(dry-v.gritPre)*gritPreCoeff;
      const float saturated=std::tanh(v.gritPre*(1.f+7.f*gritAmount));
      v.gritPost+=(saturated-v.gritPost)*gritPostCoeff;
@@ -888,11 +893,8 @@ public:
     }
     // DARK is a real rolling low-pass as well as a filter-cutoff offset;
     // neutral at zero, deeper and heavier toward its maximum.
-    const float darkAmount=clampf(p.dark,0.f,1.f);
     if(darkAmount>.001f){
-     const float hz=12500.f*std::exp(-2.15f*darkAmount);
-     const float a=1.f-std::exp(-2.f*pi*hz*dt);
-     v.darkLP+=(dry-v.darkLP)*a;
+     v.darkLP+=(dry-v.darkLP)*darkCoeff;
      dry=dry*(1.f-.72f*darkAmount)+v.darkLP*(.72f*darkAmount);
     }
     dry+=p.spectralTilt*(clean-v.lp)*.6f;
