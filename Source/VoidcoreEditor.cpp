@@ -840,27 +840,61 @@ void VoidcoreEditor::effects(Graphics& g,Rectangle<float> r,int which){
  neonLine(g,wave,which?blood:acid,1.6f);
 }
 void VoidcoreEditor::drawCore(Graphics& g){
- panel(g,{34,142,350,321},"SOURCE A  /  ORGANISM",acid);
- panel(g,{816,142,350,321},"SOURCE B  /  MATERIAL",blood);
- panel(g,{401,142,398,365},"XENO  /  SOUND SPHERE",acid);
- sourceWave(g,{57,230,305,131},false);
- sourceWave(g,{837,230,306,131},true);
- visualEye(g,600.f,297.f,135.f);
- g.setColour(frost);g.setFont(Font(14.f,Font::bold));
- g.drawText("A",444,448,24,32,Justification::centred);
- g.drawText("B",733,448,24,32,Justification::centred);
- panel(g,{35,510,1131,161},"PERFORMANCE  /  LIVING MACROS",acid);
- scope(g,{42,689,1068,57},0,acid);
- g.setColour(grey.withAlpha(.7f));
- g.drawRoundedRectangle(1114.f,688.f,50.f,59.f,4.f,1.f);
- for(int channel=0;channel<2;++channel){
-  const float level=std::sqrt(clamp01(meterLevels[(size_t)channel]));
-  for(int i=0;i<15;++i){
-   const bool lit=(float)i<level*15.f;
-   g.setColour((i>12?frost:acid).withAlpha(lit?.95f:.10f));
-   g.fillRoundedRectangle(1121.f+channel*18.f,738.f-i*3.3f,12.f,2.8f,1.f);
+ // Exact reference composition: upper-left twin source organisms, dominant
+ // centre orbit, right filter/FX; lower motion/env, macros, output and keyboard.
+ panel(g,{17,81,378,271},"OSC  /  SOURCE",acid);
+ panel(g,{817,81,369,237},"FILTER",acid);
+ panel(g,{17,356,378,198},"MOTION  /  LFO",acid);
+ panel(g,{817,325,369,229},"SPACE  /  FX",acid);
+ panel(g,{17,562,289,168},"ENVELOPE  /  AMP",acid);
+ panel(g,{893,561,293,169},"OUTPUT",acid);
+ panel(g,{314,625,576,105},"LIVING  /  MACROS",acid);
+ // The core has its own ornamental framing rather than an opaque panel:
+ // distant stars remain visible around its living reactor.
+ drawOrbitalFrame(g,{600.f,308.f},172.f);
+ visualEye(g,600.f,305.f,150.f);
+ // Live sampled source previews (no waveform art baked into the controls).
+ sourceWave(g,{31,169,166,91},false);
+ sourceWave(g,{212,169,166,91},true);
+ g.setColour(acid);g.setFont(Font(12.f,Font::bold));
+ g.drawText("A",30,117,20,22,Justification::centred);
+ g.drawText("B",205,117,20,22,Justification::centred);
+ g.setColour(frost.withAlpha(.74f));g.setFont(Font(9.f));
+ g.drawFittedText("SOURCE A",40,260,148,18,Justification::centred,1);
+ g.drawFittedText("SOURCE B",216,260,148,18,Justification::centred,1);
+ g.setColour(frost);g.setFont(Font(10.f,Font::bold));
+ g.drawText("A",24,324,28,20,Justification::centred);
+ g.drawText("B",370,324,21,20,Justification::centred);
+ g.drawText("MORPH",168,322,68,19,Justification::centred);
+ // The actual APVTS sliders occupy the entire A--B morph rail.
+ // The filter graph uses the selected cutoff/resonance parameters.
+ filter(g,{986,176,113,77});
+ lfo(g,{38,428,326,76},0);
+ env(g,{33,599,255,64});
+ effects(g,{836,415,332,78},0);
+ // Animated sound-sphere in the FX space visualizer: decorative, not a
+ // fake clickable control. The four FX knobs beneath are real sliders.
+ soundSphere(g,{1101.f,441.f},31.f,acid,smoothedPeak);
+ // The actual processor scope supplies moving audio points, not a loop GIF.
+ scope(g,{338,577,547,41},0,acid);
+ g.setColour(frost.withAlpha(.77f));g.setFont(Font(10.f,Font::bold));
+ g.drawText("LIVE AUDIO  /  XENO SPECTRUM",407,558,408,16,Justification::centred);
+ // Physical left/right output meter magnitudes from the audio processor.
+ const Rectangle<float> meter{1061.f,642.f,48.f,76.f};
+ g.setColour(Colour::fromRGB(2,11,7));g.fillRoundedRectangle(meter,3.f);
+ g.setColour(frost.withAlpha(.25f));g.drawRoundedRectangle(meter,3.f,1.f);
+ for(int ch=0;ch<2;++ch){
+  const float magnitude=std::sqrt(clamp01(meterLevels[(size_t)ch]));
+  for(int seg=0;seg<18;++seg){
+   const bool active=(float)seg/18.f<=magnitude;
+   g.setColour((seg>=15?frost:acid).withAlpha(active?.90f:.10f));
+   g.fillRoundedRectangle(1066.f+ch*21.f,708.f-seg*3.4f,13.f,2.6f,1.f);
   }
  }
+ g.setColour(frost);g.setFont(Font(9.f,Font::bold));
+ g.drawText("L",1066,718,13,10,Justification::centred);
+ g.drawText("R",1087,718,13,10,Justification::centred);
+ drawKeyboardShell(g);
 }
 void VoidcoreEditor::drawDeep(Graphics& g){
  if(page==Motion){
