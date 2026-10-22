@@ -195,6 +195,9 @@ public:
   v->bodyPhase=0;v->fmPhase=0;v->modPhase=0;v->prevMod=0;
   v->stealL=previousL;v->stealR=previousR;v->stealFade=stolen?1.f:0.f;
   v->lastL=v->lastR=0.f;v->fractureGain=1.f;
+  v->smoothMorph=clampf(p.morph,0.f,1.f);
+  v->smoothFmMix=clampf(p.fmMix,0.f,1.f);
+  v->smoothFold=clampf(p.psyFold,0.f,1.f);
    v->cellPhase=v->organismPhase=v->organismTonePhase=v->foldLP=0.f;
    v->predatorPhase=v->insectPhase=v->signalPhase=0.f;
   v->aliveA=v->aliveB=0.f;
@@ -236,6 +239,7 @@ public:
   const float filterReleaseDecay=std::exp(-dt/std::max(.01f,p.filterEnvRelease));
   const float motionReleaseDecay=std::exp(-dt/std::max(.01f,p.motionEnvRelease));
    const float modSlew=1.f-std::exp(-dt/.012f);
+   const float controlSlew=1.f-std::exp(-dt/.015f);
   for(int i=0;i<count;++i){
    std::array<float,11> destinations{};
    // Per-target accumulation allows true simultaneous four-LFO routing.
@@ -382,9 +386,11 @@ public:
      const float cellular=std::sin(v.cellPhase+2.3f*colony*std::sin(v.cellPhase*.41f+bio3))
         *(.63f+.37f*bio1);
      const float osc=std::sin(2.f*pi*p.morphRate*globalTime+v.motionPhase*.37f);
-    const float morph=clampf(p.morph + .5f*p.morphMotion*(osc+.24f*std::sin(2.f*pi*p.morphRate*.39f*globalTime))
+    const float requestedMorph=clampf(p.morph + .5f*p.morphMotion*(osc+.24f*std::sin(2.f*pi*p.morphRate*.39f*globalTime))
                     +.35f*destinations[6]+.13f*linked+.12f*colony*cellular
                     +.20f*clampf(p.biomeDepth,0.f,1.f)*std::sin(2.f*pi*p.biomeRate*globalTime+v.motionPhase*.13f),0.f,1.f);
+    v.smoothMorph+=(requestedMorph-v.smoothMorph)*controlSlew;
+    const float morph=v.smoothMorph;
     const float mixA=std::cos(morph*pi*.5f),mixB=std::sin(morph*pi*.5f);
     const float baseA=readAt(s,v.position),baseB=readAt(sb,v.positionB);
     float sample=mixA*baseA+mixB*baseB;
@@ -488,7 +494,9 @@ public:
     const float fmA=std::sin(v.fmPhase+fmAmount*mod);
     const float fmB=std::sin(v.fmPhase*1.019f+(fmAmount*.7f)*std::sin(v.modPhase*(1.17f+p.fmInharmonic*.46f)));
     const float fmSignal=(.68f*fmA+.32f*fmB)*(.12f+.88f*v.motionEnv);
-    float fmMix=clampf(p.fmMix+aggression*.07f,0.f,1.f);
+    const float requestedFmMix=clampf(p.fmMix+aggression*.07f,0.f,1.f);
+    v.smoothFmMix+=(requestedFmMix-v.smoothFmMix)*controlSlew;
+    const float fmMix=v.smoothFmMix;
     sample=sample*(1.f-fmMix*.48f)+fmSignal*fmMix*.75f;
      // Tuned 3rd/5th/7th partials restore low-register articulation; no noise.
      if(lowLife>.0001f){
@@ -553,7 +561,9 @@ public:
       sample+=burrow*(.10f+.19f*burrow)*mix*(.35f+.65f*sweep);
     }
     // Dynamic harmonic folding with gentle anti-alias low-pass smoothing.
-    const float fold=clampf(p.psyFold,0.f,1.f);
+    const float foldTarget=clampf(p.psyFold,0.f,1.f);
+    v.smoothFold+=(foldTarget-v.smoothFold)*controlSlew;
+    const float fold=v.smoothFold;
     if(fold>.0001f){
       const float warped=std::tanh(sample*(1.f+1.3f*fold)+.22f*cellular*fold);
       const float coeff=clampf(2.f*pi*std::min((float)sr*.15f,2400.f+carrier*.5f)*dt,.001f,.34f);
@@ -748,6 +758,7 @@ private:
   float fmPhase=0,modPhase=0,prevMod=0,metalDamp=0,motifPitch=0,fxPhase=0,ghostLP=0;int fxStep=-1;
   std::array<float,4096> metalLine{};int metalPos=0;
   float grainPhase=0.f,fractureGain=1.f,stealL=0,stealR=0,stealFade=0,lastL=0,lastR=0;
+  float smoothMorph=.2f,smoothFmMix=0.f,smoothFold=0.f;
   bool grainSecondHalf=false;
   std::array<float,2> anchorA{},anchorB{};uint32_t noiseState=1;
   bool keyDown=false,oneShot=false;uint64_t age=0;
