@@ -817,17 +817,32 @@ void VoidcoreEditor::sourceWave(Graphics& g,Rectangle<float> r,bool second){
  }
 }
 void VoidcoreEditor::scope(Graphics& g,Rectangle<float> r,int mode,Colour c){
- g.setColour(voidBlack.withAlpha(.95f));g.fillRoundedRectangle(r,5.f);
- g.setColour(grey.withAlpha(.25f));g.drawRoundedRectangle(r,5.f,1.f);
+ g.setColour(Colour::fromRGB(1,9,5).withAlpha(.97f));
+ g.fillRoundedRectangle(r,5.f);
+ g.setColour(c.withAlpha(.24f));g.drawRoundedRectangle(r,5.f,1.f);
+ g.setColour(frost.withAlpha(.06f));
+ g.drawHorizontalLine((int)r.getCentreY(),r.getX()+3.f,r.getRight()-3.f);
  const unsigned start=processor.scopeCursor.load(std::memory_order_relaxed);
  Path waveform;
+ // Subtle reactive spectrum pillars are actual recent audio amplitudes,
+ // not a prerecorded animation. They add the Astral Bloom energy skyline.
+ for(int j=0;j<64;++j){
+  const size_t idx=(size_t)((start+2*j)%128u);
+  const float a=std::abs(processor.scope[idx].load(std::memory_order_relaxed));
+  const float b=std::abs(processor.scope[(idx+1)%128u].load(std::memory_order_relaxed));
+  const float amp=clamp01(std::sqrt((a+b)*.5f));
+  const float x=r.getX()+5.f+(r.getWidth()-10.f)*(float)j/64.f;
+  const float height=2.f+(r.getHeight()*.50f)*amp;
+  g.setColour((j%9==0?frost:c).withAlpha(.12f+.48f*amp));
+  g.drawLine(x,r.getCentreY()-height,x,r.getCentreY()+height,1.7f);
+ }
  for(int i=0;i<128;++i){
   const float raw=processor.scope[(size_t)((start+i)%128u)].load(std::memory_order_relaxed);
-  const float x=r.getX()+r.getWidth()*i/127.f;
-  const float y=r.getCentreY()-raw*r.getHeight()*.62f;
-  if(!i)waveform.startNewSubPath(x,y);else waveform.lineTo(x,y);
+  const float x=r.getX()+r.getWidth()*(float)i/127.f;
+  const float y=r.getCentreY()-raw*r.getHeight()*.46f;
+  if(i==0)waveform.startNewSubPath(x,y);else waveform.lineTo(x,y);
  }
- neonLine(g,waveform,c.withAlpha(.75f),1.1f);
+ neonLine(g,waveform,c.withAlpha(.78f),1.15f);
  (void)mode;
 }
 void VoidcoreEditor::env(Graphics& g,Rectangle<float> r){
@@ -949,7 +964,7 @@ void VoidcoreEditor::drawCore(Graphics& g){
  // The actual APVTS sliders occupy the entire A--B morph rail.
  // The filter graph uses the selected cutoff/resonance parameters.
  filter(g,{986,176,113,77});
- lfo(g,{38,428,326,76},0);
+ lfo(g,{38,428,326,60},0);
  env(g,{33,599,255,64});
  effects(g,{836,415,332,78},0);
  // Animated sound-sphere in the FX space visualizer: decorative, not a
