@@ -127,20 +127,24 @@ void VoidcoreEditor::shift(const char* id,int n){
 }
 void VoidcoreEditor::knob(const char* id,const char* label,float x,float y,float d,Page page_,int style){
  auto c=std::make_unique<Dial>(processor,id,label,(style%3==1)?blood:acid);
+ addAndMakeVisible(*c);
  ui.push_back({std::move(c),{x-d*.5f,y-d*.43f,d,d*.95f},(int)page_});
 }
 void VoidcoreEditor::choice(const char* id,StringArray items,float x,float y,float w,float h,Page page_){
  auto c=std::make_unique<Choice>(processor,id,items);
+ addAndMakeVisible(*c);
  ui.push_back({std::move(c),{x,y,w,h},(int)page_});
 }
 void VoidcoreEditor::click(const String& label,float x,float y,float w,float h,Page pg,std::function<void()> fn,int style){
  auto c=std::make_unique<Click>(label,style%3==1?blood:acid);
  c->onClick=std::move(fn);
+ addAndMakeVisible(*c);
  ui.push_back({std::move(c),{x,y,w,h},(int)pg});
 }
 void VoidcoreEditor::allClick(const String& label,float x,float y,float w,float h,std::function<void()> fn,int style){
  auto c=std::make_unique<Click>(label,style%3==1?blood:acid);
  c->onClick=std::move(fn);
+ addAndMakeVisible(*c);
  ui.push_back({std::move(c),{x,y,w,h},-1});
 }
 void VoidcoreEditor::setPage(Page next){
@@ -195,6 +199,7 @@ void VoidcoreEditor::Fader::paint(Graphics& g){
 }
 void VoidcoreEditor::fader(const char* id,float x,float y,float w,float h,Page pg){
  auto c=std::make_unique<Fader>(processor,id);
+ addAndMakeVisible(*c);
  ui.push_back({std::move(c),{x,y,w,h},(int)pg});
 }
 void VoidcoreEditor::buildCore(){
