@@ -229,7 +229,7 @@ public:
   // Block-constant coefficients: avoid exp/pow per voice per sample.
   const float accentSlew=1.f-std::exp(-dt/.006f);
   const float gateSlew=1.f-std::exp(-dt/.005f);
-  const float fractureSlew=1.f-std::exp(-dt/.007f);
+  // Fracture no longer uses a stepped amplitude gate.
   const float pitchSlew=1.f-std::exp(-dt/std::max(.002f,p.glide));
   const float lowCoeff=1.f-std::exp(-2.f*pi*125.f*dt);
   const float midCoeff=1.f-std::exp(-2.f*pi*625.f*dt);
@@ -416,7 +416,7 @@ public:
     // Overlapping, windowed grains with separately randomized capture anchors.
     // Freeze keeps its anchors locked; Cloud/Fracture continually reseed them.
     const int mode=std::clamp(p.textureMode,0,5);
-    if(mode==1||mode==4||mode==5){
+    if(mode==1||mode==5){ // Fracture no longer re-anchors digital grain slices.
      const float duration=.065f+.58f*(1.f-clampf(p.grain+.5f*destinations[8],0.f,1.f));
      v.grainPhase+=dt/duration;
      bool reset=false;
@@ -478,13 +478,13 @@ public:
     const float atmosphere=clampf(p.macroAtmosphere,0.f,1.f);
     // Two-operator inharmonic FM: no samples or wavetables required.
     const float carrier=std::min(7200.f,fundamentalHz(v.pitch+gesture+(bend+p.bend)*p.bendRange+clampf(destinations[2],-1.f,1.f)*2.f));
-    const float fmFreq=std::min((float)sr*.42f,carrier*(p.fmRatio+.19f*p.fmInharmonic));
+    const float fmFreq=std::min((float)sr*.17f,carrier*(p.fmRatio+.19f*p.fmInharmonic));
     v.modPhase=wrapPhase(v.modPhase+2.f*pi*fmFreq*dt);
     const float mod=std::sin(v.modPhase+clampf(p.fmFeedback,0.f,.95f)*v.prevMod*2.5f);
     v.prevMod=mod;
     v.fmPhase=wrapPhase(v.fmPhase+2.f*pi*carrier*dt);
     const float fmAmount=clampf(p.fmIndex+.6f*destinations[5]+aggression*1.5f
-       +.85f*wr*std::fabs(bio2)+.85f*linked+.95f*colony*cellular,0.f,16.f);
+       +.85f*wr*std::fabs(bio2)+.85f*linked+.95f*colony*cellular,0.f,6.5f);
     const float fmA=std::sin(v.fmPhase+fmAmount*mod);
     const float fmB=std::sin(v.fmPhase*1.019f+(fmAmount*.7f)*std::sin(v.modPhase*(1.17f+p.fmInharmonic*.46f)));
     const float fmSignal=(.68f*fmA+.32f*fmB)*(.12f+.88f*v.motionEnv);
@@ -555,10 +555,10 @@ public:
     // Dynamic harmonic folding with gentle anti-alias low-pass smoothing.
     const float fold=clampf(p.psyFold,0.f,1.f);
     if(fold>.0001f){
-      const float warped=std::sin(sample*(1.4f+3.8f*fold)+.65f*cellular*fold);
-      const float coeff=clampf(2.f*pi*std::min((float)sr*.2f,2400.f+carrier*2.7f)*dt,.001f,.70f);
+      const float warped=std::tanh(sample*(1.f+1.3f*fold)+.22f*cellular*fold);
+      const float coeff=clampf(2.f*pi*std::min((float)sr*.15f,2400.f+carrier*.5f)*dt,.001f,.34f);
       v.foldLP+=coeff*(warped-v.foldLP);
-      sample=sample*(1.f-.24f*fold)+v.foldLP*(.24f*fold);
+      sample=sample*(1.f-.14f*fold)+v.foldLP*(.14f*fold);
     }
     // Morphing pseudo-vocal tract with two narrow, stable resonant peaks.
     // Reacts to living biome and cross-layer motion without broadband noise.
@@ -677,10 +677,10 @@ public:
      gain*=1.f-clampf(p.texture,0.f,1.f)*(1.f-gate);
     }
     if(mode==4){
-     float clockPhase=std::fmod(globalTime*tempo/60.f*clampf(p.pulseRate,.25f,16.f),1.f);
-     const float target=clockPhase<.36f?.98f:.12f;
-     v.fractureGain+=(target-v.fractureGain)*fractureSlew;
-     gain*=1.f-clampf(p.texture,0.f,1.f)*.84f*(1.f-v.fractureGain);
+     // Liquid deformation with no square gate or high-rate restart.
+     const float angle=2.f*pi*globalTime*clampf(p.pulseRate,.25f,16.f)*tempo/60.f;
+     const float breathing=.5f+.5f*std::sin(angle+.31f*bio2);
+     gain*=1.f-.23f*clampf(p.texture,0.f,1.f)*(1.f-breathing);
     }
     gain*=clampf(1.f+destinations[0]*.45f,0.f,1.5f);
     float orbit=(mode==2? p.texture*.75f*std::sin(v.motionPhase*1.35f+globalTime*.37f):0.f);
