@@ -1,4 +1,4 @@
-name: Build VOIDCORE v11 Working GUI
+name: Build VOIDCORE v12 Xeno Soundscapes VST3
 
 on:
   push:
@@ -38,14 +38,16 @@ jobs:
         shell: pwsh
         run: python -m pip install -r requirements.txt
 
-      - name: Generate all 200 original sound-bank WAVs
+      - name: Generate 200 distinctive alien soundscape WAVs
         shell: pwsh
         run: |
-          python Source/generate_abyssal_forest.py
+          python Source/generate_xeno_soundscapes.py
           if ($LASTEXITCODE -ne 0) { throw 'Sound-bank generation failed' }
           $n = @(Get-ChildItem -Path Banks -File -Filter '*.wav').Count
           if ($n -ne 200) { throw "Expected 200 WAVs; found $n" }
-          Write-Host "Generated $n banks"
+          python tests/verify_xeno_diversity.py
+          if ($LASTEXITCODE -ne 0) { throw 'Sound-bank diversity verification failed' }
+          Write-Host "Generated and verified $n xeno sounds"
 
       - name: Download JUCE 8.0.15 with retries (avoid Git clone EOF)
         shell: pwsh
@@ -108,7 +110,7 @@ jobs:
       - name: Upload downloadable Windows VST3
         uses: actions/upload-artifact@v4
         with:
-          name: VOIDCORE-V11-${{ matrix.edition }}-WIN64-VST3
+          name: VOIDCORE-V12-XENO-${{ matrix.edition }}-WIN64-VST3
           path: VOIDCORE_V11_${{ matrix.edition }}.zip
           if-no-files-found: error
           retention-days: 30
