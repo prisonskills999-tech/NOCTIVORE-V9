@@ -693,15 +693,24 @@ public:
                   +.035f*organic*std::sin(std::sin(v.motionPhase)*.67f)+.19f*biome+.14f*linked,.008f,1.f);
     float otherCut=clampf(p.cutoff2+.27f*destinations[4]*moveDepth+envAmt*.28f
       -.13f*biome-.09f*linked-.09f*colony*cellular,.008f,1.f);
-    auto filt=[&](float input,float cutoff,float resonance,int mode,float& lp,float& bp){
-      float hz=25.f*std::pow(760.f,cutoff);
-      float g=clampf(2.f*std::sin(pi*hz*dt),.001f,.70f);
-      float q=clampf(1.60f-resonance*1.46f,.14f,1.8f);
-      lp+=g*bp;
-      float hp=input-lp-q*bp;
-      bp+=g*hp;
-      lp=clampf(lp,-4.f,4.f);bp=clampf(bp,-4.f,4.f);
-      switch(mode){case 1:return bp;case 2:return hp;case 3:return hp+lp;default:return lp;}
+    auto filt=[&](float input,float cutoff,float resonance,int mode,float& ic2,float& ic1){
+      // Zero-delay-feedback topology-preserving SVF. The previous explicit
+      // integrator approached instability at 48k with high cutoff/resonance
+      // and added a consistent harsh ringing to unrelated source banks.
+      const float hz=clampf(25.f*std::pow(760.f,cutoff),25.f,(float)sr*.42f);
+      const float g=std::tan(pi*hz*dt);
+      const float k=clampf(1.60f-resonance*1.12f,.48f,1.8f);
+      const float a1=1.f/(1.f+g*(g+k));
+      const float a2=g*a1,a3=g*a2;
+      const float v3=input-ic2;
+      const float band=a1*ic1+a2*v3;
+      const float low=ic2+a2*ic1+a3*v3;
+      ic1=2.f*band-ic1;
+      ic2=2.f*low-ic2;
+      const float high=input-k*band-low;
+      switch(mode){case 1:return band;case 2:return high;
+       case 3:return high+low;default:return low;}
+
     };
     const float clean=sample;
     const bool split=p.filterRoute==2 && p.filter2Mode>0;
