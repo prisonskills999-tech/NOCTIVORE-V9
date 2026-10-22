@@ -26,6 +26,7 @@ private:
  NoctivoreProcessor& processor;
  Page page=Core;
  float clock=0.f,smoothedPeak=0.f;
+ std::array<float,2> meterLevels{{0.f,0.f}};
  int focusLfo=0,focusEnv=0;
  bool playing=false;
  std::array<juce::String,4> pageNames{{"CORE","MOTION","FX","SYSTEM"}};
