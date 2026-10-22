@@ -128,7 +128,7 @@ public:
  void prepare(double sampleRate){
   sr=std::max(8000.,sampleRate);for(auto& v:voices)v={};
   spaceFX.prepare(sr);mixLowL=mixLowR=0;mixMidL=mixMidR=0;
-  lfoPhase=0;for(auto& l:modulators)l={};globalTime=0;motifBeats=0;held.fill(false);sustained.fill(false);sustainDown=false;
+  lfoPhase=0;for(auto& l:modulators)l={};globalTime=0;motifBeats=0;held.fill(false);sustained.fill(false);sustainDown=false;smoothedGate=1.f;smoothedAccent=1.f;
  }
  void setParameters(const Params& values){
   p=values;auto fx=p.fx;fx.psySpiral=p.psySpiral;fx.psySpiralRate=p.psySpiralRate;
@@ -263,16 +263,20 @@ public:
    float swing=clampf(p.motifGlide,0.f,1.f)*.27f;
    stepPhase=clampf(stepPhase+(stepNum%2==1?swing:-swing),0.f,.999f);
    const float gateEnabled=clampf(p.gateSteps[(size_t)stepNum],0.f,1.f);
-   const float accent=p.motif==0?1.f:grooves[(size_t)grooveIndex][(size_t)stepNum]*gateEnabled;
+   const float rawAccent=p.motif==0?1.f:grooves[(size_t)grooveIndex][(size_t)stepNum]*gateEnabled;
+   smoothedAccent+=(rawAccent-smoothedAccent)*(1.f-std::exp(-dt/.006f));
+   const float accent=smoothedAccent;
    float grooveDensity=clampf(p.motifPitch,0.f,1.f);
    const float gateShape=(1.f-std::exp(-stepPhase*38.f)) *
      (1.f-clampf((stepPhase-(.58f-.18f*grooveDensity))/.42f,0.f,1.f));
    const float pulse=clampf(p.motifGate,0.f,1.f);
    const float gateStrength=(.26f+.74f*accent)*(.84f+.16f*grooveDensity);
    const float edgeFade=clampf(stepPhase*32.f,0.f,1.f)*clampf((1.f-stepPhase)*32.f,0.f,1.f);
-   const float phraseGate=p.motif==0?1.f:
+   const float gateTarget=p.motif==0?1.f:
      (1.f-pulse*(.94f-gateShape*gateStrength))
      *(1.f-.99f*pulse*(1.f-gateEnabled)*edgeFade);
+   smoothedGate+=(gateTarget-smoothedGate)*(1.f-std::exp(-dt/.005f));
+   const float phraseGate=smoothedGate;
    float mixL=0,mixR=0;
    for(auto& v:voices){
     if(!v.stage||!v.sample||!v.sample->loaded())continue;
@@ -608,8 +612,9 @@ public:
     }
     if(mode==4){
      float clockPhase=std::fmod(globalTime*tempo/60.f*clampf(p.pulseRate,.25f,16.f),1.f);
-     float gate=clockPhase<.36f?.98f:.12f;
-     gain*=1.f-clampf(p.texture,0.f,1.f)*.84f*(1.f-gate);
+     const float target=clockPhase<.36f?.98f:.12f;
+     v.fractureGain+=(target-v.fractureGain)*(1.f-std::exp(-dt/.007f));
+     gain*=1.f-clampf(p.texture,0.f,1.f)*.84f*(1.f-v.fractureGain);
     }
     gain*=clampf(1.f+destinations[0]*.45f,0.f,1.5f);
     float orbit=(mode==2? p.texture*.75f*std::sin(v.motionPhase*1.35f+globalTime*.37f):0.f);
@@ -672,7 +677,7 @@ private:
   float xenoLp1=0,xenoBp1=0,xenoLp2=0,xenoBp2=0;
   float fmPhase=0,modPhase=0,prevMod=0,metalDamp=0,motifPitch=0,fxPhase=0,ghostLP=0;int fxStep=-1;
   std::array<float,4096> metalLine{};int metalPos=0;
-  float grainPhase=0.f;bool grainSecondHalf=false;
+  float grainPhase=0.f,fractureGain=1.f;bool grainSecondHalf=false;
   std::array<float,2> anchorA{},anchorB{};uint32_t noiseState=1;
   bool keyDown=false,oneShot=false;uint64_t age=0;
  };
@@ -699,6 +704,7 @@ private:
  uint64_t voiceCounter=0;bool sustainDown=false;
  float bend=0,modwheel=0,lfoPhase=0,globalTime=0,motifBeats=0,tempo=145;
  float mixLowL=0,mixLowR=0,mixMidL=0,mixMidR=0;
+ float smoothedGate=1.f,smoothedAccent=1.f;
  PsySpace spaceFX;std::string bankFolder;
 };
 }
