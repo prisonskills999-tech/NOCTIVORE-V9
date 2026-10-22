@@ -227,6 +227,8 @@ public:
     v.position=clampf(fractionA*(float)a->data.size(),9.f,(float)a->data.size()-11.f);
     v.positionB=clampf(fractionB*(float)b->data.size(),9.f,(float)b->data.size()-11.f);
     v.aliveA=v.position;v.aliveB=v.positionB;
+    v.bodyPosA=v.position;v.bodyPosB=v.positionB;
+    v.impactProgress=1.f;v.debris={};
     v.bankFade=1.f;
     v.oneShot=values.bank>=0&&values.bank<50?banks[(size_t)values.bank].oneShot:false;
     v.layerOffset=(float)a->rate*.18f;
@@ -531,6 +533,96 @@ public:
       if(v.bankFade<=0.f)v.oldSample=v.oldSampleB=nullptr;
      }
      const float pureSource=sample; // Before FM, added organisms, filter and FX.
+     // DEBRIS / BODY / IMPACT. Randomness selects fragments from the *current
+     // A/B bank* and runs only while MIDI voices exist. No white-noise blanket,
+     // bit reduction, oscillator phase reset, or allocations in render().
+     auto random01=[&](){
+      v.noiseState=1664525u*v.noiseState+1013904223u;
+      return (float)((v.noiseState>>8)&0xffffffu)*(1.f/16777216.f);
+     };
+     auto advanceFragment=[&](const Sample& source,float& pos,float speed){
+      pos+=speed;
+      const float n=(float)source.data.size();
+      if(droneLoop){
+       const float lo=n*.17f,hi=n*.87f;
+       if(pos>=hi||pos<lo)pos=lo+std::fmod(std::fabs(pos-lo),hi-lo);
+      }else{
+       if(pos>=n-9.f)pos=n*.11f;
+       if(pos<9.f)pos=9.f;
+      }
+     };
+     const float drop=clampf(p.drop,0.f,1.f);
+     const float bodyAmount=clampf(p.body,0.f,1.f);
+     if(bodyAmount>.0001f){
+      // Sample-derived, pitched-down correlated body, not an unrelated sine.
+      const float speed=std::exp2((-5.f-19.f*drop)/12.f);
+      const float rawBody=mixA*readAt(s,v.bodyPosA)+
+                          mixB*readAt(sb,v.bodyPosB);
+      const float bodyCoeff=1.f-std::exp(-2.f*pi*(320.f+270.f*bodyAmount)*dt);
+      v.bodyLP+=(rawBody-v.bodyLP)*bodyCoeff;
+      sample=sample*(1.f-.13f*bodyAmount)+v.bodyLP*(.90f*bodyAmount);
+      advanceFragment(s,v.bodyPosA,step*speed);
+      advanceFragment(sb,v.bodyPosB,stepB*speed);
+     }
+     const float debrisAmount=clampf(p.grain,0.f,1.f);
+     if(debrisAmount>.001f){
+      v.debrisCountdown-=dt;
+      if(v.debrisCountdown<=0.f){
+       v.debrisCountdown=(.43f-.28f*debrisAmount)*(.55f+1.4f*random01());
+       for(auto& g:v.debris)if(g.progress>=1.f){
+        g.posA=(float)s.data.size()*(.13f+.62f*random01());
+        g.posB=(float)sb.data.size()*(.13f+.62f*random01());
+        g.progress=0.f;
+        g.increment=dt/(.11f+.22f*random01()+.14f*debrisAmount);
+        const float randomPitch=(random01()-.5f)*9.f*clampf(p.texture,0.f,1.f);
+        g.rate=std::exp2((-2.f-23.f*drop+randomPitch)/12.f);
+        g.level=.76f+.38f*random01();
+        break;
+       }
+      }
+      float debrisSound=0.f;
+      for(auto& g:v.debris)if(g.progress<1.f){
+       const float t=g.progress;
+       const float envelope=4.f*t*(1.f-t);
+       debrisSound+=envelope*envelope*g.level*
+          (mixA*readAt(s,g.posA)+mixB*readAt(sb,g.posB));
+       advanceFragment(s,g.posA,step*g.rate);
+       advanceFragment(sb,g.posB,stepB*g.rate);
+       g.progress=std::min(1.f,g.progress+g.increment);
+      }
+      sample=sample*(1.f-.20f*debrisAmount)+debrisSound*.64f*debrisAmount;
+     }
+     const float hitAmount=clampf(p.hits,0.f,1.f);
+     if(hitAmount>.001f){
+      v.impactCountdown-=dt;
+      if(v.impactCountdown<=0.f&&v.impactProgress>=1.f){
+       v.impactCountdown=(.21f+1.18f*(1.f-hitAmount))*
+                            (.50f+1.40f*random01());
+       v.impactProgress=0.f;
+       v.impactLength=.095f+.19f*random01();
+       v.impactPosA=(float)s.data.size()*(.08f+.70f*random01());
+       v.impactPosB=(float)sb.data.size()*(.08f+.70f*random01());
+       v.impactSpeed=std::exp2((-5.f-15.f*drop+4.f*(random01()-.5f))/12.f);
+       v.impactPitch=2.f*pi*(39.f+2.1f*(float)(v.note%19));
+       v.impactPhase=0.f;
+      }
+      if(v.impactProgress<1.f){
+       const float t=v.impactProgress;
+       const float onset=clampf(t/.06f,0.f,1.f);
+       const float envelope=onset*(1.f-t)*(1.f-t);
+       const float fragment=mixA*readAt(s,v.impactPosA)+
+                            mixB*readAt(sb,v.impactPosB);
+       // One low-end drum-body burst *per event*, never a constant oscillator.
+       const float thump=std::sin(v.impactPhase)*.16f;
+       sample+=hitAmount*envelope*(1.5f*fragment+thump);
+       advanceFragment(s,v.impactPosA,step*v.impactSpeed);
+       advanceFragment(sb,v.impactPosB,stepB*v.impactSpeed);
+       v.impactPhase+=v.impactPitch*dt*(1.f-.34f*t);
+       if(v.impactPhase>2.f*pi)v.impactPhase-=2.f*pi;
+       v.impactProgress=std::min(1.f,t+dt/v.impactLength);
+      }
+     }
+
      // Unlike the old inert grain parameter, GRAIN now crossfades in a
      // continuously moving delayed sample head. No buffer discontinuities.
      const float grainAmount=clampf(p.grain,0.f,1.f);
@@ -735,7 +827,8 @@ public:
     float baseCut=clampf(p.cutoff + .27f*destinations[3]*moveDepth +envAmt*.35f + (accent-.5f)*.11f*p.motifAccent*(p.motif>0?1.f:0.f)
                   +p.keytrack*(v.pitch-60.f)/120.f
                   +.035f*organic*std::sin(std::sin(v.motionPhase)*.67f)+.19f*biome+.14f*linked
-                  -.48f*clampf(p.character,0.f,1.f)+.09f*p.character*bio1,.008f,1.f);
+                  -.48f*clampf(p.character,0.f,1.f)+.09f*p.character*bio1
+                  -.39f*clampf(p.dark,0.f,1.f),.008f,1.f);
     float otherCut=clampf(p.cutoff2+.27f*destinations[4]*moveDepth+envAmt*.28f
       -.13f*biome-.09f*linked-.09f*colony*cellular,.008f,1.f);
     auto filt=[&](float input,float cutoff,float resonance,int mode,float& ic2,float& ic1){
@@ -778,6 +871,27 @@ public:
       const float wetDrive=std::tanh(dry*(1.f+5.f*pushed))/
                           std::max(.1f,std::tanh(1.f+5.f*pushed));
       dry=dry*(1.f-.82f*pushed)+wetDrive*(.82f*pushed);
+    }
+
+    // GRIT is low-mid parallel analog-style abrasion, rather than an always
+    // active bright hardclipper. Pre/post bandwidth controls keep fizz down.
+    const float gritAmount=clampf(p.grit,0.f,1.f);
+    if(gritAmount>.001f){
+     const float gritPreCoeff=1.f-std::exp(-2.f*pi*3400.f*dt);
+     const float gritPostCoeff=1.f-std::exp(-2.f*pi*5400.f*dt);
+     v.gritPre+=(dry-v.gritPre)*gritPreCoeff;
+     const float saturated=std::tanh(v.gritPre*(1.f+7.f*gritAmount));
+     v.gritPost+=(saturated-v.gritPost)*gritPostCoeff;
+     dry=dry*(1.f-.68f*gritAmount)+v.gritPost*(.84f*gritAmount);
+    }
+    // DARK is a real rolling low-pass as well as a filter-cutoff offset;
+    // neutral at zero, deeper and heavier toward its maximum.
+    const float darkAmount=clampf(p.dark,0.f,1.f);
+    if(darkAmount>.001f){
+     const float hz=12500.f*std::exp(-2.15f*darkAmount);
+     const float a=1.f-std::exp(-2.f*pi*hz*dt);
+     v.darkLP+=(dry-v.darkLP)*a;
+     dry=dry*(1.f-.72f*darkAmount)+v.darkLP*(.72f*darkAmount);
     }
     dry+=p.spectralTilt*(clean-v.lp)*.6f;
     // Clarity macro preserves uncompressed detail while still allowing edge.
