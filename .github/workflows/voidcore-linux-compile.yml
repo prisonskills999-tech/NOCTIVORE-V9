@@ -1,0 +1,33 @@
+name: VOIDCORE GUI C++ compile test
+
+on:
+  push:
+    branches: [v11-voidcore-live-gui]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gui-compile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Linux JUCE dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libasound2-dev libjack-jackd2-dev libfreetype6-dev \
+            libx11-dev libxext-dev libxinerama-dev libxrandr-dev libxcursor-dev \
+            libgl1-mesa-dev libgtk-3-dev libcurl4-openssl-dev
+      - name: Download JUCE 8.0.15 archive
+        run: |
+          curl --fail --retry 5 --retry-all-errors --location \
+            https://codeload.github.com/juce-framework/JUCE/zip/refs/tags/8.0.15 -o /tmp/juce.zip
+          unzip -q /tmp/juce.zip -d /tmp/
+      - name: Configure and compile actual FULL_GUI editor
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DJUCE_DIR=/tmp/JUCE-8.0.15 -DNOCTIVORE_GENERIC_EDITOR=OFF
+          cmake --build build --target NOCTIVORE_FX --parallel 2
