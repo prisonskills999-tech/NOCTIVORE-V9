@@ -74,23 +74,59 @@ struct Sample {
   return data[i]+(data[i+1]-data[i])*frac;
  }
  // Anti-alias reconstruction for samples played above their recorded root.
+ // 17-tap bandlimited source reconstruction, with phase and cutoff LUTs.
+ // Precomputation occurs once in prepare(), never while rendering voices.
+ using SincTable=std::array<std::array<std::array<float,17>,65>,17>;
+ static const SincTable& sincTable(){
+  static const SincTable table=[](){
+   SincTable built{};
+   for(int bin=0;bin<17;++bin){
+    const float cutoff=.020f+.330f*(float)bin/16.f;
+    for(int phase=0;phase<=64;++phase){
+     const float frac=(float)phase/64.f;
+     float sum=0.f;
+     for(int k=0;k<17;++k){
+      const float distance=frac-(float)(k-8);
+      const float theta=2.f*pi*cutoff*distance;
+      const float sinc=std::fabs(theta)<1e-6f?1.f:std::sin(theta)/theta;
+      const float window=.5f+.5f*std::cos(pi*distance/9.f);
+      const float weight=2.f*cutoff*sinc*window;
+      built[(size_t)bin][(size_t)phase][(size_t)k]=weight;
+      sum+=weight;
+     }
+     if(std::fabs(sum)>1e-6f)
+      for(float& w:built[(size_t)bin][(size_t)phase])w/=sum;
+    }
+   }
+   return built;
+  }();
+  return table;
+ }
+ static void prepareSinc(){(void)sincTable();}
  float bandLimited(float pos,float increment)const {
   const float ratio=std::fabs(increment);
   if(ratio<=1.38f)return cubic(pos);
   if(!loaded()||pos<9.f||pos>(float)(data.size()-10))return cubic(pos);
-  constexpr int taps=8;
   const int origin=(int)std::floor(pos);
-  const float cutoff=std::min(.48f,.47f/ratio);
-  float sum=0.f,norm=0.f;
-  for(int tap=-taps;tap<=taps;++tap){
-   const float distance=pos-(float)(origin+tap);
-   const float theta=2.f*pi*cutoff*distance;
-   const float sinc=std::fabs(theta)<1e-4f?1.f:std::sin(theta)/theta;
-   const float window=.5f+.5f*std::cos(pi*distance/(float)(taps+1));
-   const float weight=2.f*cutoff*sinc*window;
-   sum+=data[(size_t)(origin+tap)]*weight;norm+=weight;
+  const float frac=pos-(float)origin;
+  const float phaseFloat=frac*64.f;
+  const int phase=std::clamp((int)phaseFloat,0,63);
+  const float phaseMix=phaseFloat-(float)phase;
+  const float cutoff=std::min(.35f,.47f/ratio);
+  const float binFloat=std::clamp((cutoff-.020f)/.330f*16.f,0.f,16.f);
+  const int bin=std::min(15,(int)binFloat);
+  const float binMix=binFloat-(float)bin;
+  const auto& table=sincTable();
+  float output=0.f;
+  for(int k=0;k<17;++k){
+   const float a=table[(size_t)bin][(size_t)phase][(size_t)k];
+   const float b=table[(size_t)bin][(size_t)phase+1][(size_t)k];
+   const float c=table[(size_t)bin+1][(size_t)phase][(size_t)k];
+   const float d=table[(size_t)bin+1][(size_t)phase+1][(size_t)k];
+   const float low=a+(b-a)*phaseMix,high=c+(d-c)*phaseMix;
+   output+=data[(size_t)(origin+k-8)]*(low+(high-low)*binMix);
   }
-  return sum/std::max(norm,.00001f);
+  return output;
  }
  float cubic(float pos)const {
   if(!loaded()||pos<1||pos>=(float)(data.size()-3))return linear(pos);
@@ -148,6 +184,7 @@ public:
   return result;
  }
  void prepare(double sampleRate){
+  Sample::prepareSinc();
   sr=std::max(8000.,sampleRate);for(auto& v:voices)v={};
   spaceFX.prepare(sr);mixLowL=mixLowR=0;mixMidL=mixMidR=0;
   lfoPhase=0;for(auto& l:modulators)l={};globalTime=0;motifBeats=0;hostBeatSynced=false;held.fill(false);sustained.fill(false);sustainDown=false;smoothedGate=1.f;smoothedAccent=1.f;
