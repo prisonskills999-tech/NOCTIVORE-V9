@@ -1,4 +1,4 @@
-name: Build VOIDCORE FINAL One-Page Red VST3
+name: VOIDCORE FINAL Windows VST3
 
 on:
   # Manual runs prevent repeated private-repository minute consumption on every commit.
@@ -24,8 +24,6 @@ jobs:
         include:
           - edition: FULL_GUI
             generic: 'OFF'
-          - edition: SAFE_GUI
-            generic: 'ON'
     steps:
       - name: Get source
         uses: actions/checkout@v4
@@ -123,7 +121,7 @@ jobs:
       - name: Upload downloadable Windows VST3
         uses: actions/upload-artifact@v4
         with:
-          name: VOIDCORE-FINAL-RED-${{ matrix.edition }}-WIN64-VST3
+          name: VOIDCORE-FINAL-WIN64-VST3
           path: VOIDCORE_V12_XENO_${{ matrix.edition }}.zip
           if-no-files-found: error
           retention-days: 30
