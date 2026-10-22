@@ -18,8 +18,8 @@ assert "v.fmAltPhase+(fmAmount*.7f)*std::sin(v.modPhase)" in engine
 # The audition must actually tap the decoded PCM before any added sources,
 # filter stages, saturation or shared FX and must stay host-automatable.
 assert "const float pureSource=sample;" in engine
-assert "const float pureL=pureSource*gain" in engine
-assert "const float pureR=pureSource*gain" in engine
+assert "const float pureL=pureSource*pureGain" in engine
+assert "const float pureR=pureSource*pureGain" in engine
 assert "v.smoothSolo+=" in engine
 assert "wetL*=1.f-smoothedSoloFx" in engine
 assert 'add("morph","Source Crossfade",0,1,0.f)' in processor
