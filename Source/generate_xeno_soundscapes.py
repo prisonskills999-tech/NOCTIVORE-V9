@@ -57,9 +57,9 @@ def create(bank, note, category=0, model=None):
     airy = np.sin(phase * (3.1 + mutation * .37) + 1.9 * slow)
 
     if family == 0:
-        low = np.sin(.125 * phase + 1.8 * slow)
-        growl = np.sin(.252 * phase + (1.2 + .6 * mutation) * mod)
-        x = .65 * low + .31 * growl + .11 * np.sin(.49 * phase + 2.2 * drift)
+        low = np.sin(.5 * phase + 1.8 * slow)
+        growl = np.sin(.752 * phase + (1.2 + .6 * mutation) * mod)
+        x = .65 * low + .31 * growl + .11 * np.sin(.99 * phase + 2.2 * drift)
         x *= .52 + .48 * _envelope(t, 3.4 + .23 * mutation, 1.1)
     elif family == 1:
         x = np.zeros_like(t)
@@ -98,7 +98,7 @@ def create(bank, note, category=0, model=None):
     elif family == 6:
         beat_a = _envelope(t, .67 + mutation * .083, 5.)
         beat_b = _envelope(t, 1.47 + mutation * .11, 7., 1.6)
-        sub = np.sin(.251 * phase + 1.8 * slow)
+        sub = np.sin(.5 * phase + 1.8 * slow)
         ring = np.sin(1.47 * phase + 2.7 * mod)
         x = (.77 * sub + .23 * ring) * (.04 + .71 * beat_a + .25 * beat_b)
     elif family == 7:
