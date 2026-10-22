@@ -14,7 +14,7 @@ assert "buildCore();setPage(Core);" in ctor and "buildDeeper();" not in ctor
 assert "W=1200.f,H=750.f" in hdr
 assert "setFixedAspectRatio(1.6)" in ctor
 for name in ("SOURCE  /  DUAL SAMPLE","VOID CORE  /  MORPH","FILTER  /  SPECTRAL",
-             "MOTION  /  MODULATION","XENO  /  CHARACTER","GATE  /  16 STEP",
+             "MOTION  /  MODULATION","XENO  /  DEBRIS & IMPACT","GATE  /  16 STEP",
              "SPACE  /  DELAY & REVERB","TONE  /  THREE BAND EQ",
              "WIDTH  /  SPATIAL","OUTPUT  /  PERFORMANCE"):
     assert name in draw, "Missing single-page section: "+name
