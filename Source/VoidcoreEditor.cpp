@@ -37,7 +37,8 @@ VoidcoreEditor::Dial::Dial(NoctivoreProcessor& p,const String& id,const String& 
  link=std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(p.state,id,*this);
 }
 void VoidcoreEditor::Dial::paint(Graphics& g){
- const auto r=getLocalBounds().toFloat(),w=r.getWidth(),h=r.getHeight();
+ const auto r=getLocalBounds().toFloat();
+ const float w=r.getWidth(),h=r.getHeight();
  const float rad=std::max(9.f,std::min(w*.31f,h*.32f));
  const float cx=r.getCentreX(),cy=r.getY()+h*.36f;
  const float lo=pi*1.22f,hi=pi*2.78f;
