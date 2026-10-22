@@ -351,3 +351,278 @@ void VoidcoreEditor::load(){
   if(file.loadFileAsData(data)){safe->processor.setStateInformation(data.getData(),(int)data.getSize());safe->lastScene="PRESET LOADED";}
  });
 }
+
+
+void VoidcoreEditor::panel(Graphics& g,Rectangle<float> r,const String& name,Colour accent){
+ g.setColour(Colour::fromRGB(3,13,10).withAlpha(.96f));
+ g.fillRoundedRectangle(r,9.f);
+ ColourGradient shine(accent.withAlpha(.21f),r.getX(),r.getY(),Colour::fromRGB(0,10,6).withAlpha(0.f),r.getRight(),r.getBottom(),false);
+ g.setGradientFill(shine);
+ g.fillRoundedRectangle(r.removeFromTop(37.f),9.f);
+ g.setColour(accent.withAlpha(.53f));g.drawRoundedRectangle(r.getUnion({r.getX(),r.getY()-37.f,r.getWidth(),37.f}),9.f,1.1f);
+ g.setColour(accent.withAlpha(.95f));
+ g.setFont(Font(14.f,Font::bold));
+ g.drawText(name,r.getX()+17.f,r.getY()-29.f,r.getWidth()-34.f,19.f,Justification::centredLeft);
+}
+void VoidcoreEditor::drawBase(Graphics& g){
+ g.fillAll(voidBlack);
+ ColourGradient bg(Colour::fromRGB(10,34,23),0.f,80.f,Colour::fromRGB(4,7,7),W,H,false);
+ g.setGradientFill(bg);g.fillRect(0,0,(int)W,(int)H);
+ // Uneven bio-mechanical ribbing; procedurally drawn to avoid phantom knobs
+ // and ensure every real control aligns with the hit-test geometry.
+ for(int k=0;k<30;++k){
+  const float t=(float)k/30.f,alpha=.024f+.02f*std::sin(k*1.67f);
+  Path a;a.startNewSubPath(0.f,120.f+24.f*k);
+  a.cubicTo(130.f,142.f+20.f*k,405.f,88.f+25.f*k,W,126.f+22.f*k);
+  g.setColour((k%4==0?blood:acid).withAlpha(alpha));g.strokePath(a,PathStrokeType(k%3==0?2.1f:1.1f));
+ }
+ for(int k=0;k<23;++k){
+  const float x=15.f+52.f*k;
+  Path a;a.startNewSubPath(x,140.f);a.cubicTo(x-35.f,270.f,x+49.f,410.f,x-12.f,725.f);
+  g.setColour((k%3==0?blood:grey).withAlpha(.065f));
+  g.strokePath(a,PathStrokeType(1.15f));
+ }
+ // Title plaque, engraved sci-fi typography; icy rather than whimsical.
+ g.setColour(Colour::fromRGB(2,9,7));g.fillRoundedRectangle(23.f,16.f,375.f,106.f,9.f);
+ g.setColour(acid.withAlpha(.55f));g.drawRoundedRectangle(23.f,16.f,375.f,106.f,9.f,1.2f);
+ g.setColour(frost);
+ g.setFont(Font("Consolas",41.f,Font::bold));
+ g.drawFittedText("V O I D C O R E",41,23,350,50,Justification::centredLeft,1);
+ g.setColour(acid);g.setFont(Font(12.f,Font::bold));
+ g.drawText("S P E C T R A L   O R G A N I S M",43,80,340,18,Justification::centredLeft);
+ g.setColour(grey.withAlpha(.64f));
+ g.drawLine(405.f,60.f,633.f,60.f,1.f);
+ g.setColour(blood.withAlpha(.43f));g.drawLine(405.f,112.f,1167.f,112.f,1.5f);
+ g.setColour(frost);g.setFont(Font(12.f));
+ g.drawFittedText(lastScene,407,28,218,24,Justification::centred,1);
+ // Thin corner claws shift slowly but never cover click areas.
+ for(int k=0;k<12;++k){
+  const float a=(float)k*pi/6.f+clock*.022f;
+  const float radius=12.f+5.f*std::sin(clock*.75f+k);
+  g.setColour((k%2?acid:blood).withAlpha(.25f));
+  const float cx=k%2?1185.f:14.f,cy=150.f+(k/2)*106.f;
+  g.drawLine(cx,cy,cx+radius*std::cos(a),cy+radius*std::sin(a),1.5f);
+ }
+}
+void VoidcoreEditor::visualEye(Graphics& g,float x,float y,float radius){
+ const float pulse=.5f+.5f*std::sin(clock*1.3f);
+ const float audio=std::sqrt(clamp01(smoothedPeak*2.5f));
+ const float outer=radius*(1.f+.03f*pulse+.07f*audio);
+ for(int k=0;k<7;++k){
+  const float r=outer*(.31f+.11f*k);
+  g.setColour((k%3==0?blood:acid).withAlpha(.08f+.11f*pulse));
+  g.drawEllipse(x-r,y-r,r*2.f,r*2.f,k%2?1.f:2.4f);
+ }
+ for(int k=0;k<20;++k){
+  const float theta=(float)k*2.f*pi/20.f+clock*.10f*(k%2?1.f:-1.f);
+  const float r0=outer*.47f,r1=outer*(.8f+.16f*std::sin(k*1.43f+clock*.51f));
+  g.setColour((k%3==0?blood:acid).withAlpha(.25f+.15f*audio));
+  g.drawLine(x+r0*std::cos(theta),y+r0*std::sin(theta),x+r1*std::cos(theta+.23f),y+r1*std::sin(theta+.23f),1.1f);
+ }
+ Path almond;
+ almond.startNewSubPath(x-outer*.78f,y);
+ almond.cubicTo(x-outer*.25f,y-outer*.77f,x+outer*.38f,y-outer*.83f,x+outer*.78f,y);
+ almond.cubicTo(x+outer*.38f,y+outer*.83f,x-outer*.25f,y+outer*.77f,x-outer*.78f,y);
+ almond.closeSubPath();
+ ColourGradient skin(blood.withAlpha(.28f),x,y-outer,Colour::fromRGB(25,6,11),x,y+outer,false);
+ g.setGradientFill(skin);g.fillPath(almond);
+ g.setColour(blood.withAlpha(.91f));g.strokePath(almond,PathStrokeType(2.f));
+ const float iris=outer*(.19f+.035f*pulse+.04f*audio);
+ g.setColour(blood.withAlpha(.48f));g.fillEllipse(x-iris*1.6f,y-iris*1.6f,iris*3.2f,iris*3.2f);
+ g.setColour(Colour::fromRGB(6,12,10));g.fillEllipse(x-iris,y-iris,iris*2.f,iris*2.f);
+ g.setColour(acid.withAlpha(.78f));g.drawEllipse(x-iris,y-iris,iris*2.f,iris*2.f,1.8f);
+ const float pupilW=iris*.28f;
+ g.setColour(blood);g.fillEllipse(x-pupilW,y-iris*1.55f,2*pupilW,iris*3.1f);
+ g.setColour(Colour::fromRGB(255,194,174));g.drawLine(x,y-iris*1.20f,x,y+iris*1.2f,2.f);
+}
+void VoidcoreEditor::sourceWave(Graphics& g,Rectangle<float> r,bool second){
+ g.setColour(Colour::fromRGB(2,13,11));g.fillRoundedRectangle(r,5.f);
+ for(int k=0;k<=8;++k){const float xx=r.getX()+r.getWidth()*k/8.f;
+  g.setColour(acid.withAlpha(.09f));g.drawVerticalLine((int)xx,r.getY(),r.getBottom());}
+ for(int k=0;k<5;++k){const float yy=r.getY()+r.getHeight()*k/4.f;
+  g.setColour(acid.withAlpha(.07f));g.drawHorizontalLine((int)yy,r.getX(),r.getRight());}
+ const auto& amplitudes=previews[second?1:0];
+ const auto c=second?blood:acid;
+ const float mid=r.getCentreY();
+ Path top,bottom;
+ for(int i=0;i<192;++i){
+  const float x=r.getX()+r.getWidth()*i/191.f;
+  const float peak=amplitudes[(size_t)i];
+  const float y=mid-peak*r.getHeight()*.43f;
+  const float z=mid+peak*r.getHeight()*.43f;
+  if(i==0){top.startNewSubPath(x,y);bottom.startNewSubPath(x,z);}
+  else{top.lineTo(x,y);bottom.lineTo(x,z);}
+ }
+ neonLine(g,top,c.withAlpha(.95f),1.2f);neonLine(g,bottom,c.withAlpha(.45f),1.05f);
+ // Cursor visibly sweeps the real source waveform while the engine produces sound.
+ if(smoothedPeak>.0005f){
+  const float xx=r.getX()+r.getWidth()*std::fmod(clock*(.13f+.035f*value("movement")),1.f);
+  g.setColour(frost.withAlpha(.7f));g.drawVerticalLine((int)xx,r.getY(),r.getBottom());
+  g.setColour(c.withAlpha(.4f));g.fillEllipse(xx-4.f,mid-4.f,8.f,8.f);
+ }
+ if(std::all_of(amplitudes.begin(),amplitudes.end(),[](float v){return v<.00001f;})){
+  g.setColour(grey);g.setFont(Font(11.f));g.drawText("NO BANK AUDIO FOUND",r.toNearestInt(),Justification::centred);
+ }
+}
+void VoidcoreEditor::scope(Graphics& g,Rectangle<float> r,int mode,Colour c){
+ g.setColour(voidBlack.withAlpha(.95f));g.fillRoundedRectangle(r,5.f);
+ g.setColour(grey.withAlpha(.25f));g.drawRoundedRectangle(r,5.f,1.f);
+ const unsigned start=processor.scopeCursor.load(std::memory_order_relaxed);
+ Path waveform;
+ for(int i=0;i<128;++i){
+  const float raw=processor.scope[(size_t)((start+i)%128u)].load(std::memory_order_relaxed);
+  const float x=r.getX()+r.getWidth()*i/127.f;
+  const float y=r.getCentreY()-raw*r.getHeight()*.62f;
+  if(!i)waveform.startNewSubPath(x,y);else waveform.lineTo(x,y);
+ }
+ neonLine(g,waveform,c.withAlpha(.75f),1.1f);
+ (void)mode;
+}
+void VoidcoreEditor::env(Graphics& g,Rectangle<float> r){
+ g.setColour(Colour::fromRGB(3,17,14));g.fillRoundedRectangle(r,5.f);
+ for(int i=1;i<5;++i){g.setColour(acid.withAlpha(.11f));g.drawVerticalLine((int)(r.getX()+r.getWidth()*i/5),r.getY(),r.getBottom());}
+ const float a=std::sqrt(clamp01(value("attack")/8.f));
+ const float d=std::sqrt(clamp01(value("decay")/9.f));
+ const float sust=clamp01(value("sustain"));
+ const float rel=std::sqrt(clamp01(value("release")/12.f));
+ const float w=r.getWidth(),height=r.getHeight()*.78f;
+ const float wA=w*(.10f+.16f*a),wD=w*(.12f+.15f*d),wR=w*(.12f+.15f*rel);
+ const float start=r.getX()+7.f,base=r.getBottom()-9.f,top=base-height;
+ Path p;p.startNewSubPath(start,base);
+ p.lineTo(start+wA,top);
+ p.cubicTo(start+wA+wD*.40f,top,start+wA+wD*.64f,base-height*sust,start+wA+wD,base-height*sust);
+ const float hold=start+w*.78f;p.lineTo(hold,base-height*sust);
+ p.cubicTo(hold+wR*.3f,base-height*sust,hold+wR*.6f,base,hold+wR,base);
+ neonLine(g,p,blood,2.f);
+ const float marker=(std::sin(clock*1.3f)*.5f+.5f);
+ g.setColour(frost.withAlpha(.65f));g.fillEllipse(start+marker*w*.70f-3.f,base-height*sust-3.f,6.f,6.f);
+}
+void VoidcoreEditor::lfo(Graphics& g,Rectangle<float> r,int which){
+ g.setColour(Colour::fromRGB(2,15,12));g.fillRoundedRectangle(r,5.f);
+ const String pre=which==0?"":String("lfo")+String(which+1);
+ const auto shape=which==0?"wave":(pre+"Wave").toRawUTF8();
+ const auto hz=which==0?"rate":(pre+"Rate").toRawUTF8();
+ const auto dep=which==0?"depth":(pre+"Depth").toRawUTF8();
+ const int wave=(int)value(shape);
+ const float rate=std::min(8.f,value(hz));
+ const float depth=clamp01(value(dep));
+ for(int i=1;i<5;++i){g.setColour(acid.withAlpha(.08f));g.drawHorizontalLine((int)(r.getY()+r.getHeight()*i/5),r.getX(),r.getRight());}
+ Path p;
+ for(int i=0;i<=256;++i){
+  float t=(float)i/256.f*2.6f;
+  float y=phaseWave(wave,t+clock*rate*.12f);
+  const float x=r.getX()+r.getWidth()*i/256.f;
+  const float py=r.getCentreY()-y*r.getHeight()*.40f*depth;
+  if(!i)p.startNewSubPath(x,py);else p.lineTo(x,py);
+ }
+ neonLine(g,p,acid,1.65f);
+ g.setColour(frost.withAlpha(.7f));g.setFont(Font(10.f));
+ g.drawText("LIVE MODULATION  //  "+String(value(hz),3)+" Hz",r.getX()+8.f,r.getY()+6.f,r.getWidth()-16.f,18.f,Justification::topLeft);
+}
+void VoidcoreEditor::filter(Graphics& g,Rectangle<float> r){
+ g.setColour(Colour::fromRGB(2,14,10));g.fillRoundedRectangle(r,5.f);
+ const float cutoff=clamp01(value("cutoff")),q=clamp01(value("resonance"));
+ Path p;
+ for(int i=0;i<240;++i){
+  const float t=(float)i/239.f;
+  const float normalized=(t-cutoff)*19.f;
+  const float response=1.f/std::sqrt(1.f+std::pow(2.f,normalized));
+  const float peak=(q*.27f)*std::exp(-std::pow((t-cutoff)*30.f,2.f));
+  const float yy=r.getBottom()-14.f-(response*.78f+peak)*r.getHeight()*.72f;
+  const float xx=r.getX()+t*r.getWidth();
+  if(!i)p.startNewSubPath(xx,yy);else p.lineTo(xx,yy);
+ }
+ neonLine(g,p,blood,2.f);
+ const float marker=r.getX()+r.getWidth()*cutoff;
+ g.setColour(frost.withAlpha(.5f));g.drawVerticalLine((int)marker,r.getY(),r.getBottom());
+}
+void VoidcoreEditor::gates(Graphics& g,Rectangle<float> r){
+ g.setColour(Colour::fromRGB(3,13,10));g.fillRoundedRectangle(r,5.f);
+ const float beat=processor.displayPpq.load(std::memory_order_relaxed);
+ const int step=(int)std::floor(beat*4.f)%16;
+ const int active=(step+16)%16;
+ for(int i=0;i<16;++i){
+  const float x=72.f+65.f*i,w=55.f;
+  const float glow=(i==active && playing)?1.f:.19f;
+  g.setColour((i==active?blood:acid).withAlpha(glow*.20f));
+  g.fillRoundedRectangle(x,584.f,w,72.f,5.f);
+  const float height=13.f+25.f*(.5f+.5f*std::sin((float)i*1.3f+clock*2.f));
+  g.setColour((i==active?blood:acid).withAlpha(glow*.5f));
+  g.fillRect(x+5.f,653.f-height,w-10.f,height);
+ }
+}
+void VoidcoreEditor::effects(Graphics& g,Rectangle<float> r,int which){
+ g.setColour(voidBlack.withAlpha(.8f));g.fillRoundedRectangle(r,5.f);
+ const float intensity=which==0?value("delayFeedback"):value("reverbDecay");
+ const float movement=clock*(which==0?.28f:.05f);
+ Path wave;
+ for(int k=0;k<220;++k){
+  const float x=(float)k/219.f;
+  const float decay=std::exp(-x*(2.8f-2.f*intensity));
+  const float v=decay*(.50f*std::sin(2.f*pi*(x*(6.f+which*3.f)+movement))
+      +.24f*std::sin(2.f*pi*(x*17.f+movement*.51f)));
+  const float y=r.getCentreY()-v*r.getHeight()*.63f;
+  const float px=r.getX()+x*r.getWidth();
+  if(k==0)wave.startNewSubPath(px,y);else wave.lineTo(px,y);
+ }
+ neonLine(g,wave,which?blood:acid,1.6f);
+}
+void VoidcoreEditor::drawCore(Graphics& g){
+ panel(g,{34,142,350,321},"SOURCE A  /  ORGANISM",acid);
+ panel(g,{816,142,350,321},"SOURCE B  /  MATERIAL",blood);
+ panel(g,{401,142,398,365},"NEURAL MORPH",acid);
+ sourceWave(g,{57,230,305,131},false);
+ sourceWave(g,{837,230,306,131},true);
+ visualEye(g,600.f,297.f,135.f);
+ g.setColour(frost);g.setFont(Font(14.f,Font::bold));
+ g.drawText("A",444,448,24,32,Justification::centred);
+ g.drawText("B",733,448,24,32,Justification::centred);
+ panel(g,{35,510,1131,161},"PERFORMANCE MACROS",blood);
+ scope(g,{42,689,1068,57},0,acid);
+ const float peak=std::sqrt(clamp01(smoothedPeak));
+ g.setColour(grey.withAlpha(.7f));g.drawRoundedRectangle(1120.f,688.f,39.f,59.f,4.f,1.f);
+ for(int i=0;i<15;++i){
+  const bool lit=(float)i<peak*15.f;
+  g.setColour((i>11?blood:acid).withAlpha(lit?.96f:.10f));
+  g.fillRoundedRectangle(1127.f,738.f-i*3.3f,25.f,2.8f,1.f);
+ }
+}
+void VoidcoreEditor::drawDeep(Graphics& g){
+ if(page==Motion){
+  panel(g,{35,142,536,315},"MODULATION  /  LFO",acid);
+  panel(g,{590,142,576,315},"ENVELOPE  /  ADSR",blood);
+  lfo(g,{60,208,474,103},focusLfo);
+  env(g,{622,208,512,135});
+  panel(g,{35,467,1131,218},"RHYTHM  /  16-STEP GATE",acid);
+  gates(g,{60,581,1080,78});
+ }else if(page==Fx){
+  panel(g,{35,142,536,328},"DELAY  /  SIGNAL REPEATS",acid);
+  panel(g,{590,142,576,328},"REVERB  /  VOID SPACE",blood);
+  effects(g,{60,200,470,78},0);effects(g,{623,200,505,78},1);
+  panel(g,{35,483,1131,199},"CREATURE ENGINE  /  FX CHARACTER",acid);
+  scope(g,{65,519,1050,36},1,blood);
+ }else if(page==System){
+  panel(g,{35,142,1131,339},"SYSTEM  /  PERFORMANCE",acid);
+  panel(g,{35,501,1131,198},"PRESETS  /  SCENES",blood);
+  g.setColour(frost);g.setFont(Font(15.f));
+  g.drawText("Choose playback settings or recall one of four distinct alien scenes.",78,182,1015,29,Justification::centredLeft);
+  g.setColour(grey);g.setFont(Font(12.f));
+  g.drawText("Full parameter automation, modulation routes and extra controls remain accessible through Ableton.",75,717,1040,30,Justification::centredLeft);
+ }
+}
+void VoidcoreEditor::paintStatus(Graphics& g){
+ const float tempo=processor.displayTempo.load(std::memory_order_relaxed);
+ g.setColour(acid.withAlpha(.58f));g.setFont(Font(11.f,Font::bold));
+ g.drawText(String::formatted("%.1f BPM",tempo),42.f,765.f,135.f,19.f,Justification::centredLeft);
+ g.setColour(playing?acid:grey);
+ g.drawText(playing?"● LIVE":"● IDLE",200.f,765.f,96.f,19.f,Justification::centredLeft);
+ g.setColour(frost.withAlpha(.75f));
+ g.drawFittedText("VOIDCORE  /  REAL-TIME ORGANISM ENGINE",745,761,420,24,Justification::centredRight,1);
+}
+void VoidcoreEditor::paint(Graphics& g){
+ Graphics::ScopedSaveState state(g);
+ g.addTransform(AffineTransform::scale((float)getWidth()/W,(float)getHeight()/H));
+ drawBase(g);
+ if(page==Core)drawCore(g);else drawDeep(g);
+ paintStatus(g);
+}
