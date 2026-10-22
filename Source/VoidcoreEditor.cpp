@@ -194,6 +194,8 @@ void VoidcoreEditor::timerCallback(){
  clock+=1.f/30.f;
  if(clock>60000.f)clock=0.f;
  smoothedPeak=smoothedPeak*.76f+clamp01(processor.peak.load(std::memory_order_relaxed))*.24f;
+ meterLevels[0]=std::max(meterLevels[0]*.84f,clamp01(processor.peakLeft.load(std::memory_order_relaxed)));
+ meterLevels[1]=std::max(meterLevels[1]*.84f,clamp01(processor.peakRight.load(std::memory_order_relaxed)));
  playing=processor.displayPlaying.load(std::memory_order_relaxed);
  for(int k=0;k<16;++k)
    if(auto* button=steps[(size_t)k]){
@@ -339,6 +341,18 @@ void VoidcoreEditor::buildDeeper(){
  for(int i=0;i<4;++i)click(scenes[i],85.f+i*275.f,550.f,255.f,48.f,System,[this,i]{preset(i);},i%2);
  click("SAVE PATCH",300,631,256,43,System,[this]{save();});
  click("LOAD PATCH",650,631,256,43,System,[this]{load();});
+ // Real on-screen MIDI keyboard; notes are injected by the processor into the
+ // audio thread's MIDI stream, so clicking keys audibly plays the instrument.
+ auto keys=std::make_unique<MidiKeyboardComponent>(processor.keyboardState,
+                                                   MidiKeyboardComponent::horizontalKeyboard);
+ keys->setAvailableRange(24,96);
+ keys->setKeyWidth(18.f);
+ keys->setColour(MidiKeyboardComponent::whiteNoteColourId,Colour::fromRGB(222,240,226));
+ keys->setColour(MidiKeyboardComponent::blackNoteColourId,voidBlack);
+ keys->setColour(MidiKeyboardComponent::keyDownOverlayColourId,acid.withAlpha(.8f));
+ keys->setColour(MidiKeyboardComponent::mouseOverKeyOverlayColourId,acid.withAlpha(.23f));
+ addAndMakeVisible(*keys);
+ ui.push_back({std::move(keys),{58,700,1084,53},(int)System});
 }
 void VoidcoreEditor::updatePreview(int which){
  const int index=std::clamp((int)value(which?"bankB":"bank"),0,50);
@@ -668,12 +682,15 @@ void VoidcoreEditor::drawCore(Graphics& g){
  g.drawText("B",733,448,24,32,Justification::centred);
  panel(g,{35,510,1131,161},"PERFORMANCE  /  LIVING MACROS",acid);
  scope(g,{42,689,1068,57},0,acid);
- const float peak=std::sqrt(clamp01(smoothedPeak));
- g.setColour(grey.withAlpha(.7f));g.drawRoundedRectangle(1120.f,688.f,39.f,59.f,4.f,1.f);
- for(int i=0;i<15;++i){
-  const bool lit=(float)i<peak*15.f;
-  g.setColour((i>11?blood:acid).withAlpha(lit?.96f:.10f));
-  g.fillRoundedRectangle(1127.f,738.f-i*3.3f,25.f,2.8f,1.f);
+ g.setColour(grey.withAlpha(.7f));
+ g.drawRoundedRectangle(1114.f,688.f,50.f,59.f,4.f,1.f);
+ for(int channel=0;channel<2;++channel){
+  const float level=std::sqrt(clamp01(meterLevels[(size_t)channel]));
+  for(int i=0;i<15;++i){
+   const bool lit=(float)i<level*15.f;
+   g.setColour((i>12?frost:acid).withAlpha(lit?.95f:.10f));
+   g.fillRoundedRectangle(1121.f+channel*18.f,738.f-i*3.3f,12.f,2.8f,1.f);
+  }
  }
 }
 void VoidcoreEditor::drawDeep(Graphics& g){
