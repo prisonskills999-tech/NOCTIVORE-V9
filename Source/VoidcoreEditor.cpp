@@ -279,7 +279,7 @@ void VoidcoreEditor::buildDeeper(){
  // SYSTEM: performance controls, preset / session actions, no 48-knob wall.
  choice("voiceLimit",{"8 voices","12 voices","16 voices","24 voices"},85,240,245,40,System);
  choice("mode",{"Polyphonic","Mono","Legato"},374,240,220,40,System);
- choice("quality",{"Linear","Cubic"},630,240,220,40,System);
+ choice("velocity",{"Soft","Normal","Hard"},630,240,220,40,System);
  click("REVERSE AUDIO",881,240,228,40,System,[this]{
   set("reverse",value("reverse")>.5f?0.f:1.f);
  },1);
