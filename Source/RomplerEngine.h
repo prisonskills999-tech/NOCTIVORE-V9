@@ -58,6 +58,8 @@ struct Params {
  // v10.9 — three contrasting dark-forest organisms, always sample-linked.
  float predator=.63f, insectCode=.57f, burrow=.46f;
  float performanceMod=0.f;
+ // Independent exciter amount and sample-only audition switch.
+ float character=0.f,sourceSolo=0.f;
  // V10.5 user-editable 16 step gate: default all steps active.
  std::array<float,16> gateSteps{{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}};
 
@@ -187,7 +189,7 @@ public:
   Sample::prepareSinc();
   sr=std::max(8000.,sampleRate);for(auto& v:voices)v={};
   spaceFX.prepare(sr);mixLowL=mixLowR=0;mixMidL=mixMidR=0;
-  lfoPhase=0;for(auto& l:modulators)l={};globalTime=0;motifBeats=0;hostBeatSynced=false;held.fill(false);sustained.fill(false);sustainDown=false;smoothedGate=1.f;smoothedAccent=1.f;
+  lfoPhase=0;for(auto& l:modulators)l={};globalTime=0;motifBeats=0;hostBeatSynced=false;held.fill(false);sustained.fill(false);sustainDown=false;smoothedGate=1.f;smoothedAccent=1.f;smoothedSoloFx=0.f;
  }
  void setParameters(const Params& values){
   // Live bank changes crossfade held notes instead of waiting for new MIDI.
@@ -285,6 +287,7 @@ public:
   v->smoothMorph=clampf(p.morph,0.f,1.f);
   v->smoothFmMix=clampf(p.fmMix,0.f,1.f);
   v->smoothFold=clampf(p.psyFold,0.f,1.f);
+   v->smoothSolo=clampf(p.sourceSolo,0.f,1.f);
    v->cellPhase=v->organismPhase=v->organismTonePhase=v->foldLP=v->cleanBlend=0.f;
    v->predatorPhase=v->insectPhase=v->signalPhase=0.f;
   v->aliveA=v->aliveB=0.f;
@@ -502,6 +505,8 @@ public:
       v.bankFade=std::max(0.f,v.bankFade-dt/.075f);
       if(v.bankFade<=0.f)v.oldSample=v.oldSampleB=nullptr;
      }
+     const float pureSource=sample; // Before FM, added organisms, filter and FX.
+     const float character=clampf(p.character,0.f,1.f);
      if(lowLife>.0001f && droneLoop){
        // Recorded-speed motion survives pitch transposition, without any hiss.
        const float live=mixA*readAt(s,v.aliveA)+mixB*readAt(sb,v.aliveB);
@@ -512,11 +517,11 @@ public:
      }
     // Two source organisms interact instead of merely fading between tracks.
     // Pure, correlated cross-excitation: no stochastic hiss/noise generator.
-    const float cross=clampf(p.xenoCross,0.f,1.f);
+    const float cross=clampf(p.xenoCross*character,0.f,1.f);
     const float interaction=cross>.0001f?std::tanh(baseA*baseB*(3.0f+1.7f*cross)):0.f;
     sample+=cross*.09f*interaction;
      // Source A and B hybridization, without a parallel stochastic texture.
-     const float sym=clampf(p.symbiosis,0.f,1.f);
+     const float sym=clampf(p.symbiosis*character,0.f,1.f);
      const float hybrid=sym>.0001f?std::tanh(2.4f*baseA*baseB+.7f*(baseA-baseB)*cellular):0.f;
      sample+=.10f*sym*hybrid;
     // Shared biome cycles above feed source morph, the moving read-head, FM and filters.
@@ -583,7 +588,7 @@ public:
     const float fmA=std::sin(v.fmPhase+fmAmount*mod);
     const float fmB=std::sin(v.fmAltPhase+(fmAmount*.7f)*std::sin(v.modPhase));
     const float fmSignal=(.68f*fmA+.32f*fmB)*(.12f+.88f*v.motionEnv);
-    const float requestedFmMix=clampf(p.fmMix+aggression*.025f,0.f,1.f);
+    const float requestedFmMix=character*clampf(p.fmMix+aggression*.025f,0.f,1.f);
     v.smoothFmMix+=(requestedFmMix-v.smoothFmMix)*controlSlew;
     const float fmMix=v.smoothFmMix;
     sample=sample*(1.f-fmMix*.48f)+fmSignal*fmMix*.75f;
@@ -594,12 +599,12 @@ public:
         +.29f*std::sin(5.f*v.fmPhase+.45f*std::sin(v.modPhase)+bio2*.4f)
         +.16f*std::sin(7.f*v.fmPhase+.22f*bio3);
        const float breathe=.65f+.35f*(.5f+.5f*bio2);
-       sample+=creature*lowLife*(.20f+.065f*coupling)*breathe
+       sample+=creature*character*lowLife*(.20f+.065f*coupling)*breathe
                    *(.40f+.60f*v.motionEnv);
      }
     // Irregular creature calls stay tied to the held fundamental (not MIDI arps).
     // Raised smooth envelope avoids boing onset and broadband noise.
-    const float creatureAmt=clampf(p.creatures,0.f,1.f);
+    const float creatureAmt=character*clampf(p.creatures,0.f,1.f);
     if(creatureAmt>.0001f){
       const float rate=(.19f+creatureAmt*2.85f)*(1.f+.31f*bio2);
       v.organismPhase+=rate*dt;
@@ -617,9 +622,9 @@ public:
     // 2) SPORE CODE: independently drifting micro-chirps that speak in phrases.
     // 3) BURROW: downward breathing interference made from BOTH sample layers.
     // All oscillators run continuously. Raised-cosine envelopes eliminate clicks.
-    const float predator=clampf(p.predator,0.f,1.f);
-    const float insect=clampf(p.insectCode,0.f,1.f);
-    const float burrow=clampf(p.burrow,0.f,1.f);
+    const float predator=character*clampf(p.predator,0.f,1.f);
+    const float insect=character*clampf(p.insectCode,0.f,1.f);
+    const float burrow=character*clampf(p.burrow,0.f,1.f);
     if(predator>.0001f){
       float slow=.17f+.38f*predator+.13f*std::fabs(cellular);
       v.predatorPhase=wrapPhase(v.predatorPhase+2.f*pi*std::min((float)sr*.22f,
@@ -652,7 +657,7 @@ public:
     // Spectral wavefolding bypassed entirely to avoid bitcrushing artifacts.
     // Morphing pseudo-vocal tract with two narrow, stable resonant peaks.
     // Reacts to living biome and cross-layer motion without broadband noise.
-    const float xeno=clampf(p.xenoFormant,0.f,1.f);
+    const float xeno=character*clampf(p.xenoFormant,0.f,1.f);
     if(xeno>.0001f){
       const float vowelPos=clampf(.5f+.27f*bio1+.18f*bio3+.15f*wr*std::sin(std::sin(v.motionPhase)*.4f)+.13f*linked+.14f*colony*cellular,0.f,1.f);
       const float f1=270.f+830.f*vowelPos;
@@ -670,7 +675,7 @@ public:
     }
     // Physical-style damped resonator. Persistent delay provides real metallic
     // sustain; partials from inharmonic FM add bright scraped-metal motion.
-    const float metalAmt=clampf(p.metalMix+.12f*destinations[7]+aggression*.035f,0.f,1.f);
+    const float metalAmt=character*clampf(p.metalMix+.12f*destinations[7]+aggression*.035f,0.f,1.f);
     if(metalAmt>.0001f){
     const int delaySamples=std::clamp((int)((float)sr/(carrier*(.51f+p.metalTune*3.8f))),16,4094);
     const int tap=(v.metalPos+4096-delaySamples)%4096;
@@ -729,14 +734,14 @@ public:
     // Gentle air shelf made from the actual 48 kHz samples, not hard noise.
     v.airLP+=(sample-v.airLP)*.12f;
     dry+=(sample-v.airLP)*.10f*clampf(p.hiFiAir,0.f,1.f);
-    float layerGain=clampf(p.layers+atmosphere*.18f,0.f,1.f)*(.29f+.32f*organic);
+    float layerGain=character*clampf(p.layers+atmosphere*.18f,0.f,1.f)*(.29f+.32f*organic);
     layerGain*=clampf(1.f+.35f*biome+.18f*linked,.40f,1.5f);
     float stereoLayer=layer*layerGain*(.70f+.10f*drive);
     // Organic fundamental/subharmonic, never overly prominent for percussive banks.
     float fundamental=std::clamp(440.f*std::exp2((v.pitch-69.f)/12.f),20.f,1500.f);
     v.bodyPhase+=dt*fundamental*pi; // sub oscillator at half fundamental
     if(v.bodyPhase>2*pi)v.bodyPhase-=2*pi;
-    float sub=(.21f*std::sin(v.bodyPhase)+.065f*std::sin(2.f*v.bodyPhase)) * clampf(p.sub,0.f,1.f);
+    float sub=character*(.21f*std::sin(v.bodyPhase)+.065f*std::sin(2.f*v.bodyPhase)) * clampf(p.sub,0.f,1.f);
     // No persistent stochastic breath layer; it previously followed the gate
     // on every bank, producing the unwanted moving white/pink-noise blanket.
     // All micro-motion comes from the sample's resonant material and biome.
@@ -779,8 +784,13 @@ public:
     // Equal-power output pan and subtle sample-bank stereo spread
     float spread=clampf(p.stereo,0,1.5f)*(((v.note%7)-3)/12.f);
     float a=clampf(pan+spread,-1,1);
-    const float outL=(dry*(1-layerGain*.4f)+stereoLayer*.44f+sub+air)*gain*std::sqrt(.5f*(1.f-a));
-    const float outR=(dry*(1-layerGain*.4f)+stereoLayer*.98f+sub-air*.36f)*gain*std::sqrt(.5f*(1.f+a));
+    v.smoothSolo+=(clampf(p.sourceSolo,0.f,1.f)-v.smoothSolo)*controlSlew;
+    const float pureL=pureSource*gain*std::sqrt(.5f*(1.f-a));
+    const float pureR=pureSource*gain*std::sqrt(.5f*(1.f+a));
+    const float coloredL=(dry*(1-layerGain*.4f)+stereoLayer*.44f+sub+air)*gain*std::sqrt(.5f*(1.f-a));
+    const float outL=coloredL*(1.f-v.smoothSolo)+pureL*v.smoothSolo;
+    const float coloredR=(dry*(1-layerGain*.4f)+stereoLayer*.98f+sub-air*.36f)*gain*std::sqrt(.5f*(1.f+a));
+    const float outR=coloredR*(1.f-v.smoothSolo)+pureR*v.smoothSolo;
     v.lastL=outL;v.lastR=outR;
     if(v.stealFade>0.f){
       mixL+=outL+v.stealL*v.stealFade;mixR+=outR+v.stealR*v.stealFade;
@@ -796,7 +806,8 @@ public:
      auto fx=p.fx;
      fx.delayWarp=clampf(fx.delayWarp+.27f*destinations[9],0.f,1.f);
      fx.reverbMod=clampf(fx.reverbMod+.25f*destinations[10]+.2f*p.macroAtmosphere,0.f,1.f);
-     fx.reverbMix=clampf(fx.reverbMix+.09f*p.macroAtmosphere,0.f,.98f);
+     // Atmosphere cannot introduce an unwanted reverb layer when REV MIX is zero.
+      fx.reverbMix=clampf(fx.reverbMix*(1.f+.09f*p.macroAtmosphere),0.f,.98f);
      fx.psySpiral=p.psySpiral;fx.psySpiralRate=p.psySpiralRate;
      fx.wetLowCut=p.wetLowCut;
      spaceFX.setControls(fx); // assignment only; no allocation.
@@ -817,6 +828,8 @@ public:
    mixL=mid+(1.f-narrow)*side;
    mixR=mid-(1.f-narrow)*side;
    spaceFX.tick(mixL,mixR,wetL,wetR);
+    smoothedSoloFx+=(clampf(p.sourceSolo,0.f,1.f)-smoothedSoloFx)*controlSlew;
+    wetL*=1.f-smoothedSoloFx;wetR*=1.f-smoothedSoloFx;
    // A softly limited master bus retains transient punch and space width.
    // More headroom and less blanket drive than Earthforge v6 master limiter.
    // Soft limiting is retained to make accidental dense chords manageable.
@@ -842,7 +855,7 @@ private:
   float fmPhase=0,fmAltPhase=0,modPhase=0,prevMod=0,metalDamp=0,motifPitch=0,fxPhase=0,ghostLP=0;int fxStep=-1;
   std::array<float,4096> metalLine{};int metalPos=0;
   float grainPhase=0.f,fractureGain=1.f,stealL=0,stealR=0,stealFade=0,lastL=0,lastR=0;
-  float smoothMorph=.2f,smoothFmMix=0.f,smoothFold=0.f;
+  float smoothMorph=.2f,smoothFmMix=0.f,smoothFold=0.f,smoothSolo=0.f;
   bool grainSecondHalf=false;
   std::array<float,2> anchorA{},anchorB{};uint32_t noiseState=1;
   bool keyDown=false,oneShot=false;uint64_t age=0;
@@ -871,7 +884,7 @@ private:
  float bend=0,modwheel=0,lfoPhase=0,globalTime=0,tempo=145;
  double motifBeats=0.;bool hostBeatSynced=false;
  float mixLowL=0,mixLowR=0,mixMidL=0,mixMidR=0;
- float smoothedGate=1.f,smoothedAccent=1.f;
+ float smoothedGate=1.f,smoothedAccent=1.f,smoothedSoloFx=0.f;
  PsySpace spaceFX;std::string bankFolder;
 };
 }
