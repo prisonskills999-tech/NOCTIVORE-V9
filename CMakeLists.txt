@@ -36,6 +36,9 @@ juce_add_plugin(NOCTIVORE_FX
 # Safe fallback if a specific host rejects the custom editor.
 # Set -DNOCTIVORE_GENERIC_EDITOR=ON or environment NOCTIVORE_SAFE_GUI=1.
 option(NOCTIVORE_GENERIC_EDITOR "Use JUCE generic parameter editor" OFF)
+# Host buffer-size regression; pure C++ core, no JUCE runtime dependencies.
+add_executable(NOCTIVORE_BUFFER_TEST tests/buffer_consistency.cpp)
+target_include_directories(NOCTIVORE_BUFFER_TEST PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source")
 juce_generate_juce_header(NOCTIVORE_FX)
 target_sources(NOCTIVORE_FX PRIVATE
  Source/PluginProcessor.h Source/PluginProcessor.cpp
