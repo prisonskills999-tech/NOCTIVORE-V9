@@ -10,8 +10,8 @@ namespace {
  Rectangle<int> rect(float x,float y,float w,float h,float sx,float sy){return {(int)std::round(x*sx),(int)std::round(y*sy),(int)std::round(w*sx),(int)std::round(h*sy)};}
 }
 NoctivoreEditor::Skin::Skin(){
- setColour(Slider::textBoxBackgroundColourId,painted::soil.withAlpha(.7f));
- setColour(Slider::textBoxOutlineColourId,painted::outline.withAlpha(.3f));
+ setColour(Slider::textBoxBackgroundColourId,painted::soil.withAlpha(.94f));
+ setColour(Slider::textBoxOutlineColourId,painted::outline.withAlpha(.19f));
  setColour(Slider::textBoxTextColourId,painted::ivory);
  setColour(ComboBox::backgroundColourId,painted::bark);
  setColour(ComboBox::outlineColourId,painted::outline);
@@ -25,7 +25,11 @@ NoctivoreEditor::Skin::Skin(){
 }
 void NoctivoreEditor::Skin::drawRotarySlider(Graphics& g,int x,int y,int w,int h,float value,float start,float end,Slider& slider){painted::rotary(g,x,y,w,h,value,start,end,painted::accents[(size_t)std::clamp((int)slider.getProperties().getWithDefault("tint",0),0,4)]);}
 void NoctivoreEditor::Skin::drawButtonBackground(Graphics& g,Button& button,const Colour&,bool hovered,bool down){painted::button(g,button,hovered,down,painted::accents[(size_t)std::clamp((int)button.getProperties().getWithDefault("tint",0),0,4)]);}
-void NoctivoreEditor::Skin::drawComboBox(Graphics& g,int w,int h,bool,int,int,int,int,ComboBox&){painted::selector(g,w,h);}
+void NoctivoreEditor::Skin::drawComboBox(Graphics& g,int w,int h,bool,int,int,int,int,ComboBox&){
+ painted::selector(g,w,h);
+ g.setColour(painted::ochre.withAlpha(.29f));
+ g.drawLine(12.f,(float)h-5.f,(float)w-24.f,(float)h-5.f,1.f);
+}
 
 // Custom painted button renderer: required for the FULL_GUI edition.
 // The declaration in PluginEditor.h must have this out-of-line definition.
@@ -344,7 +348,7 @@ NoctivoreEditor::NoctivoreEditor(NoctivoreProcessor& p)
  artFader("bend","Pitch Bend",51,916,43,84);
  artFader("performanceMod","Performance Modulation",109,916,43,84);
  const float tx[]={244,445,626,801,1024},tw[]={170,180,170,181,171};
- for(int i=0;i<5;++i)artButton("Switch page",tx[i],852,tw[i],40,[this,i]{showPage((Page)i);});
+ for(int i=0;i<5;++i)artButton("Switch page",tx[i],873,tw[i],36,[this,i]{showPage((Page)i);});
  artButton("Previous preset",528,200,32,42,[this]{stepScene(-1);});
  artButton("Next preset",804,200,32,42,[this]{stepScene(1);});
  artButton("Save patch",844,201,37,42,[this]{savePreset();});
@@ -379,8 +383,10 @@ NoctivoreEditor::NoctivoreEditor(NoctivoreProcessor& p)
  }
 
  showPage(Atlas);
- setResizable(true,true);setResizeLimits(1010,715,1600,1132);
- setSize(1192,844);
+ setResizable(true,true);
+ setResizeLimits(919,650,1491,1055);
+ if(auto* c=getConstrainer())c->setFixedAspectRatio(1491.0/1055.0);
+ setSize(1044,739);
  startTimerHz(24);
 }
 NoctivoreEditor::~NoctivoreEditor(){stopTimer();presetChooser.reset();setLookAndFeel(nullptr);}
@@ -581,7 +587,7 @@ void NoctivoreEditor::layout(Section& section_,Rectangle<int> area){
  int cols=std::max(1,section_.columns),rows=std::max(1,(count+cols-1)/cols);
  const int cw=std::max(15,inset.getWidth()/cols),ch=std::max(22,inset.getHeight()/rows);
  for(int i=0;i<count;++i){auto x=inset.getX()+(i%cols)*cw,y=inset.getY()+(i/cols)*ch;
-  section_.children[(size_t)i]->setBounds(x,y,cw,ch);}
+  section_.children[(size_t)i]->setBounds(x+3,y+2,std::max(8,cw-6),std::max(16,ch-4));}
 }
 void NoctivoreEditor::resized(){
  const float sx=(float)getWidth()/1491.f,sy=(float)getHeight()/1055.f;
@@ -596,7 +602,7 @@ void NoctivoreEditor::resized(){
  keyboard.setBounds(R(214,907,1024,94));
  scenes.setBounds(atlas?R(548,201,275,41):R(530,181,365,39));
  sceneLabel.setBounds(R(538,159,210,21));
- for(size_t i=0;i<tabs.size();++i)tabs[i].setBounds(R(244.f+(float)i*204.f,851.f,190.f,43.f));
+ for(size_t i=0;i<tabs.size();++i)tabs[i].setBounds(R(244.f+(float)i*204.f,862.f,190.f,42.f));
  actions[0].setBounds(R(1114,174,103,44));
  actions[1].setBounds(R(1224,174,103,44));
  actions[2].setBounds(R(1334,174,123,44));
@@ -721,6 +727,13 @@ void NoctivoreEditor::drawSubpage(Graphics& g){
   painted::creature(g,1131.f,123.f,.55f);
  }
 
+ // Cropped untouched tree/mushroom art: no printed Atlas labels or knobs.
+ if(originalPainting.isValid()){
+  juce::Graphics::ScopedSaveState artwork(g);
+  g.addTransform(juce::AffineTransform::scale((float)getWidth()/1491.f,(float)getHeight()/1055.f));
+  g.drawImage(originalPainting,0.f,0.f,310.f,246.f,0,0,310,246);
+  g.drawImage(originalPainting,1185.f,0.f,306.f,246.f,1185,0,306,246);
+ }
  juce::Graphics::ScopedSaveState state(g);
  const float sx=(float)getWidth()/1491.f,sy=(float)getHeight()/1055.f;
  g.addTransform(juce::AffineTransform::scale(sx,sy));
@@ -746,6 +759,10 @@ void NoctivoreEditor::drawSubpage(Graphics& g){
   r.setX(r.getX()/sx);r.setY(r.getY()/sy);
   r.setWidth(r.getWidth()/sx);r.setHeight(r.getHeight()/sy);
   painted::panel(g,r,s.accent,(int)index);
+  for(int d=0;d<5;++d){
+    g.setColour((d%2?painted::clay:painted::moss).withAlpha(.24f));
+    g.fillEllipse(r.getX()+24.f+d*11.f,r.getBottom()-19.f+2.f*std::sin(d*1.7f),3.5f,3.5f);
+  }
   g.setColour(s.accent);
   g.setFont(juce::Font(17.f,juce::Font::bold));
   g.drawText(s.title,r.getX()+29.f,r.getY()+10.f,r.getWidth()-54.f,29.f,juce::Justification::left);
