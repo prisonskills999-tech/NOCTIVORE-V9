@@ -76,7 +76,7 @@ struct Sample {
  // Anti-alias reconstruction for samples played above their recorded root.
  float bandLimited(float pos,float increment)const {
   const float ratio=std::fabs(increment);
-  if(ratio<=1.12f)return cubic(pos);
+  if(ratio<=1.38f)return cubic(pos);
   if(!loaded()||pos<9.f||pos>(float)(data.size()-10))return cubic(pos);
   constexpr int taps=8;
   const int origin=(int)std::floor(pos);
