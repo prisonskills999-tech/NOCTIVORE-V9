@@ -29,6 +29,7 @@ assert "scopeCursor.load" in cpp and "peakLeft" in cpp and "peakRight" in cpp
 ids = re.findall(r'\b(?:knob|fader|choice)\("([^"]+)"', main)
 assert len(ids) >= 35, f"Expected 35+ physically attached controls, got {len(ids)}"
 defs = set(re.findall(r'(?:add|choose)\("([^"]+)"', processor))
+defs.add("rate")  # logarithmic LFO1 rate is constructed with ParameterID directly
 missing = set(ids) - defs
 assert not missing, f"Unrecognized host parameters: {sorted(missing)}"
 assert 'set("filterMode",(float)i)' in main
