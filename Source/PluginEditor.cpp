@@ -164,7 +164,7 @@ NoctivoreEditor::NoctivoreEditor(NoctivoreProcessor& p)
  auto& a=section(Atlas,"01 / SPORE ATLAS",moss,3);
  select(a,"bank","SOURCE A — MATERIAL",bankNames);
  select(a,"bankB","SOURCE B — COUNTERPOINT",bankNames);
- select(a,"textureMode","TEXTURE ENGINE",{"Flow","Grain Cloud","Orbital","Pulsar","Fracture","Time Freeze"});
+ select(a,"textureMode","TEXTURE ENGINE",{"Flow","Grain Cloud","Orbital","Pulsar","Liquid Warp","Time Freeze"});
  dial(a,"morph","A / B MORPH",0);dial(a,"morphMotion","AUTO MORPH",0);dial(a,"morphRate","MORPH SPEED",0);
  dial(a,"texture","TEXTURE",0);dial(a,"grain","GRAIN CLOUD",0);dial(a,"scatter","SCATTER",0);
  auto& b=section(Atlas,"02 / LIVING BIOME",ochre,3);
