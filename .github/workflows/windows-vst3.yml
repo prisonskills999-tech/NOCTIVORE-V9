@@ -82,7 +82,7 @@ jobs:
       - name: Configure JUCE 8 and Windows x64 VST3
         shell: pwsh
         run: |
-          $buildDir = 'C:/voidcore11_${{ matrix.edition }}'
+          $buildDir = 'C:/voidcore12_${{ matrix.edition }}'
           $generator = 'Visual Studio 17 2022'
           Write-Host "Using CMake generator: $generator"
           cmake -S . -B $buildDir -G $generator -A x64 '-DJUCE_DIR=C:/nfx-juce/JUCE-8.0.15' '-DJUCE_BUILD_EXTRAS=OFF' '-DNOCTIVORE_GENERIC_EDITOR=${{ matrix.generic }}'
@@ -91,13 +91,13 @@ jobs:
       - name: Compile release VST3
         shell: pwsh
         run: |
-          cmake --build 'C:/voidcore11_${{ matrix.edition }}' --config Release --target NOCTIVORE_FX_VST3 --parallel 4
+          cmake --build 'C:/voidcore12_${{ matrix.edition }}' --config Release --target NOCTIVORE_FX_VST3 --parallel 4
           if ($LASTEXITCODE -ne 0) { throw 'Windows C++ compilation failed' }
 
       - name: Verify and ZIP the installable plugin
         shell: pwsh
         run: |
-          $buildDir = 'C:/voidcore11_${{ matrix.edition }}'
+          $buildDir = 'C:/voidcore12_${{ matrix.edition }}'
           $bundles = @(Get-ChildItem -Path $buildDir -Recurse -Directory -Filter '*.vst3' | Where-Object {
             Test-Path (Join-Path $_.FullName 'Contents/Resources/Banks/00_36.wav')
           })
@@ -107,7 +107,7 @@ jobs:
           if ($banks.Count -ne 200) { throw "Bundle has $($banks.Count) of 200 WAVs" }
           $bins = @(Get-ChildItem (Join-Path $bundle.FullName 'Contents/x86_64-win') -File -Filter '*.vst3' -ErrorAction SilentlyContinue | Where-Object { $_.Length -gt 100000 })
           if ($bins.Count -ne 1) { throw 'Missing compiled x64 VST3 module' }
-          $target = Join-Path $env:GITHUB_WORKSPACE 'VOIDCORE_V11_${{ matrix.edition }}.zip'
+          $target = Join-Path $env:GITHUB_WORKSPACE 'VOIDCORE_V12_XENO_${{ matrix.edition }}.zip'
           Compress-Archive -LiteralPath $bundle.FullName -DestinationPath $target -CompressionLevel Fastest -Force
           if (!(Test-Path $target)) { throw 'ZIP was not created' }
           Write-Host "Package: $target"
@@ -116,6 +116,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: VOIDCORE-V12-XENO-${{ matrix.edition }}-WIN64-VST3
-          path: VOIDCORE_V11_${{ matrix.edition }}.zip
+          path: VOIDCORE_V12_XENO_${{ matrix.edition }}.zip
           if-no-files-found: error
           retention-days: 30
