@@ -23,6 +23,10 @@ jobs:
       - name: Get source
         uses: actions/checkout@v4
 
+      - name: Verify VOIDCORE controls and parameter IDs
+        shell: pwsh
+        run: python tests/verify_voidcore_ui.py
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
