@@ -79,6 +79,57 @@ struct Sample {
   float a=data[i-1],b=data[i],c=data[i+1],d=data[i+2];
   return b + .5f*t*(c-a+t*(2*a-5*b+4*c-d+t*(3*(b-c)+d-a)));
  }
+  // Polyphase 16-tap band-limited sample playback. Offline-initialized
+  // interpolation kernels reject Nyquist foldback when pitching WAVs upward.
+  // No allocations, locks or trigonometry in the sample interpolation path.
+  struct SincBank {
+   static constexpr int phases=256,taps=16,bands=13;
+   std::array<std::array<std::array<float,taps>,phases>,bands> coeffs{};
+   std::array<float,bands> cutoff{{.96f,.90f,.83f,.76f,.69f,.62f,.55f,
+                                   .48f,.40f,.32f,.23f,.16f,.11f}};
+   SincBank(){
+    for(int band=0;band<bands;++band)
+     for(int phase=0;phase<phases;++phase){
+      const float fraction=(float)phase/(float)phases;
+      float sum=0.f;
+      for(int tap=0;tap<taps;++tap){
+       const float d=(float)(tap-7)-fraction;
+       const float z=pi*d;
+       const float lowpass=std::fabs(d)<.000001f?cutoff[(size_t)band]:
+          std::sin(cutoff[(size_t)band]*z)/z;
+       const float window=.5f+.5f*std::cos(pi*d/8.f);
+       const float k=lowpass*std::max(0.f,window);
+       coeffs[(size_t)band][(size_t)phase][(size_t)tap]=k;
+       sum+=k;
+      }
+      if(std::fabs(sum)>1e-8f)
+       for(auto& k:coeffs[(size_t)band][(size_t)phase])k/=sum;
+     }
+   }
+  };
+  static const SincBank& sincBank(){
+   static const SincBank table;
+   return table;
+  }
+  static void warmUpResampler(){(void)sincBank();}
+  float bandlimited(float pos,float ratio)const {
+   if(!loaded()||pos<0.f||pos>=(float)data.size()-1.f)return 0.f;
+   if(ratio<=1.01f)return cubic(pos);
+   const auto& lut=sincBank();
+   const float allowed=.96f/std::max(1.f,ratio);
+   int band=0;
+   while(band<SincBank::bands-1&&lut.cutoff[(size_t)band]>allowed)++band;
+   const int centre=(int)pos;
+   const float fraction=pos-(float)centre;
+   const int phase=std::clamp((int)(fraction*SincBank::phases),0,SincBank::phases-1);
+   const auto& kernels=lut.coeffs[(size_t)band][(size_t)phase];
+   float result=0.f;
+   for(int tap=0;tap<SincBank::taps;++tap){
+    const int n=centre+tap-7;
+    if(n>=0&&n<(int)data.size())result+=kernels[(size_t)tap]*data[(size_t)n];
+   }
+   return result;
+  }
 };
 inline uint32_t read4(const uint8_t* x){return (uint32_t)x[0]|(uint32_t(x[1])<<8)|(uint32_t(x[2])<<16)|(uint32_t(x[3])<<24);}
 inline uint16_t read2(const uint8_t* x){return (uint16_t)x[0]|uint16_t(x[1]<<8);}
@@ -106,7 +157,7 @@ inline bool readWave(const std::string& file,Sample& out,int root){
 class Engine {
 public:
  static constexpr int voiceCount=24;
- Engine(){prepare(44100.);}
+ Engine(){Sample::warmUpResampler();prepare(44100.);}
  bool loadLibrary(const std::string& path){
   bool any=false;bankFolder=path;
   for(int bank=0;bank<(int)banks.size();++bank){
@@ -341,12 +392,13 @@ public:
       if(x>end-overlap && x<end){
        const float u=clampf((x-(end-overlap))/overlap,0.f,1.f);
        const float a=u*u*(3.f-2.f*u);
-       const float near=source.cubic(x);
-       const float far=source.cubic(begin+x-(end-overlap));
+       const float playbackRatio=(&source==&s)?std::fabs(step):std::fabs(stepB);
+        const float near=source.bandlimited(x,playbackRatio);
+       const float far=source.bandlimited(begin+x-(end-overlap),playbackRatio);
        return (1.f-a)*near+a*far;
       }
      }
-     return source.cubic(x);
+     return source.bandlimited(x,(&source==&s)?std::fabs(step):std::fabs(stepB));
     };
     auto advance=[&](const Sample& source,float& pos,float delta){
      pos+=delta;
