@@ -31,26 +31,35 @@ public:
    lines[(size_t)i].pos=0;lines[(size_t)i].damp=0;lines[(size_t)i].hp=0;
    lines[(size_t)i].base=times[i];}
   toneL=toneR=hpL=hpR=smoothedDelay=0; inLP1L=inLP1R=inLP2L=inLP2R=0;
+  cachedWetCut=-1.f;setControls(controls);
+  attackSlew=1.f-std::exp(-1.f/(float)(sr*.009));
+  releaseSlew=1.f-std::exp(-1.f/(float)(sr*.23));
   spiralInL.fill(0.f);spiralOutL.fill(0.f);spiralInR.fill(0.f);spiralOutR.fill(0.f);
   for(auto& v:diffL)v=0;
   for(auto& v:diffR)v=0;
  }
  void setTempo(double bpm){tempo=std::clamp(bpm,40.0,260.0);}
- void setControls(Controls c){controls=c;}
+ void setControls(Controls c){
+  if(cachedWetCut!=c.wetLowCut){
+    cachedWetCut=c.wetLowCut;
+    const float hz=55.f*std::pow(8.73f,std::clamp(c.wetLowCut,0.f,1.f));
+    wetCutCoeff=1.f-std::exp(-6.283185307f*hz/(float)sr);
+  }
+  controls=c;
+ }
  void clear(){prepare(sr);}
  // The output is added to the dry signal externally; no allocations in tick().
  void tick(float inL,float inR,float& outL,float& outR){
   const auto& c=controls;
   // Two-pole high-pass on the FX send only: the dry bass stays intact.
   // Low-cut 0..1 roughly corresponds to 55..480 Hz (12 dB/oct).
-  const float hz=55.f*std::pow(8.73f,std::clamp(c.wetLowCut,0.f,1.f));
-  const float alpha=1.f-std::exp(-6.283185307f*hz/(float)sr);
+  const float alpha=wetCutCoeff;
   inLP1L+=(inL-inLP1L)*alpha; inLP1R+=(inR-inLP1R)*alpha;
   const float hp1L=inL-inLP1L, hp1R=inR-inLP1R;
   inLP2L+=(hp1L-inLP2L)*alpha;inLP2R+=(hp1R-inLP2R)*alpha;
   inL=hp1L-inLP2L;inR=hp1R-inLP2R;
   const float inputEnergy=std::max(std::abs(inL),std::abs(inR));
-  float smooth=1.f-std::exp(-1.f/(float)(sr*(inputEnergy>envelope?.009:.23)));
+  const float smooth=inputEnergy>envelope?attackSlew:releaseSlew;
   envelope+=(inputEnergy-envelope)*smooth;
   float duck=1.f-std::clamp(c.duck,0.f,1.f)*std::clamp(envelope*2.6f,0.f,.83f);
   phase+=1.f/(float)sr;
@@ -178,5 +187,6 @@ private:
  std::array<float,4> spiralInL{},spiralOutL{},spiralInR{},spiralOutR{};
  float smoothedDelay=0,phase=0,envelope=0;
  float inLP1L=0,inLP1R=0,inLP2L=0,inLP2R=0;
+ float cachedWetCut=-1.f,wetCutCoeff=.02f,attackSlew=.002f,releaseSlew=.0001f;
 };
 } // namespace noctivore

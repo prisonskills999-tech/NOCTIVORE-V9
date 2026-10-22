@@ -166,6 +166,7 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  add("lowRegisterLife","Low Register Life",0.f,1.f,.72f);
  add("coupledMotion","Coupled Motion",0.f,1.f,.53f);
  add("performanceMod","Performance Mod Wheel",0.f,1.f,0.f);
+ choose("voiceLimit","CPU / Polyphony",{"8 voices","12 voices","16 voices","24 voices"},1);
  add("colony","Mutant Colony",0.f,1.f,.33f);
  add("creatures","Living Creatures",0.f,1.f,.39f);
  add("psyFold","Spectral Fold",0.f,1.f,.22f);
@@ -250,6 +251,8 @@ void NoctivoreProcessor::processBlock(AudioBuffer<float>& output,MidiBuffer& eve
  p.xenoFormant=get("xenoFormant");p.xenoCross=get("xenoCross");p.xenoWrithe=get("xenoWrithe");
  p.lowRegisterLife=get("lowRegisterLife");p.coupledMotion=get("coupledMotion");
  p.performanceMod=get("performanceMod");
+ {static constexpr int limits[]={8,12,16,24};
+  p.maxVoices=limits[std::clamp((int)get("voiceLimit"),0,3)];}
  p.colony=get("colony");p.creatures=get("creatures");
  p.psyFold=get("psyFold");p.symbiosis=get("symbiosis");
  for(int i=0;i<16;++i){auto key=juce::String::formatted("gateStep%02d",i+1);

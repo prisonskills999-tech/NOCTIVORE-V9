@@ -214,6 +214,7 @@ NoctivoreEditor::NoctivoreEditor(NoctivoreProcessor& p)
  select(sy,"mode","VOICE MODE",{"Polyphonic","Mono","Legato"});
  select(sy,"velocity","VELOCITY",{"Soft","Normal","Hard"});
  select(sy,"quality","RESAMPLING",{"Linear","Cubic"});
+  select(sy,"voiceLimit","CPU / VOICES",{"8 voices","12 voices","16 voices","24 voices"});
  dial(sy,"start","START OFFSET",3);dial(sy,"glide","GLIDE",3);
  select(sy,"reverse","SAMPLE PLAYBACK",{"Forward","Reverse"});
  auto& sy2=section(System,"02 / TUNING + CONTROL",ochre,3);
