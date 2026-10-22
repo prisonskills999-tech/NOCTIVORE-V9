@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(NOCTIVORE_FX VERSION 11.0.0 LANGUAGES C CXX)
+project(NOCTIVORE_FX VERSION 12.0.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -60,5 +60,5 @@ add_custom_command(TARGET NOCTIVORE_FX_VST3 POST_BUILD
  COMMAND ${CMAKE_COMMAND} -E copy_directory
          "${CMAKE_CURRENT_SOURCE_DIR}/Banks"
          "$<TARGET_FILE_DIR:NOCTIVORE_FX_VST3>/../Resources/Banks"
- COMMENT "Bundling 200 NOCTIVORE V10 Xenobiome 48k WAV multisamples")
+ COMMENT "Bundling 200 VOIDCORE V12 XENO 48k PCM16 WAV multisamples")
 
