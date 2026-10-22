@@ -1,5 +1,7 @@
 #include "PluginProcessor.h"
+#if !NOCTIVORE_GENERIC_EDITOR
 #include "VoidcoreEditor.h"
+#endif
 #include <cstdlib>
 #if JUCE_WINDOWS
  #include <windows.h>
