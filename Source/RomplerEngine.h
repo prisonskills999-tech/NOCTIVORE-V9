@@ -706,7 +706,8 @@ public:
     // Stable two-stage SVFs, with serial, parallel or band-split routing.
     float baseCut=clampf(p.cutoff + .27f*destinations[3]*moveDepth +envAmt*.35f + (accent-.5f)*.11f*p.motifAccent*(p.motif>0?1.f:0.f)
                   +p.keytrack*(v.pitch-60.f)/120.f
-                  +.035f*organic*std::sin(std::sin(v.motionPhase)*.67f)+.19f*biome+.14f*linked,.008f,1.f);
+                  +.035f*organic*std::sin(std::sin(v.motionPhase)*.67f)+.19f*biome+.14f*linked
+                  -.48f*clampf(p.character,0.f,1.f)+.09f*p.character*bio1,.008f,1.f);
     float otherCut=clampf(p.cutoff2+.27f*destinations[4]*moveDepth+envAmt*.28f
       -.13f*biome-.09f*linked-.09f*colony*cellular,.008f,1.f);
     auto filt=[&](float input,float cutoff,float resonance,int mode,float& ic2,float& ic1){
@@ -742,6 +743,14 @@ public:
     }
     float drive=clampf(p.drive+aggression*.22f,0.f,1.f);
     float dry=filtered*.84f+clean*.16f;
+    // Dedicated intentional overdrive: completely off at zero; audible on
+    // its own at any CLARITY setting, without an always-on saturation layer.
+    const float pushed=clampf(p.filterDrive,0.f,1.f);
+    if(pushed>.0001f){
+      const float wetDrive=std::tanh(dry*(1.f+5.f*pushed))/
+                          std::max(.1f,std::tanh(1.f+5.f*pushed));
+      dry=dry*(1.f-.82f*pushed)+wetDrive*(.82f*pushed);
+    }
     dry+=p.spectralTilt*(clean-v.lp)*.6f;
     // Clarity macro preserves uncompressed detail while still allowing edge.
     const float cleanFraction=clampf(p.clarity,0.f,1.f);
