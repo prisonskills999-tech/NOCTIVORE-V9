@@ -153,6 +153,35 @@ public:
   lfoPhase=0;for(auto& l:modulators)l={};globalTime=0;motifBeats=0;hostBeatSynced=false;held.fill(false);sustained.fill(false);sustainDown=false;smoothedGate=1.f;smoothedAccent=1.f;
  }
  void setParameters(const Params& values){
+  // Live bank changes crossfade held notes instead of waiting for new MIDI.
+  if(values.bank!=p.bank || values.bankB!=p.bankB){
+   for(auto& v:voices){
+    if(!v.stage||!v.sample||!v.sampleB)continue;
+    const int zone=std::clamp((int)std::lround((v.note-36)/12.f),0,3);
+    auto choose=[&](int bank)->const Sample*{
+     const auto& row=samples[(size_t)std::clamp(bank,0,50)];
+     if(row[(size_t)zone].loaded())return &row[(size_t)zone];
+     for(const auto& candidate:row)if(candidate.loaded())return &candidate;
+     return nullptr;
+    };
+    const Sample* a=choose(values.bank);
+    const Sample* b=choose(values.bankB);
+    if(!a)continue;
+    if(!b)b=a;
+    if(a==v.sample && b==v.sampleB)continue;
+    v.oldSample=v.sample;v.oldSampleB=v.sampleB;
+    v.oldPosition=v.position;v.oldPositionB=v.positionB;
+    const float fractionA=v.position/std::max(1.f,(float)v.sample->data.size());
+    const float fractionB=v.positionB/std::max(1.f,(float)v.sampleB->data.size());
+    v.sample=a;v.sampleB=b;
+    v.position=clampf(fractionA*(float)a->data.size(),9.f,(float)a->data.size()-11.f);
+    v.positionB=clampf(fractionB*(float)b->data.size(),9.f,(float)b->data.size()-11.f);
+    v.aliveA=v.position;v.aliveB=v.positionB;
+    v.bankFade=1.f;
+    v.oneShot=values.bank>=0&&values.bank<50?banks[(size_t)values.bank].oneShot:false;
+    v.layerOffset=(float)a->rate*.18f;
+   }
+  }
   p=values;auto fx=p.fx;fx.psySpiral=p.psySpiral;fx.psySpiralRate=p.psySpiralRate;
   fx.wetLowCut=p.wetLowCut;
   spaceFX.setControls(fx);
@@ -196,6 +225,8 @@ public:
    for(int k=0;k<4;++k)if(samples[(size_t)bank][(size_t)k].loaded()){z=k;break;}
   }
   if(!samples[(size_t)bank][(size_t)z].loaded())return;
+  v->oldSample=v->oldSampleB=nullptr;
+  v->bankFade=0.f;
   v->sample=&samples[(size_t)bank][(size_t)z];
   int bankB=std::clamp(p.bankB,0,50);
   int zb=z;
@@ -413,6 +444,27 @@ public:
     const float mixA=std::cos(morph*pi*.5f),mixB=std::sin(morph*pi*.5f);
     const float baseA=readAt(s,v.position),baseB=readAt(sb,v.positionB);
     float sample=mixA*baseA+mixB*baseB;
+     if(v.bankFade>0.f && v.oldSample && v.oldSampleB){
+      const auto& oldA=*v.oldSample;
+      const auto& oldB=*v.oldSampleB;
+      const float pitchOffset=v.pitch+(bend+p.bend)*p.bendRange;
+      const float oldStepA=clampf((float)oldA.rate*dt*
+        std::exp2((pitchOffset-(float)oldA.root)/12.f),.01f,20.f);
+      const float oldStepB=clampf((float)oldB.rate*dt*
+        std::exp2((pitchOffset-(float)oldB.root)/12.f),.01f,20.f);
+      const float oldSound=mixA*oldA.bandLimited(v.oldPosition,oldStepA)
+                          +mixB*oldB.bandLimited(v.oldPositionB,oldStepB);
+      const float oldWeight=v.bankFade;
+      sample=sample*(1.f-oldWeight)+oldSound*oldWeight;
+      v.oldPosition+=oldStepA;v.oldPositionB+=oldStepB;
+      if(droneLoop){
+       const float lengthA=(float)oldA.data.size(),lengthB=(float)oldB.data.size();
+       if(v.oldPosition>lengthA*.88f)v.oldPosition=lengthA*.17f;
+       if(v.oldPositionB>lengthB*.88f)v.oldPositionB=lengthB*.17f;
+      }
+      v.bankFade=std::max(0.f,v.bankFade-dt/.075f);
+      if(v.bankFade<=0.f)v.oldSample=v.oldSampleB=nullptr;
+     }
      if(lowLife>.0001f && droneLoop){
        // Recorded-speed motion survives pitch transposition, without any hiss.
        const float live=mixA*readAt(s,v.aliveA)+mixB*readAt(sb,v.aliveB);
@@ -739,6 +791,9 @@ private:
  struct Voice {
   const Sample* sample=nullptr;
   const Sample* sampleB=nullptr;
+  const Sample* oldSample=nullptr;
+  const Sample* oldSampleB=nullptr;
+  float oldPosition=0.f,oldPositionB=0.f,bankFade=0.f;
   int note=-1,bank=0,stage=0;
   float vel=0,position=0,positionB=0,level=0,releaseLevel=1,pitch=0,target=0,lp=0,bp=0;
   float motionPhase=0,layerOffset=0,bodyPhase=0,breath=0,aliveA=0,aliveB=0;
