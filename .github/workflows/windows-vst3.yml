@@ -1,9 +1,9 @@
-name: Build VOIDCORE Pure Source Xeno VST3
+name: Build VOIDCORE FINAL One-Page Red VST3
 
 on:
   # Manual runs prevent repeated private-repository minute consumption on every commit.
   push:
-    branches: [feature/voidcore-astral-full-reskin, feature/voidcore-hifi-clean-diverse, feature/voidcore-phase-clean-source-audio]
+    branches: [feature/voidcore-astral-full-reskin, feature/voidcore-hifi-clean-diverse, feature/voidcore-phase-clean-source-audio, feature/voidcore-final-one-page-red]
   workflow_dispatch:
 
 permissions:
@@ -123,7 +123,7 @@ jobs:
       - name: Upload downloadable Windows VST3
         uses: actions/upload-artifact@v4
         with:
-          name: VOIDCORE-PURE-XENO-${{ matrix.edition }}-WIN64-VST3
+          name: VOIDCORE-FINAL-RED-${{ matrix.edition }}-WIN64-VST3
           path: VOIDCORE_V12_XENO_${{ matrix.edition }}.zip
           if-no-files-found: error
           retention-days: 30
