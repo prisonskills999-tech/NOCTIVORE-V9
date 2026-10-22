@@ -148,8 +148,8 @@ void VoidcoreEditor::setPage(Page next){
  for(auto& node:ui)node.control->setVisible(node.onPage<0||node.onPage==(int)page||
    (page==Motion&&node.onPage==10+focusLfo));
  for(int i=0;i<4;++i){
-  if(pageButtons[(size_t)i])pageButtons[(size_t)i]->selected=(int)page==i;
-  if(lfoButtons[(size_t)i])lfoButtons[(size_t)i]->selected=focusLfo==i;
+  if(pageButtons[(size_t)i]){pageButtons[(size_t)i]->selected=(int)page==i;pageButtons[(size_t)i]->repaint();}
+  if(lfoButtons[(size_t)i]){lfoButtons[(size_t)i]->selected=focusLfo==i;lfoButtons[(size_t)i]->repaint();}
  }
  repaint();
 }
@@ -167,7 +167,7 @@ void VoidcoreEditor::timerCallback(){
  smoothedPeak=smoothedPeak*.76f+clamp01(processor.peak.load(std::memory_order_relaxed))*.24f;
  playing=processor.displayPlaying.load(std::memory_order_relaxed);
  for(int k=0;k<16;++k)
-   if(steps[(size_t)k])steps[(size_t)k]->selected=value(String::formatted("gateStep%02d",k+1).toRawUTF8())>.5f;
+   if(steps[(size_t)k]){steps[(size_t)k]->selected=value(String::formatted("gateStep%02d",k+1).toRawUTF8())>.5f;steps[(size_t)k]->repaint();}
  if(cachedA!=(int)value("bank"))updatePreview(0);
  if(cachedB!=(int)value("bankB"))updatePreview(1);
  repaint();
@@ -229,11 +229,11 @@ void VoidcoreEditor::buildDeeper(){
   const String wave=i==0?"wave":pre+"Wave",target=i==0?"target":pre+"Target";
   const String sync=i==0?"lfo1Sync":pre+"Sync";
   const Page sub=(Page)(10+i);
-  knob(rate.toRawUTF8(),"RATE",144,394,110,sub);
-  knob(depth.toRawUTF8(),"DEPTH",316,394,110,sub,1);
+  knob(rate.toRawUTF8(),"RATE",144,416,77,sub);
+  knob(depth.toRawUTF8(),"DEPTH",316,416,77,sub,1);
   choice(wave.toRawUTF8(),{"Sine","Triangle","Saw","Square","Sample & Hold","Fractal"},62,318,170,32,sub);
   choice(sync.toRawUTF8(),{"Free","1 bar","1/2 bar","1/4 bar","1/8 bar","1/16 bar"},255,318,153,32,sub);
-  choice(target.toRawUTF8(),{"Volume","Pan","Pitch","Filter 1","Filter 2","FM Index","A/B Morph","Metal Exciter","Grain Density","Delay Warp","Reverb Motion"},62,354,350,30,sub);
+  choice(target.toRawUTF8(),{"Volume","Pan","Pitch","Filter 1","Filter 2","FM Index","A/B Morph","Metal Exciter","Grain Density","Delay Warp","Reverb Motion"},62,353,350,27,sub);
  }
  knob("attack","ATTACK",679,395,96,Motion);
  knob("decay","DECAY",814,395,96,Motion);
@@ -500,12 +500,12 @@ void VoidcoreEditor::env(Graphics& g,Rectangle<float> r){
 void VoidcoreEditor::lfo(Graphics& g,Rectangle<float> r,int which){
  g.setColour(Colour::fromRGB(2,15,12));g.fillRoundedRectangle(r,5.f);
  const String pre=which==0?"":String("lfo")+String(which+1);
- const auto shape=which==0?"wave":(pre+"Wave").toRawUTF8();
- const auto hz=which==0?"rate":(pre+"Rate").toRawUTF8();
- const auto dep=which==0?"depth":(pre+"Depth").toRawUTF8();
- const int wave=(int)value(shape);
- const float rate=std::min(8.f,value(hz));
- const float depth=clamp01(value(dep));
+ const String shape=which==0?"wave":pre+"Wave";
+ const String hz=which==0?"rate":pre+"Rate";
+ const String dep=which==0?"depth":pre+"Depth";
+ const int wave=(int)value(shape.toRawUTF8());
+ const float rate=std::min(8.f,value(hz.toRawUTF8()));
+ const float depth=clamp01(value(dep.toRawUTF8()));
  for(int i=1;i<5;++i){g.setColour(acid.withAlpha(.08f));g.drawHorizontalLine((int)(r.getY()+r.getHeight()*i/5),r.getX(),r.getRight());}
  Path p;
  for(int i=0;i<=256;++i){
@@ -517,7 +517,7 @@ void VoidcoreEditor::lfo(Graphics& g,Rectangle<float> r,int which){
  }
  neonLine(g,p,acid,1.65f);
  g.setColour(frost.withAlpha(.7f));g.setFont(Font(10.f));
- g.drawText("LIVE MODULATION  //  "+String(value(hz),3)+" Hz",r.getX()+8.f,r.getY()+6.f,r.getWidth()-16.f,18.f,Justification::topLeft);
+ g.drawText("LIVE MODULATION  //  "+String(value(hz.toRawUTF8()),3)+" Hz",r.getX()+8.f,r.getY()+6.f,r.getWidth()-16.f,18.f,Justification::topLeft);
 }
 void VoidcoreEditor::filter(Graphics& g,Rectangle<float> r){
  g.setColour(Colour::fromRGB(2,14,10));g.fillRoundedRectangle(r,5.f);
