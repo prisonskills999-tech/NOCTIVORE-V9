@@ -5,9 +5,10 @@
 using namespace juce;
 namespace {
 constexpr float pi=juce::MathConstants<float>::pi;
-const Colour acid=Colour::fromRGB(87,236,155), blood=Colour::fromRGB(247,52,68);
-const Colour frost=Colour::fromRGB(213,245,224), grey=Colour::fromRGB(103,151,131);
-const Colour voidBlack=Colour::fromRGB(5,11,9);
+// Strict Matrix palette: luminous green, black and neutral white/grey only.
+const Colour acid=Colour::fromRGB(53,255,105), blood=Colour::fromRGB(229,255,235);
+const Colour frost=Colour::fromRGB(248,255,249), grey=Colour::fromRGB(143,161,149);
+const Colour voidBlack=Colour::fromRGB(2,5,3);
 float clamp01(float v){return std::clamp(v,0.f,1.f);}
 float phaseWave(int shape,float t){
  float p=t-std::floor(t);
@@ -52,6 +53,14 @@ void VoidcoreEditor::Dial::paint(Graphics& g){
  g.setColour(accent.withAlpha(.22f));g.strokePath(empty,PathStrokeType(4.f));
  Path active;active.addCentredArc(cx,cy,rad*.95f,rad*.95f,0,lo,a,true);
  g.setColour(accent);g.strokePath(active,PathStrokeType(3.7f));
+ // The knob is a live sound-sphere; animation never changes the host parameter.
+ const float pulse=.5f+.5f*std::sin(animationPhase*1.8f);
+ g.setColour(accent.withAlpha(.11f+.17f*pulse));
+ g.drawEllipse(cx-rad*1.12f,cy-rad*1.12f,rad*2.24f,rad*2.24f,1.2f);
+ const float orbit=animationPhase*.48f+norm*pi;
+ g.setColour(accent.withAlpha(.5f+.4f*pulse));
+ g.fillEllipse(cx+std::cos(orbit)*rad*1.08f-2.f,
+               cy+std::sin(orbit)*rad*1.08f-2.f,4.f,4.f);
  float angle=a-pi*.5f;
  g.setColour(accent.brighter(.3f));g.drawLine(cx,cy,cx+std::cos(angle)*rad*.72f,cy+std::sin(angle)*rad*.72f,2.5f);
  g.fillEllipse(cx-2.f,cy-2.f,4.f,4.f);
@@ -76,19 +85,34 @@ VoidcoreEditor::Choice::Choice(NoctivoreProcessor& p,const String& id,const Stri
 void VoidcoreEditor::Choice::paint(Graphics& g){
  ComboBox::paint(g);
  auto r=getLocalBounds().toFloat().reduced(1.5f);
- g.setColour(acid.withAlpha(.15f));g.drawRoundedRectangle(r,3.0f,1.f);
+ const float pulse=.5f+.5f*std::sin(animationPhase*1.55f);
+ g.setColour(acid.withAlpha(.16f+.13f*pulse));
+ g.drawRoundedRectangle(r,3.f,1.f);
+ g.setColour(acid.withAlpha(.18f+.20f*pulse));
+ g.fillRect(r.getRight()-3.f,r.getY()+4.f,2.f,r.getHeight()-8.f);
 }
 VoidcoreEditor::Click::Click(const String& t,Colour c):TextButton(t),accent(c){
  setClickingTogglesState(false);
+ setMouseCursor(MouseCursor::PointingHandCursor);
  setTooltip(t);
 }
 void VoidcoreEditor::Click::paintButton(Graphics& g,bool over,bool pressed){
- auto r=getLocalBounds().toFloat().reduced(1.f);
- g.setColour((selected?accent:Colour::fromRGB(9,24,18)).withAlpha(selected?.30f:1.f));
- g.fillRoundedRectangle(r,3.f);
- g.setColour(accent.withAlpha((pressed||over)?1.f:selected?.88f:.35f));
- g.drawRoundedRectangle(r,3.f,(pressed||over)?1.5f:1.f);
- g.setColour((selected||pressed)?frost:(over?accent:grey));
+ const auto r=getLocalBounds().toFloat().reduced(1.f);
+ const float pulse=.5f+.5f*std::sin(animationPhase*2.5f);
+ const bool lit=selected||over||pressed;
+ g.setColour(lit?Colour::fromRGB(9,44,22):Colour::fromRGB(5,16,9));
+ g.fillRoundedRectangle(r,4.f);
+ g.setColour(accent.withAlpha(lit?.60f+.30f*pulse:.18f+.13f*pulse));
+ g.drawRoundedRectangle(r,4.f,lit?1.7f:1.f);
+ if(lit){
+  g.setColour(accent.withAlpha(.07f+.10f*pulse));
+  g.fillRoundedRectangle(r.reduced(3.f),3.f);
+ }
+ // The moving scanline and breathing status lamp are visual-only.
+ const float scan=std::fmod(animationPhase*.13f,1.f);
+ g.setColour(accent.withAlpha(lit?.25f:.09f));
+ g.drawVerticalLine((int)(r.getX()+r.getWidth()*scan),r.getY()+3.f,r.getBottom()-3.f);
+ g.setColour(lit?frost:grey);
  g.setFont(Font(std::clamp(r.getHeight()*.34f,9.f,13.f),Font::bold));
  g.drawFittedText(getButtonText(),getLocalBounds().reduced(3,1),Justification::centred,1,.75f);
 }
@@ -182,6 +206,20 @@ void VoidcoreEditor::timerCallback(){
  }
  if(cachedA!=(int)value("bank"))updatePreview(0);
  if(cachedB!=(int)value("bankB"))updatePreview(1);
+ // JUCE child components repaint independently of their parent: animate each
+ // visible control without touching audio processing or modifying parameters.
+ for(auto& node:ui){
+  if(!node.control->isVisible())continue;
+  if(auto* button=dynamic_cast<Click*>(node.control.get()))
+   button->animationPhase=clock;
+  else if(auto* dial=dynamic_cast<Dial*>(node.control.get()))
+   dial->animationPhase=clock;
+  else if(auto* slider=dynamic_cast<Fader*>(node.control.get()))
+   slider->animationPhase=clock;
+  else if(auto* menu=dynamic_cast<Choice*>(node.control.get()))
+   menu->animationPhase=clock;
+  node.control->repaint();
+ }
  repaint();
 }
 
@@ -200,7 +238,10 @@ void VoidcoreEditor::Fader::paint(Graphics& g){
  g.setColour(acid.withAlpha(.86f));g.fillRoundedRectangle(r.getX()+10.f,y-3.f,std::max(1.f,x-r.getX()-10.f),6.f,3.f);
  g.setColour(blood.withAlpha(.35f));g.fillEllipse(x-13.f,y-13.f,26.f,26.f);
  g.setColour(frost);g.fillRoundedRectangle(x-5.f,y-14.f,10.f,28.f,2.f);
- g.setColour(blood);g.drawRoundedRectangle(x-5.f,y-14.f,10.f,28.f,2.f,1.5f);
+ g.setColour(acid.withAlpha(.55f+.40f*(.5f+.5f*std::sin(animationPhase*2.f))));
+ g.drawRoundedRectangle(x-5.f,y-14.f,10.f,28.f,2.f,1.5f);
+ g.setColour(frost.withAlpha(.55f));
+ g.fillEllipse(x-2.f,y-2.f,4.f,4.f);
 }
 void VoidcoreEditor::fader(const char* id,float x,float y,float w,float h,Page pg){
  auto c=std::make_unique<Fader>(processor,id);
