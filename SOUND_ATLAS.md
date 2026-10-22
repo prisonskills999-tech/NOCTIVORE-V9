@@ -1,59 +1,60 @@
-# NOCTIVORE v10 — Noise-Free Xenobiome Source Atlas
+# VOIDCORE V12 — XENO Sound Atlas
 
-200 original PCM16 WAV recordings, synthesized at 48 kHz without stochastic broadband noise.
+50 bank slots, 200 original 48 kHz PCM16 WAVs, four rooted notes per bank (36, 48, 60, 72).
+Each category uses a different synthesis topology, with five contrasting mutations. No recorded, sampled or proprietary third-party audio.
 
-| # | Bank | Organic model | A/B role |
+| # | Sound bank | Synthesis family | Sonic identity |
 |---:|---|---|---|
-| 00 | Obsidian Invocation | Subterranean throat | BODY |
-| 01 | Spore Cathedral | Amphibian glottis | VOICE |
-| 02 | Mycelium Choir | Subatomic oscillation | MOTION |
-| 03 | Event Horizon | Molten rubber | PUNCTUATION |
-| 04 | Ancient Skin Drum | Chitinic trills | SPACE |
-| 05 | Blackglass Insects | Bent glass | BODY |
-| 06 | Interstellar Autopsy | Cellular squelch | VOICE |
-| 07 | Swamp Magnetics | Liquid membranes | MOTION |
-| 08 | Copper Forest Shrine | Low ritual horn | PUNCTUATION |
-| 09 | Abyssal Carrier | Organic signal corruption | SPACE |
-| 10 | Signal From Below | Wormhole resonance | BODY |
-| 11 | Cave of Thorns | Fractal phasing | VOICE |
-| 12 | Ceremony At Zero | Symbiotic pulse | MOTION |
-| 13 | Plasma Organism | Slow tectonic folds | PUNCTUATION |
-| 14 | Dead Transmission | Vowel metamorphosis | SPACE |
-| 15 | Thirteen Witnesses | Cavern harmonium | BODY |
-| 16 | Forest Spirit Spiral | Hollow woodwind | VOICE |
-| 17 | Violet Fungal Tide | Spectral pollen | MOTION |
-| 18 | Hypersleep Failure | Ritual bone flute | PUNCTUATION |
-| 19 | Neural Parasite | Alien bird-cry | SPACE |
-| 20 | Iron Bell Cathedral | Undersea sonar | BODY |
-| 21 | Hollow Constellation | Fungal organ | VOICE |
-| 22 | Blackwater Speaker | Formant polyphony | MOTION |
-| 23 | Alien Dream Sequence | Forest clicking | PUNCTUATION |
-| 24 | Ceremonial Stone | Psychedelic spiral | SPACE |
-| 25 | Shadow Biome | Subterranean throat | BODY |
-| 26 | The Silent Reactor | Amphibian glottis | VOICE |
-| 27 | Pulsar Graveyard | Subatomic oscillation | MOTION |
-| 28 | Bone Rattle Run | Molten rubber | PUNCTUATION |
-| 29 | Vessel of Echoes | Chitinic trills | SPACE |
-| 30 | Dark Matter Pulse | Bent glass | BODY |
-| 31 | Fossil Frequency | Cellular squelch | VOICE |
-| 32 | Shamanic Dream Choir | Liquid membranes | MOTION |
-| 33 | Wormhole Weather | Low ritual horn | PUNCTUATION |
-| 34 | Organic Relay | Organic signal corruption | SPACE |
-| 35 | Midnight Mandala | Wormhole resonance | BODY |
-| 36 | Shamanic Fracture | Fractal phasing | VOICE |
-| 37 | Vox Ex Machina | Symbiotic pulse | MOTION |
-| 38 | Spectral Cicada | Slow tectonic folds | PUNCTUATION |
-| 39 | Hypnotic Root Cavern | Vowel metamorphosis | SPACE |
-| 40 | Temple of Fragments | Cavern harmonium | BODY |
-| 41 | Nebula Corridors | Hollow woodwind | VOICE |
-| 42 | Fractal Serpent Garden | Spectral pollen | MOTION |
-| 43 | Gelatinous Orbit | Ritual bone flute | PUNCTUATION |
-| 44 | Occult Harmonics | Alien bird-cry | SPACE |
-| 45 | Liquid Oracle Transmission | Undersea sonar | BODY |
-| 46 | Ghost Signal Choir | Fungal organ | VOICE |
-| 47 | Primitive Interference | Formant polyphony | MOTION |
-| 48 | Insectoid Machine | Forest clicking | PUNCTUATION |
-| 49 | Last World Drone | Psychedelic spiral | SPACE |
+| 00 | Abyssal Mass Driver | Abyssal Gravity | Subvoid gravity drones |
+| 01 | Mercury Organism | Xeno Liquids | Pitch-diving alien liquids |
+| 02 | Lost Colony Radio | Alien Transmissions | Coded transmissions and radio formants |
+| 03 | Throat of Europa | Creature Choirs | Morphing creature throat choirs |
+| 04 | Black Crystal Choir | Crystal Entities | Inharmonic crystal resonances |
+| 05 | Spore Cicada Hive | Insect Hive | Fast microscopic insect swarms |
+| 06 | Dread Pulsar | Pulsar Rituals | Deep gravitational rhythm pulses |
+| 07 | Wormhole Breach | Wormhole Motion | Sweeping wormhole motion |
+| 08 | Nebula Ghost Choir | Nebula Choirs | Slow nebula pads |
+| 09 | Broken Reality Code | Dimensional Glitch | Digital glitches and stutters |
+| 10 | Subzero Gravity | Abyssal Gravity | Subvoid gravity drones |
+| 11 | Liquid Xenoglyphs | Xeno Liquids | Pitch-diving alien liquids |
+| 12 | Alpha Centauri Distress | Alien Transmissions | Coded transmissions and radio formants |
+| 13 | Unborn Alien Voices | Creature Choirs | Morphing creature throat choirs |
+| 14 | Shattered Moon Glass | Crystal Entities | Inharmonic crystal resonances |
+| 15 | Insectoid Transmission | Insect Hive | Fast microscopic insect swarms |
+| 16 | Ritual of Black Suns | Pulsar Rituals | Deep gravitational rhythm pulses |
+| 17 | Collapsed Time Corridor | Wormhole Motion | Sweeping wormhole motion |
+| 18 | Cathedral of Stars | Nebula Choirs | Slow nebula pads |
+| 19 | Quantum Cipher | Dimensional Glitch | Digital glitches and stutters |
+| 20 | Deep Void Engine | Abyssal Gravity | Subvoid gravity drones |
+| 21 | Molten Protozoa | Xeno Liquids | Pitch-diving alien liquids |
+| 22 | Feral Radio Pulses | Alien Transmissions | Coded transmissions and radio formants |
+| 23 | Ancient Brood Hymn | Creature Choirs | Morphing creature throat choirs |
+| 24 | Xenolith Resonance | Crystal Entities | Inharmonic crystal resonances |
+| 25 | Microbe Swarm Signal | Insect Hive | Fast microscopic insect swarms |
+| 26 | Pulsar Burial Ground | Pulsar Rituals | Deep gravitational rhythm pulses |
+| 27 | Spacetime Folds | Wormhole Motion | Sweeping wormhole motion |
+| 28 | Distant Entity Choir | Nebula Choirs | Slow nebula pads |
+| 29 | Fractured Carrier | Dimensional Glitch | Digital glitches and stutters |
+| 30 | Dark Matter Wake | Abyssal Gravity | Subvoid gravity drones |
+| 31 | Orbital Fluid Cluster | Xeno Liquids | Pitch-diving alien liquids |
+| 32 | Unidentified Beacon | Alien Transmissions | Coded transmissions and radio formants |
+| 33 | Chorus of the Parasite | Creature Choirs | Morphing creature throat choirs |
+| 34 | Emerald Asteroid Glass | Crystal Entities | Inharmonic crystal resonances |
+| 35 | Hive at Perihelion | Insect Hive | Fast microscopic insect swarms |
+| 36 | Graviton Drum | Pulsar Rituals | Deep gravitational rhythm pulses |
+| 37 | Temporal Rift Machinery | Wormhole Motion | Sweeping wormhole motion |
+| 38 | Moonlight Ether Choir | Nebula Choirs | Slow nebula pads |
+| 39 | Dead Satellite Protocol | Dimensional Glitch | Digital glitches and stutters |
+| 40 | Void Titan Exhale | Abyssal Gravity | Subvoid gravity drones |
+| 41 | Symbiotic Acid Rain | Xeno Liquids | Pitch-diving alien liquids |
+| 42 | Last Xenowave | Alien Transmissions | Coded transmissions and radio formants |
+| 43 | Monolith Larynx | Creature Choirs | Morphing creature throat choirs |
+| 44 | Frozen Meteor Harmonics | Crystal Entities | Inharmonic crystal resonances |
+| 45 | Ultraviolet Insects | Insect Hive | Fast microscopic insect swarms |
+| 46 | Slow Supernova Pulse | Pulsar Rituals | Deep gravitational rhythm pulses |
+| 47 | Inverse Orbit Cascade | Wormhole Motion | Sweeping wormhole motion |
+| 48 | Afterlife Nebula | Nebula Choirs | Slow nebula pads |
+| 49 | Event Horizon Static | Dimensional Glitch | Digital glitches and stutters |
 
-Recommended contrasting pairings: A00+B23, A02+B48, A07+B33, A11+B42, A20+B14, A26+B39.
-No G-Sonique proprietary sound libraries or copyrighted recordings are used.
+Listen to distinct source pairs: **A00+B05**, **A03+B09**, **A01+B08**, **A02+B06**.
+Bank indices and preset automation IDs stay unchanged; the sounds and labels intentionally change.
