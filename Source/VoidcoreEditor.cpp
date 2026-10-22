@@ -263,6 +263,10 @@ void VoidcoreEditor::timerCallback(){
  }
  if(cachedA!=(int)value("bank"))updatePreview(0);
  if(cachedB!=(int)value("bankB"))updatePreview(1);
+ if(sourceSoloButton){
+  const bool solo=value("sourceSolo")>.5f;
+  if(sourceSoloButton->selected!=solo){sourceSoloButton->selected=solo;sourceSoloButton->repaint();}
+ }
  for(int mode=0;mode<3;++mode)
   if(auto* button=filterModeButtons[(size_t)mode]){
    const bool active=(int)value("filterMode")==mode;
@@ -346,9 +350,13 @@ void VoidcoreEditor::buildCore(){
  knob("xenoFormant","THROAT",131,293,53,Core);
  knob("grain","GRAIN",187,293,53,Core);
  knob("texture","TEXTURE",249,293,53,Core);
- knob("xenoCross","COUPLE",310,293,53,Core);
+ knob("character","XENO",310,293,53,Core);
  knob("symbiosis","BOND",366,293,53,Core);
  fader("morph",62,320,307,26,Core);
+ click("PURE SOURCE",744,517,128,30,Core,[this]{
+  set("sourceSolo",value("sourceSolo")>.5f?0.f:1.f);
+ });
+ sourceSoloButton=dynamic_cast<Click*>(ui.back().control.get());
  auto orb=std::make_unique<OrbPad>(processor);
  addAndMakeVisible(*orb);
  ui.push_back({std::move(orb),{479,231,242,155},(int)Core});
