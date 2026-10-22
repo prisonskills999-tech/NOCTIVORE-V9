@@ -57,7 +57,7 @@ private:
   explicit Click(const juce::String&,juce::Colour);
   void paintButton(juce::Graphics&,bool,bool) override;
  };
- struct OrbPad final : juce::Component {
+ struct OrbPad final : juce::Component, juce::SettableTooltipClient {
   NoctivoreProcessor& processor;
   bool dragging=false;
   explicit OrbPad(NoctivoreProcessor& p):processor(p){
