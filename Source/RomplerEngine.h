@@ -131,7 +131,7 @@ public:
  void prepare(double sampleRate){
   sr=std::max(8000.,sampleRate);for(auto& v:voices)v={};
   spaceFX.prepare(sr);mixLowL=mixLowR=0;mixMidL=mixMidR=0;
-  lfoPhase=0;for(auto& l:modulators)l={};globalTime=0;motifBeats=0;held.fill(false);sustained.fill(false);sustainDown=false;smoothedGate=1.f;smoothedAccent=1.f;
+  lfoPhase=0;for(auto& l:modulators)l={};globalTime=0;motifBeats=0;hostBeatSynced=false;held.fill(false);sustained.fill(false);sustainDown=false;smoothedGate=1.f;smoothedAccent=1.f;
  }
  void setParameters(const Params& values){
   p=values;auto fx=p.fx;fx.psySpiral=p.psySpiral;fx.psySpiralRate=p.psySpiralRate;
@@ -139,7 +139,13 @@ public:
   spaceFX.setControls(fx);
  }
  void setTempo(double bpm){tempo=clampf((float)bpm,30.f,300.f);spaceFX.setTempo(bpm);}
- void setBeatClock(double ppq){if(std::isfinite(ppq))motifBeats=(float)std::fmod(ppq,65536.);}
+ void setBeatClock(double ppq){
+   if(!std::isfinite(ppq))return;
+   const double position=std::fmod(ppq,65536.);
+   if(!hostBeatSynced || std::abs(position-motifBeats)>.065){
+     motifBeats=position;hostBeatSynced=true;
+   }
+ }
  void pitchWheel(int value){bend=clampf(((float)value-8192.f)/8192.f,-1,1);}
  void controller(int cc,int value){
   if(cc==1)modwheel=clampf((float)value/127,0,1);
@@ -189,6 +195,9 @@ public:
   v->bodyPhase=0;v->fmPhase=0;v->modPhase=0;v->prevMod=0;
   v->stealL=previousL;v->stealR=previousR;v->stealFade=stolen?1.f:0.f;
   v->lastL=v->lastR=0.f;v->fractureGain=1.f;
+  v->smoothMorph=clampf(p.morph,0.f,1.f);
+  v->smoothFmMix=clampf(p.fmMix,0.f,1.f);
+  v->smoothFold=clampf(p.psyFold,0.f,1.f);
    v->cellPhase=v->organismPhase=v->organismTonePhase=v->foldLP=0.f;
    v->predatorPhase=v->insectPhase=v->signalPhase=0.f;
   v->aliveA=v->aliveB=0.f;
@@ -223,12 +232,14 @@ public:
   // Block-constant coefficients: avoid exp/pow per voice per sample.
   const float accentSlew=1.f-std::exp(-dt/.006f);
   const float gateSlew=1.f-std::exp(-dt/.005f);
-  const float fractureSlew=1.f-std::exp(-dt/.007f);
+  // Fracture no longer uses a stepped amplitude gate.
   const float pitchSlew=1.f-std::exp(-dt/std::max(.002f,p.glide));
   const float lowCoeff=1.f-std::exp(-2.f*pi*125.f*dt);
   const float midCoeff=1.f-std::exp(-2.f*pi*625.f*dt);
   const float filterReleaseDecay=std::exp(-dt/std::max(.01f,p.filterEnvRelease));
   const float motionReleaseDecay=std::exp(-dt/std::max(.01f,p.motionEnvRelease));
+   const float modSlew=1.f-std::exp(-dt/.012f);
+   const float controlSlew=1.f-std::exp(-dt/.015f);
   for(int i=0;i<count;++i){
    std::array<float,11> destinations{};
    // Per-target accumulation allows true simultaneous four-LFO routing.
@@ -254,7 +265,8 @@ public:
     // Deliberate fine response for subtle organic movement.
     float depth=clampf(cfg.depth,0,1); depth=depth*depth;
     int dest=std::clamp(cfg.target,0,10);
-    destinations[(size_t)dest]+=shape*depth;
+    osc.smooth+=(shape-osc.smooth)*modSlew;
+     destinations[(size_t)dest]+=osc.smooth*depth;
    }
    // MIDI CC1 and the painted mod fader share a musical modulation macro.
    const float modAmount=clampf(modwheel+p.performanceMod,0.f,1.f);
@@ -274,10 +286,10 @@ public:
    static constexpr float divs[4]={2.f,4.f,8.f,3.f}; // eighth, 16th, 32nd, triplet
    const int grooveIndex=std::clamp(p.motif-1,0,5);
    const float beatsPerStep=divs[(size_t)std::clamp(p.motifDivision,0,3)];
-   const float beatClock=motifBeats*beatsPerStep;
+   const double beatClock=motifBeats*(double)beatsPerStep;
    const int rawStep=(int)std::floor(beatClock);
    const int stepNum=((rawStep%16)+16)%16;
-   float stepPhase=beatClock-std::floor(beatClock);
+   float stepPhase=(float)(beatClock-std::floor(beatClock));
    // Swing shifts alternating steps WITHOUT changing pitch or grid rate.
    float swing=clampf(p.motifGlide,0.f,1.f)*.27f;
    stepPhase=clampf(stepPhase+(stepNum%2==1?swing:-swing),0.f,.999f);
@@ -374,9 +386,11 @@ public:
      const float cellular=std::sin(v.cellPhase+2.3f*colony*std::sin(v.cellPhase*.41f+bio3))
         *(.63f+.37f*bio1);
      const float osc=std::sin(2.f*pi*p.morphRate*globalTime+v.motionPhase*.37f);
-    const float morph=clampf(p.morph + .5f*p.morphMotion*(osc+.24f*std::sin(2.f*pi*p.morphRate*.39f*globalTime))
+    const float requestedMorph=clampf(p.morph + .5f*p.morphMotion*(osc+.24f*std::sin(2.f*pi*p.morphRate*.39f*globalTime))
                     +.35f*destinations[6]+.13f*linked+.12f*colony*cellular
                     +.20f*clampf(p.biomeDepth,0.f,1.f)*std::sin(2.f*pi*p.biomeRate*globalTime+v.motionPhase*.13f),0.f,1.f);
+    v.smoothMorph+=(requestedMorph-v.smoothMorph)*controlSlew;
+    const float morph=v.smoothMorph;
     const float mixA=std::cos(morph*pi*.5f),mixB=std::sin(morph*pi*.5f);
     const float baseA=readAt(s,v.position),baseB=readAt(sb,v.positionB);
     float sample=mixA*baseA+mixB*baseB;
@@ -408,7 +422,7 @@ public:
     // Overlapping, windowed grains with separately randomized capture anchors.
     // Freeze keeps its anchors locked; Cloud/Fracture continually reseed them.
     const int mode=std::clamp(p.textureMode,0,5);
-    if(mode==1||mode==4||mode==5){
+    if(mode==1||mode==5){ // Fracture no longer re-anchors digital grain slices.
      const float duration=.065f+.58f*(1.f-clampf(p.grain+.5f*destinations[8],0.f,1.f));
      v.grainPhase+=dt/duration;
      bool reset=false;
@@ -470,17 +484,19 @@ public:
     const float atmosphere=clampf(p.macroAtmosphere,0.f,1.f);
     // Two-operator inharmonic FM: no samples or wavetables required.
     const float carrier=std::min(7200.f,fundamentalHz(v.pitch+gesture+(bend+p.bend)*p.bendRange+clampf(destinations[2],-1.f,1.f)*2.f));
-    const float fmFreq=std::min((float)sr*.42f,carrier*(p.fmRatio+.19f*p.fmInharmonic));
+    const float fmFreq=std::min((float)sr*.17f,carrier*(p.fmRatio+.19f*p.fmInharmonic));
     v.modPhase=wrapPhase(v.modPhase+2.f*pi*fmFreq*dt);
     const float mod=std::sin(v.modPhase+clampf(p.fmFeedback,0.f,.95f)*v.prevMod*2.5f);
     v.prevMod=mod;
     v.fmPhase=wrapPhase(v.fmPhase+2.f*pi*carrier*dt);
     const float fmAmount=clampf(p.fmIndex+.6f*destinations[5]+aggression*1.5f
-       +.85f*wr*std::fabs(bio2)+.85f*linked+.95f*colony*cellular,0.f,16.f);
+       +.85f*wr*std::fabs(bio2)+.85f*linked+.95f*colony*cellular,0.f,6.5f);
     const float fmA=std::sin(v.fmPhase+fmAmount*mod);
     const float fmB=std::sin(v.fmPhase*1.019f+(fmAmount*.7f)*std::sin(v.modPhase*(1.17f+p.fmInharmonic*.46f)));
     const float fmSignal=(.68f*fmA+.32f*fmB)*(.12f+.88f*v.motionEnv);
-    float fmMix=clampf(p.fmMix+aggression*.07f,0.f,1.f);
+    const float requestedFmMix=clampf(p.fmMix+aggression*.07f,0.f,1.f);
+    v.smoothFmMix+=(requestedFmMix-v.smoothFmMix)*controlSlew;
+    const float fmMix=v.smoothFmMix;
     sample=sample*(1.f-fmMix*.48f)+fmSignal*fmMix*.75f;
      // Tuned 3rd/5th/7th partials restore low-register articulation; no noise.
      if(lowLife>.0001f){
@@ -545,12 +561,14 @@ public:
       sample+=burrow*(.10f+.19f*burrow)*mix*(.35f+.65f*sweep);
     }
     // Dynamic harmonic folding with gentle anti-alias low-pass smoothing.
-    const float fold=clampf(p.psyFold,0.f,1.f);
+    const float foldTarget=clampf(p.psyFold,0.f,1.f);
+    v.smoothFold+=(foldTarget-v.smoothFold)*controlSlew;
+    const float fold=v.smoothFold;
     if(fold>.0001f){
-      const float warped=std::sin(sample*(1.4f+3.8f*fold)+.65f*cellular*fold);
-      const float coeff=clampf(2.f*pi*std::min((float)sr*.2f,2400.f+carrier*2.7f)*dt,.001f,.70f);
+      const float warped=std::tanh(sample*(1.f+1.3f*fold)+.22f*cellular*fold);
+      const float coeff=clampf(2.f*pi*std::min((float)sr*.15f,2400.f+carrier*.5f)*dt,.001f,.34f);
       v.foldLP+=coeff*(warped-v.foldLP);
-      sample=sample*(1.f-.24f*fold)+v.foldLP*(.24f*fold);
+      sample=sample*(1.f-.14f*fold)+v.foldLP*(.14f*fold);
     }
     // Morphing pseudo-vocal tract with two narrow, stable resonant peaks.
     // Reacts to living biome and cross-layer motion without broadband noise.
@@ -669,10 +687,10 @@ public:
      gain*=1.f-clampf(p.texture,0.f,1.f)*(1.f-gate);
     }
     if(mode==4){
-     float clockPhase=std::fmod(globalTime*tempo/60.f*clampf(p.pulseRate,.25f,16.f),1.f);
-     const float target=clockPhase<.36f?.98f:.12f;
-     v.fractureGain+=(target-v.fractureGain)*fractureSlew;
-     gain*=1.f-clampf(p.texture,0.f,1.f)*.84f*(1.f-v.fractureGain);
+     // Liquid deformation with no square gate or high-rate restart.
+     const float angle=2.f*pi*globalTime*clampf(p.pulseRate,.25f,16.f)*tempo/60.f;
+     const float breathing=.5f+.5f*std::sin(angle+.31f*bio2);
+     gain*=1.f-.23f*clampf(p.texture,0.f,1.f)*(1.f-breathing);
     }
     gain*=clampf(1.f+destinations[0]*.45f,0.f,1.5f);
     float orbit=(mode==2? p.texture*.75f*std::sin(v.motionPhase*1.35f+globalTime*.37f):0.f);
@@ -689,7 +707,7 @@ public:
     }else{mixL+=outL;mixR+=outR;}
    }
    globalTime+=dt;
-   motifBeats+=dt*tempo/60.f;
+   motifBeats+=(double)tempo/60.0/sr;
    if(motifBeats>65536.f)motifBeats-=65536.f;
    if(globalTime>100000.f)globalTime=0;
    float wetL=0,wetR=0;
@@ -740,6 +758,7 @@ private:
   float fmPhase=0,modPhase=0,prevMod=0,metalDamp=0,motifPitch=0,fxPhase=0,ghostLP=0;int fxStep=-1;
   std::array<float,4096> metalLine{};int metalPos=0;
   float grainPhase=0.f,fractureGain=1.f,stealL=0,stealR=0,stealFade=0,lastL=0,lastR=0;
+  float smoothMorph=.2f,smoothFmMix=0.f,smoothFold=0.f;
   bool grainSecondHalf=false;
   std::array<float,2> anchorA{},anchorB{};uint32_t noiseState=1;
   bool keyDown=false,oneShot=false;uint64_t age=0;
@@ -758,14 +777,15 @@ private:
  }
  static float fundamentalHz(float midi){return clampf(440.f*std::exp2((midi-69.f)/12.f),20.f,8000.f);}
  static float wrapPhase(float phase){return phase>=2.f*pi?std::fmod(phase,2.f*pi):phase;}
- struct ModState {float phase=0.f,random=0.f;uint32_t seed=1234567u;};
+ struct ModState {float phase=0.f,random=0.f,smooth=0.f;uint32_t seed=1234567u;};
  double sr=44100.;Params p;
  std::array<ModState,4> modulators{};
  std::array<std::array<Sample,4>,51> samples{};
  std::array<Voice,voiceCount> voices{};
  std::array<bool,128> held{},sustained{};
  uint64_t voiceCounter=0;bool sustainDown=false;
- float bend=0,modwheel=0,lfoPhase=0,globalTime=0,motifBeats=0,tempo=145;
+ float bend=0,modwheel=0,lfoPhase=0,globalTime=0,tempo=145;
+ double motifBeats=0.;bool hostBeatSynced=false;
  float mixLowL=0,mixLowR=0,mixMidL=0,mixMidR=0;
  float smoothedGate=1.f,smoothedAccent=1.f;
  PsySpace spaceFX;std::string bankFolder;
