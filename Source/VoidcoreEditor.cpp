@@ -177,11 +177,11 @@ VoidcoreEditor::VoidcoreEditor(NoctivoreProcessor& p):AudioProcessorEditor(p),pr
  // image in the VST3's Resources/GUI/voidcore.png. Real controls stay separate.
  auto art=processor.paintingFile().getSiblingFile("voidcore.png");
  if(art.existsAsFile())reference=ImageFileFormat::loadFrom(art);
- buildCore();buildDeeper();setPage(Core);
+ buildCore();setPage(Core);
  setResizable(true,true);
- setResizeLimits(900,600,1500,1000);
- if(auto* constrainer=getConstrainer())constrainer->setFixedAspectRatio(1.5);
- setSize(1050,700);
+ setResizeLimits(960,600,1800,1125);
+ if(auto* constrainer=getConstrainer())constrainer->setFixedAspectRatio(1.6);
+ setSize(1200,750);
  startTimerHz(30); // UI-only; DSP never renders on the GUI thread.
 }
 VoidcoreEditor::~VoidcoreEditor(){stopTimer();chooser.reset();}
@@ -315,91 +315,102 @@ void VoidcoreEditor::fader(const char* id,float x,float y,float w,float h,Page p
  ui.push_back({std::move(c),{x,y,w,h},(int)pg});
 }
 void VoidcoreEditor::buildCore(){
- // Astral Bloom: photographic 3:2 layout, but every rendered control is a real
- // JUCE child. All parameter writes use the host-notifying APVTS path.
- for(int i=0;i<4;++i){
-  const Page target=(Page)i;
-  allClick(pageNames[(size_t)i],778.f+i*102.f,20.f,94.f,32.f,[this,target]{setPage(target);});
-  pageButtons[(size_t)i]=dynamic_cast<Click*>(ui.back().control.get());
- }
- allClick("SAVE",403,20,65,32,[this]{save();});
- allClick("LOAD",475,20,65,32,[this]{load();});
- allClick("INIT",547,20,65,32,[this]{
+ // FINAL VOIDCORE: all audio controls on a single visible screen. No page
+ // navigation; every knob and button is bound to a real DSP/APVTS parameter.
+ allClick("LOAD",423,17,66,34,[this]{load();});
+ allClick("SAVE",495,17,66,34,[this]{save();});
+ allClick("RANDOM",568,17,91,34,[this]{mutation(false);});
+ allClick("EVOLVE",665,17,83,34,[this]{mutation(true);});
+ allClick("INIT",755,17,67,34,[this]{
   for(auto* parameter:processor.getParameters()){
    parameter->beginChangeGesture();
    parameter->setValueNotifyingHost(parameter->getDefaultValue());
    parameter->endChangeGesture();
   }
-  lastScene="INITIAL PATCH";
+  lastScene="CLEAN INITIAL PATCH";
  });
- allClick("RANDOM",619,20,84,32,[this]{mutation(false);});
- allClick("EVOLVE",709,20,63,32,[this]{mutation(true);});
- StringArray banks;
- for(const auto& bank:noctivore::banks)banks.add(bank.name);
- banks.add("User");
- // The source menu shows the *real* sample bank name. Arrows change the
- // host-automatable selection, never a visual-only picture.
- choice("bank",banks,55,127,135,28,Core);
- choice("bankB",banks,229,127,134,28,Core);
- click("<",28,127,24,28,Core,[this]{shift("bank",-1);});
- click(">",193,127,24,28,Core,[this]{shift("bank",1);});
- click("<",202,215,23,29,Core,[this]{shift("bankB",-1);});
- click(">",364,215,23,29,Core,[this]{shift("bankB",1);});
- // Small sound-sphere knobs follow actual existing DSP parameters.
- knob("start","START",67,293,53,Core);
- knob("xenoFormant","THROAT",131,293,53,Core);
- knob("grain","GRAIN",187,293,53,Core);
- knob("texture","TEXTURE",249,293,53,Core);
- knob("character","XENO",310,293,53,Core);
- knob("symbiosis","BOND",366,293,53,Core);
- fader("morph",62,320,307,26,Core);
- click("PURE SOURCE",744,517,128,30,Core,[this]{
+ allClick("PURE SOURCE",835,17,136,34,[this]{
   set("sourceSolo",value("sourceSolo")>.5f?0.f:1.f);
  });
  sourceSoloButton=dynamic_cast<Click*>(ui.back().control.get());
+ allClick("REVERSE",978,17,96,34,[this]{
+  set("reverse",value("reverse")>.5f?0.f:1.f);
+ });
+ reverseButton=dynamic_cast<Click*>(ui.back().control.get());
+ StringArray banks;
+ for(const auto& bank:noctivore::banks)banks.add(bank.name);
+ banks.add("User");
+ // Genuine, independently tunable dual sample voices.
+ choice("bank",banks,43,126,140,28,Core);
+ choice("bankB",banks,218,126,140,28,Core);
+ click("<",20,127,21,27,Core,[this]{shift("bank",-1);});
+ click(">",184,127,22,27,Core,[this]{shift("bank",1);});
+ click("<",196,168,20,27,Core,[this]{shift("bankB",-1);});
+ click(">",357,168,20,27,Core,[this]{shift("bankB",1);});
+ knob("tuneA","TUNE A",68,274,69,Core);
+ knob("levelA","LEVEL A",156,274,69,Core);
+ knob("tuneB","TUNE B",247,274,69,Core);
+ knob("levelB","LEVEL B",334,274,69,Core);
+ // Huge central morph and real amp envelope. The orb is a 2D expression pad.
  auto orb=std::make_unique<OrbPad>(processor);
  addAndMakeVisible(*orb);
- ui.push_back({std::move(orb),{479,231,242,155},(int)Core});
- // Source A and B waveforms are decoded from 48k factory WAVs.
- // Filter model, its selectable operating modes, and envelope/saturation.
- choice("filterMode",{"Low Pass","Band Pass","High Pass"},865,130,218,27,Core);
- knob("cutoff","CUTOFF",923,246,99,Core);
- knob("resonance","RES",1032,280,62,Core);
- knob("filterDrive","DRIVE",1116,280,62,Core);
- for(int i=0;i<3;++i){
-  const juce::String name=juce::StringArray{"LP","BP","HP"}[i];
-  click(name,1104,171.f+i*34.f,68,28,Core,[this,i]{set("filterMode",(float)i);});
-  filterModeButtons[(size_t)i]=dynamic_cast<Click*>(ui.back().control.get());
+ ui.push_back({std::move(orb),{495,191,206,176},(int)Core});
+ knob("attack","ATTACK",465,481,75,Core);
+ knob("morph","MORPH A/B",601,472,112,Core);
+ knob("release","RELEASE",734,481,75,Core);
+ // High impact filter; the graph displays its actual active choice.
+ choice("filterMode",{"Low Pass","Band Pass","High Pass"},846,126,317,29,Core);
+ knob("cutoff","CUTOFF",897,254,116,Core);
+ knob("resonance","RESONANCE",1014,265,69,Core);
+ knob("filterDrive","DRIVE",1112,265,69,Core);
+ // Direct LFO routed to a selected physical destination.
+ choice("wave",{"Sine","Triangle","Saw","Square","Sample & Hold","Fractal"},39,372,143,27,Core);
+ choice("target",{"Volume","Pan","Pitch","Filter 1","Filter 2","FM Index","A/B Morph","Metal Exciter","Grain Density","Delay Warp","Reverb Motion"},193,372,169,27,Core);
+ knob("rate","RATE",63,481,69,Core);
+ knob("depth","DEPTH",149,481,69,Core);
+ knob("morphMotion","MORPH MOD",238,481,69,Core);
+ knob("movement","MOVEMENT",326,481,69,Core);
+ // Character is the genuine filter/organism macro; the two neighboring
+ // parameters change the granular time structure, not cosmetic animations.
+ choice("textureMode",{"Flow","Grain","Orbit","Pulse","Liquid","Spectral"},986,378,173,27,Core);
+ knob("character","XENO",900,452,108,Core);
+ knob("grain","GRAIN",1029,473,71,Core);
+ knob("texture","TEXTURE",1120,473,71,Core);
+ // 16-click performance strip controls the live gating engine.
+ choice("motif",{"Off","Serpent","Ritual","Insect","Portal","Fracture","Hollow"},85,551,142,26,Core);
+ knob("tranceRate","RATE",278,558,55,Core);
+ for(int i=0;i<16;++i){
+  const auto id=String::formatted("gateStep%02d",i+1);
+  click(String(i+1),324.f+43.f*i,550.f,36.f,28.f,Core,[this,id]{
+   set(id.toRawUTF8(),value(id.toRawUTF8())>.5f?0.f:1.f);
+  });
+  steps[(size_t)i]=dynamic_cast<Click*>(ui.back().control.get());
  }
- // LFO1: explicitly bound to real modulation routing, shape and depth.
- choice("wave",{"Sine","Triangle","Saw","Square","Sample & Hold","Fractal"},34,393,160,29,Core);
- choice("lfo1Sync",{"Free","1 bar","1/2 bar","1/4 bar","1/8 bar","1/16 bar"},207,393,161,29,Core);
- knob("rate","RATE",77,522,62,Core);
- knob("depth","DEPTH",170,522,62,Core);
- knob("movement","MOTION",269,522,62,Core);
- // Amplifier envelope visible beneath the real ADSR graph.
- knob("attack","ATTACK",47,695,60,Core);
- knob("decay","DECAY",118,695,60,Core);
- knob("sustain","SUSTAIN",190,695,60,Core);
- knob("release","RELEASE",263,695,60,Core);
- // FX controls are persistent effect-mix parameters, not fake FX switches.
- choice("division",{"1/4","1/8","1/8 dotted","1/16","1/16 dotted","1/32","1/4 triplet","1/8 triplet"},845,376,204,28,Core);
- knob("reverbMix","REV MIX",854,527,56,Core);
- knob("reverbSize","SIZE",933,527,56,Core);
- knob("reverbDecay","DECAY",1009,527,56,Core);
- knob("delayMix","DELAY",1084,527,56,Core);
- // Evolving macro row with genuine host-automatable DSP parameters.
- knob("macroAtmosphere","ATMOS",341,687,67,Core);
- knob("coupledMotion","MOTION",430,687,67,Core);
- knob("spectralTilt","TONE",519,687,67,Core);
- knob("biomeDepth","EVOLUTION",606,681,89,Core);
- knob("stereo","DIMENSION",698,687,67,Core);
- knob("xenoWrithe","TEXTURE",791,687,67,Core);
- knob("clarity","CLARITY",878,687,67,Core);
- // Output controls retain the VST3 parameter IDs for old projects.
- choice("mode",{"Polyphonic","Mono","Legato"},921,608,154,26,Core);
- knob("volume","VOLUME",965,685,84,Core);
- knob("pan","PAN",1144,692,60,Core);
+ knob("motifGate","GATE",1121,556,59,Core);
+ // Space controls have separate real delay and reverb controls.
+ knob("delayMix","DELAY",63,661,66,Core);
+ knob("delayFeedback","FEEDBACK",142,661,66,Core);
+ knob("reverbMix","REVERB",221,661,66,Core);
+ knob("reverbDecay","DECAY",299,661,66,Core);
+ // Native -9/+9 dB three-band EQ: all three have audible spectral impact.
+ knob("toneLow","LOW",394,661,70,Core);
+ knob("toneMid","MID",479,661,70,Core);
+ knob("toneHigh","HIGH",566,661,70,Core);
+ knob("stereo","WIDTH",692,661,84,Core);
+ knob("pan","PAN",790,661,66,Core);
+ knob("volume","VOLUME",927,661,94,Core);
+ choice("mode",{"Polyphonic","Mono","Legato"},1054,626,111,27,Core);
+ knob("glide","GLIDE",1117,674,67,Core);
+ // Real MIDI keyboard, available without any navigation or secondary page.
+ auto keys=std::make_unique<MidiKeyboardComponent>(
+    processor.keyboardState,MidiKeyboardComponent::horizontalKeyboard);
+ keys->setAvailableRange(36,96);keys->setKeyWidth(18.f);
+ keys->setColour(MidiKeyboardComponent::whiteNoteColourId,Colour::fromRGB(220,222,225));
+ keys->setColour(MidiKeyboardComponent::blackNoteColourId,Colour::fromRGB(6,7,10));
+ keys->setColour(MidiKeyboardComponent::keyDownOverlayColourId,acid.withAlpha(.82f));
+ keys->setColour(MidiKeyboardComponent::mouseOverKeyOverlayColourId,acid.withAlpha(.20f));
+ addAndMakeVisible(*keys);
+ ui.push_back({std::move(keys),{240,707,794,34},(int)Core});
 }
 void VoidcoreEditor::buildDeeper(){
  // MOTION: one selected LFO at a time, one ADSR, editable 16-step gate.
