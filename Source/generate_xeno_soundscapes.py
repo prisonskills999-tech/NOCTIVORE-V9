@@ -74,7 +74,7 @@ def create(bank, note, category=0, model=None):
         x += .11 * np.sin(.37 * phase + 1.4 * drift)
     elif family == 2:
         code = np.sin(tau * (1.7 + mutation * .31) * t + 1.2 * drift)
-        gate = np.clip((code + .05) * 8., 0., 1.)
+        gate = np.sin(.5 * np.pi * np.clip((code + .45) * 1.10, 0., 1.)) ** 2
         shifting = np.sin(phase * (1.8 + mutation * .11) + 2.4 * mod)
         carrier = np.sin(phase * (.49 + .02 * mutation) + 3.2 * np.sin(.23 * phase + slow))
         x = (shifting * .56 + carrier * .44) * (.06 + .94 * gate)
@@ -117,7 +117,7 @@ def create(bank, note, category=0, model=None):
         stutter = np.power(.5 + .5 * np.sin(tau * rate * t + 1.8 * slow), 11)
         chopped = np.power(.5 + .5 * np.cos(tau * (rate * .31) * t + phase_offset), 5)
         alien = np.sin(phase * (.63 + mutation * .067) + 3.7 * mod)
-        quantized = np.tanh(2.3 * np.sin(phase * (1.33 + mutation * .17) + airy))
+        quantized = .65 * np.sin(phase * (1.33 + mutation * .17) + airy) + .35 * np.sin(phase * (.48 + mutation * .09) + drift)
         x = (.6 * alien + .4 * quantized) * (.025 + .68 * stutter + .31 * chopped)
 
     # Contrasting mutation signatures rather than any shared synthetic base layer.
@@ -129,14 +129,25 @@ def create(bank, note, category=0, model=None):
         cutoff = 8800 + 420 * mutation
     else:
         cutoff = 5200 + 640 * mutation
-    sos = signal.butter(2, min(cutoff, 11000), fs=SR, output='sos')
+    # Four-pole reconstruction lowpass eliminates upper FM and warping
+    # sidebands *before* PCM encoding. Note-dependent bandwidth prevents
+    # folding at high root notes / on further upward transposition.
+    ceiling = min(cutoff, 9200., max(1950., 0.42 * SR - f * 11.))
+    sos = signal.butter(4, ceiling, fs=SR, output='sos')
     x = signal.sosfilt(sos, x)
+    # Independent spectral shape per bank mutation; no common tonal bed.
+    if mutation % 2 == 1:
+        hp = signal.butter(2, 65. + 85. * mutation, btype='highpass', fs=SR, output='sos')
+        x = signal.sosfilt(hp, x)
+    elif mutation == 4:
+        shelf = signal.butter(2, 1200. + 330. * family, fs=SR, output='sos')
+        x = .60 * x + .40 * signal.sosfilt(shelf, x)
     attack = .08 + .09 * (family in (0, 3, 8))
     x *= -np.expm1(-t / attack)
     x *= -np.expm1(-(duration - t) / .19)
     x -= np.mean(x)
     rms = float(np.sqrt(np.mean(x * x)) + 1e-12)
-    target = .15 if family in (0, 3, 8) else .18
+    target = .125 if family in (0, 3, 8) else .14
     x *= target / rms
     peak = np.max(np.abs(x))
     if peak > .87:

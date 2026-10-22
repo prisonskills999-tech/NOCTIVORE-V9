@@ -73,6 +73,61 @@ struct Sample {
   const size_t i=(size_t)pos;const float frac=pos-(float)i;
   return data[i]+(data[i+1]-data[i])*frac;
  }
+ // Anti-alias reconstruction for samples played above their recorded root.
+ // 17-tap bandlimited source reconstruction, with phase and cutoff LUTs.
+ // Precomputation occurs once in prepare(), never while rendering voices.
+ using SincTable=std::array<std::array<std::array<float,17>,65>,17>;
+ static const SincTable& sincTable(){
+  static const SincTable table=[](){
+   SincTable built{};
+   for(int bin=0;bin<17;++bin){
+    const float cutoff=.020f+.330f*(float)bin/16.f;
+    for(int phase=0;phase<=64;++phase){
+     const float frac=(float)phase/64.f;
+     float sum=0.f;
+     for(int k=0;k<17;++k){
+      const float distance=frac-(float)(k-8);
+      const float theta=2.f*pi*cutoff*distance;
+      const float sinc=std::fabs(theta)<1e-6f?1.f:std::sin(theta)/theta;
+      const float window=.5f+.5f*std::cos(pi*distance/9.f);
+      const float weight=2.f*cutoff*sinc*window;
+      built[(size_t)bin][(size_t)phase][(size_t)k]=weight;
+      sum+=weight;
+     }
+     if(std::fabs(sum)>1e-6f)
+      for(float& w:built[(size_t)bin][(size_t)phase])w/=sum;
+    }
+   }
+   return built;
+  }();
+  return table;
+ }
+ static void prepareSinc(){(void)sincTable();}
+ float bandLimited(float pos,float increment)const {
+  const float ratio=std::fabs(increment);
+  if(ratio<=1.38f)return cubic(pos);
+  if(!loaded()||pos<9.f||pos>(float)(data.size()-10))return cubic(pos);
+  const int origin=(int)std::floor(pos);
+  const float frac=pos-(float)origin;
+  const float phaseFloat=frac*64.f;
+  const int phase=std::clamp((int)phaseFloat,0,63);
+  const float phaseMix=phaseFloat-(float)phase;
+  const float cutoff=std::min(.35f,.47f/ratio);
+  const float binFloat=std::clamp((cutoff-.020f)/.330f*16.f,0.f,16.f);
+  const int bin=std::min(15,(int)binFloat);
+  const float binMix=binFloat-(float)bin;
+  const auto& table=sincTable();
+  float output=0.f;
+  for(int k=0;k<17;++k){
+   const float a=table[(size_t)bin][(size_t)phase][(size_t)k];
+   const float b=table[(size_t)bin][(size_t)phase+1][(size_t)k];
+   const float c=table[(size_t)bin+1][(size_t)phase][(size_t)k];
+   const float d=table[(size_t)bin+1][(size_t)phase+1][(size_t)k];
+   const float low=a+(b-a)*phaseMix,high=c+(d-c)*phaseMix;
+   output+=data[(size_t)(origin+k-8)]*(low+(high-low)*binMix);
+  }
+  return output;
+ }
  float cubic(float pos)const {
   if(!loaded()||pos<1||pos>=(float)(data.size()-3))return linear(pos);
   size_t i=(size_t)pos;float t=pos-(float)i;
@@ -129,11 +184,41 @@ public:
   return result;
  }
  void prepare(double sampleRate){
+  Sample::prepareSinc();
   sr=std::max(8000.,sampleRate);for(auto& v:voices)v={};
   spaceFX.prepare(sr);mixLowL=mixLowR=0;mixMidL=mixMidR=0;
   lfoPhase=0;for(auto& l:modulators)l={};globalTime=0;motifBeats=0;hostBeatSynced=false;held.fill(false);sustained.fill(false);sustainDown=false;smoothedGate=1.f;smoothedAccent=1.f;
  }
  void setParameters(const Params& values){
+  // Live bank changes crossfade held notes instead of waiting for new MIDI.
+  if(values.bank!=p.bank || values.bankB!=p.bankB){
+   for(auto& v:voices){
+    if(!v.stage||!v.sample||!v.sampleB)continue;
+    const int zone=std::clamp((int)std::lround((v.note-36)/12.f),0,3);
+    auto choose=[&](int bank)->const Sample*{
+     const auto& row=samples[(size_t)std::clamp(bank,0,50)];
+     if(row[(size_t)zone].loaded())return &row[(size_t)zone];
+     for(const auto& candidate:row)if(candidate.loaded())return &candidate;
+     return nullptr;
+    };
+    const Sample* a=choose(values.bank);
+    const Sample* b=choose(values.bankB);
+    if(!a)continue;
+    if(!b)b=a;
+    if(a==v.sample && b==v.sampleB)continue;
+    v.oldSample=v.sample;v.oldSampleB=v.sampleB;
+    v.oldPosition=v.position;v.oldPositionB=v.positionB;
+    const float fractionA=v.position/std::max(1.f,(float)v.sample->data.size());
+    const float fractionB=v.positionB/std::max(1.f,(float)v.sampleB->data.size());
+    v.sample=a;v.sampleB=b;
+    v.position=clampf(fractionA*(float)a->data.size(),9.f,(float)a->data.size()-11.f);
+    v.positionB=clampf(fractionB*(float)b->data.size(),9.f,(float)b->data.size()-11.f);
+    v.aliveA=v.position;v.aliveB=v.positionB;
+    v.bankFade=1.f;
+    v.oneShot=values.bank>=0&&values.bank<50?banks[(size_t)values.bank].oneShot:false;
+    v.layerOffset=(float)a->rate*.18f;
+   }
+  }
   p=values;auto fx=p.fx;fx.psySpiral=p.psySpiral;fx.psySpiralRate=p.psySpiralRate;
   fx.wetLowCut=p.wetLowCut;
   spaceFX.setControls(fx);
@@ -177,6 +262,8 @@ public:
    for(int k=0;k<4;++k)if(samples[(size_t)bank][(size_t)k].loaded()){z=k;break;}
   }
   if(!samples[(size_t)bank][(size_t)z].loaded())return;
+  v->oldSample=v->oldSampleB=nullptr;
+  v->bankFade=0.f;
   v->sample=&samples[(size_t)bank][(size_t)z];
   int bankB=std::clamp(p.bankB,0,50);
   int zb=z;
@@ -341,12 +428,13 @@ public:
       if(x>end-overlap && x<end){
        const float u=clampf((x-(end-overlap))/overlap,0.f,1.f);
        const float a=u*u*(3.f-2.f*u);
-       const float near=source.cubic(x);
-       const float far=source.cubic(begin+x-(end-overlap));
+       const float increment=(&source==&s)?step:stepB;
+       const float near=source.bandLimited(x,increment);
+       const float far=source.bandLimited(begin+x-(end-overlap),increment);
        return (1.f-a)*near+a*far;
       }
      }
-     return source.cubic(x);
+     return source.bandLimited(x,(&source==&s)?step:stepB);
     };
     auto advance=[&](const Sample& source,float& pos,float delta){
      pos+=delta;
@@ -393,6 +481,27 @@ public:
     const float mixA=std::cos(morph*pi*.5f),mixB=std::sin(morph*pi*.5f);
     const float baseA=readAt(s,v.position),baseB=readAt(sb,v.positionB);
     float sample=mixA*baseA+mixB*baseB;
+     if(v.bankFade>0.f && v.oldSample && v.oldSampleB){
+      const auto& oldA=*v.oldSample;
+      const auto& oldB=*v.oldSampleB;
+      const float pitchOffset=v.pitch+(bend+p.bend)*p.bendRange;
+      const float oldStepA=clampf((float)oldA.rate*dt*
+        std::exp2((pitchOffset-(float)oldA.root)/12.f),.01f,20.f);
+      const float oldStepB=clampf((float)oldB.rate*dt*
+        std::exp2((pitchOffset-(float)oldB.root)/12.f),.01f,20.f);
+      const float oldSound=mixA*oldA.bandLimited(v.oldPosition,oldStepA)
+                          +mixB*oldB.bandLimited(v.oldPositionB,oldStepB);
+      const float oldWeight=v.bankFade;
+      sample=sample*(1.f-oldWeight)+oldSound*oldWeight;
+      v.oldPosition+=oldStepA;v.oldPositionB+=oldStepB;
+      if(droneLoop){
+       const float lengthA=(float)oldA.data.size(),lengthB=(float)oldB.data.size();
+       if(v.oldPosition>lengthA*.88f)v.oldPosition=lengthA*.17f;
+       if(v.oldPositionB>lengthB*.88f)v.oldPositionB=lengthB*.17f;
+      }
+      v.bankFade=std::max(0.f,v.bankFade-dt/.075f);
+      if(v.bankFade<=0.f)v.oldSample=v.oldSampleB=nullptr;
+     }
      if(lowLife>.0001f && droneLoop){
        // Recorded-speed motion survives pitch transposition, without any hiss.
        const float live=mixA*readAt(s,v.aliveA)+mixB*readAt(sb,v.aliveB);
@@ -405,11 +514,11 @@ public:
     // Pure, correlated cross-excitation: no stochastic hiss/noise generator.
     const float cross=clampf(p.xenoCross,0.f,1.f);
     const float interaction=cross>.0001f?std::tanh(baseA*baseB*(3.0f+1.7f*cross)):0.f;
-    sample+=cross*.31f*interaction;
+    sample+=cross*.09f*interaction;
      // Source A and B hybridization, without a parallel stochastic texture.
      const float sym=clampf(p.symbiosis,0.f,1.f);
      const float hybrid=sym>.0001f?std::tanh(2.4f*baseA*baseB+.7f*(baseA-baseB)*cellular):0.f;
-     sample+=.34f*sym*hybrid;
+     sample+=.10f*sym*hybrid;
     // Shared biome cycles above feed source morph, the moving read-head, FM and filters.
     // Source mixing is also modulated by Life, not just an inaudible detune.
     sample=sample*(1.f+.12f*biome);
@@ -473,7 +582,7 @@ public:
     const float fmA=std::sin(v.fmPhase+fmAmount*mod);
     const float fmB=std::sin(v.fmPhase*1.019f+(fmAmount*.7f)*std::sin(v.modPhase*(1.17f+p.fmInharmonic*.46f)));
     const float fmSignal=(.68f*fmA+.32f*fmB)*(.12f+.88f*v.motionEnv);
-    const float requestedFmMix=clampf(p.fmMix+aggression*.07f,0.f,1.f);
+    const float requestedFmMix=clampf(p.fmMix+aggression*.025f,0.f,1.f);
     v.smoothFmMix+=(requestedFmMix-v.smoothFmMix)*controlSlew;
     const float fmMix=v.smoothFmMix;
     sample=sample*(1.f-fmMix*.48f)+fmSignal*fmMix*.75f;
@@ -518,7 +627,7 @@ public:
         + (1.8f+3.4f*predator)*std::sin(v.modPhase*.41f+2.3f*bio2));
       const float breathing=.65f+.35f*std::sin(v.cellPhase*.67f+bio3);
       const float window=breathing*breathing;
-      sample+=throat*(.15f+.18f*predator)*predator*window*(.3f+.7f*v.motionEnv);
+      sample+=throat*(.05f+.07f*predator)*predator*window*(.3f+.7f*v.motionEnv);
     }
     if(insect>.0001f){
       // Insect calls are scattered in time, never quantized into musical notes.
@@ -530,14 +639,14 @@ public:
       const float glide=1.6f+.45f*std::sin(v.cellPhase*.53f+v.motionPhase);
       v.insectPhase=wrapPhase(v.insectPhase+2.f*pi*std::min((float)sr*.24f,carrier*glide)*dt);
       const float chirp=std::sin(v.insectPhase+1.5f*insect*std::sin(v.modPhase*.73f));
-      sample+=.25f*insect*env*chirp*(.48f+.52f*v.motionEnv);
+      sample+=.10f*insect*env*chirp*(.48f+.52f*v.motionEnv);
     }
     if(burrow>.0001f){
       const float phase=2.f*pi*(.09f+.32f*burrow)*globalTime+v.motionPhase*.13f;
       const float sweep=.5f+.5f*std::sin(phase+1.6f*bio2);
       const float mix=std::sin((2.3f+3.2f*burrow)*(baseA*.63f+baseB*.37f)+
          2.f*burrow*std::sin(v.cellPhase*.61f));
-      sample+=burrow*(.10f+.19f*burrow)*mix*(.35f+.65f*sweep);
+      sample+=burrow*(.04f+.09f*burrow)*mix*(.35f+.65f*sweep);
     }
     // Spectral wavefolding bypassed entirely to avoid bitcrushing artifacts.
     // Morphing pseudo-vocal tract with two narrow, stable resonant peaks.
@@ -583,7 +692,7 @@ public:
       float g=clampf(2.f*std::sin(pi*hz*dt),.001f,.70f);
       float q=clampf(1.60f-resonance*1.46f,.14f,1.8f);
       lp+=g*bp;
-      float hp=std::tanh(input*1.4f)*.715f-lp-q*bp;
+      float hp=input-lp-q*bp;
       bp+=g*hp;
       lp=clampf(lp,-4.f,4.f);bp=clampf(bp,-4.f,4.f);
       switch(mode){case 1:return bp;case 2:return hp;case 3:return hp+lp;default:return lp;}
@@ -602,10 +711,11 @@ public:
     dry+=p.spectralTilt*(clean-v.lp)*.6f;
     // Clarity macro preserves uncompressed detail while still allowing edge.
     const float cleanFraction=clampf(p.clarity,0.f,1.f);
-    float saturated=std::tanh(dry*(1.16f+drive*2.0f+p.filterDrive*1.2f))*.75f;
-    dry=saturated*(1.f-.62f*cleanFraction)+dry*.73f*(.62f*cleanFraction);
-    const float edge=std::tanh((clean-v.lp)*2.1f)*(.04f+.09f*drive);
-    dry+=edge*(1.f-.70f*clampf(p.clarity,0.f,1.f));
+    const float saturationAmount=(1.f-cleanFraction)*clampf(drive*.34f+p.filterDrive*.26f,0.f,.55f);
+     float saturated=std::tanh(dry*(1.f+.75f*drive));
+    dry=dry*(1.f-saturationAmount)+saturated*saturationAmount;
+    const float edge=(clean-v.lp)*(.02f+.04f*drive);
+    dry+=edge*(1.f-cleanFraction);
     // NOISE-FREE XENOBIOME: harmonic ghost events follow the rhythmic gate
     // without injecting white/pink noise. The event is ring-modulated from
     // the actual sample, with an exponential window and warm band-limited FM.
@@ -620,7 +730,7 @@ public:
     dry+=(sample-v.airLP)*.10f*clampf(p.hiFiAir,0.f,1.f);
     float layerGain=clampf(p.layers+atmosphere*.18f,0.f,1.f)*(.29f+.32f*organic);
     layerGain*=clampf(1.f+.35f*biome+.18f*linked,.40f,1.5f);
-    float stereoLayer=std::tanh(layer*(1.25f+drive*2.2f))*.76f*layerGain;
+    float stereoLayer=layer*layerGain*(.70f+.10f*drive);
     // Organic fundamental/subharmonic, never overly prominent for percussive banks.
     float fundamental=std::clamp(440.f*std::exp2((v.pitch-69.f)/12.f),20.f,1500.f);
     v.bodyPhase+=dt*fundamental*pi; // sub oscillator at half fundamental
@@ -709,15 +819,18 @@ public:
    // A softly limited master bus retains transient punch and space width.
    // More headroom and less blanket drive than Earthforge v6 master limiter.
    // Soft limiting is retained to make accidental dense chords manageable.
-   float masterBoost=1.05f+.20f*(1.f-clampf(p.clarity,0.f,1.f));
-   left[i]+=std::tanh((mixL+wetL)*amp*masterBoost)*.96f;
-   right[i]+=std::tanh((mixR+wetR)*amp*masterBoost)*.96f;
+   float masterBoost=.93f;
+   left[i]+=(mixL+wetL)*amp*masterBoost;
+   right[i]+=(mixR+wetR)*amp*masterBoost;
   }
  }
 private:
  struct Voice {
   const Sample* sample=nullptr;
   const Sample* sampleB=nullptr;
+  const Sample* oldSample=nullptr;
+  const Sample* oldSampleB=nullptr;
+  float oldPosition=0.f,oldPositionB=0.f,bankFade=0.f;
   int note=-1,bank=0,stage=0;
   float vel=0,position=0,positionB=0,level=0,releaseLevel=1,pitch=0,target=0,lp=0,bp=0;
   float motionPhase=0,layerOffset=0,bodyPhase=0,breath=0,aliveA=0,aliveB=0;
