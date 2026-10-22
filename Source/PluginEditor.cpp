@@ -270,9 +270,9 @@ NoctivoreEditor::NoctivoreEditor(NoctivoreProcessor& p)
    setParameter("motifPitch",.36f);setParameter("motifGate",.72f);
    setParameter("motifAccent",.86f);setParameter("motifFX",0.f);setParameter("wetLowCut",.76f);
    setParameter("reverbMix",.30f);setParameter("morphMotion",.12f);showPage(Atlas);};
- sceneLabel.setText("FOREST SIGNALS",dontSendNotification);sceneLabel.setFont(Font(10.f,Font::bold));
+ sceneLabel.setText("CREATURE FOREST",dontSendNotification);sceneLabel.setFont(Font(10.f,Font::bold));
  sceneLabel.setColour(Label::textColourId,soft);addAndMakeVisible(sceneLabel);
- const char* presets[]={"CHOOSE SCENE","FIREFLY BREATH","POND MEMORY","SPORE TELEPATHY","ROOT RADIO","MUSHROOM CHOIR","LIQUID SWARM","FOREST BLEEP","GENTLE CREEP","ALIEN SAP","WET NIGHT SIGNAL","MYCELIUM ECHO","HOLLOW GARDEN"};
+ const char* presets[]={"CHOOSE SCENE","GLOWWORM CODE","DROWNED PREDATOR","SPORE TELEPATHY","BURROW RADIO","INSECT HIVE","ROOT MONSTER","CHIRPING TERROR","SWAMP PREDATOR","ALIEN SAP LANGUAGE","NIGHT SIGNAL RITUAL","UNDERGROUND THROAT","FOREST FROM BELOW"};
  addAndMakeVisible(scenes);for(int i=0;i<13;++i)scenes.addItem(presets[i],i+1);
  scenes.setSelectedId(1,dontSendNotification);
  scenes.onChange=[this]{if(scenes.getSelectedId()>1)applyScene(scenes.getSelectedId()-2);};
