@@ -70,7 +70,7 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  add("space","Space",0,.95f,.38f);
  add("volume","Volume",0,1.5f,.76f);
  add("pan","Pan",-1,1,0);
- choose("quality","Resampling Quality",{"Linear","Cubic"},1);
+ choose("quality","Resampling Quality",{"Clean Cubic","Clean Cubic"},1);
  choose("velocity","Velocity Curve",{"Soft","Normal","Hard"},1);
  add("bendRange","Bend Range",0,12,2);
  add("bend","Pitch Bend",-1,1,0);
@@ -169,7 +169,7 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  choose("voiceLimit","CPU / Polyphony",{"8 voices","12 voices","16 voices","24 voices"},1);
  add("colony","Mutant Colony",0.f,1.f,.33f);
  add("creatures","Living Creatures",0.f,1.f,.39f);
- add("psyFold","Spectral Fold",0.f,1.f,.22f);
+ add("psyFold","Spectral Fold (Legacy / Off)",0.f,1.f,0.f);
  add("symbiosis","Source Symbiosis",0.f,1.f,.26f);
  add("predator","Predator Throat",0.f,1.f,.63f);
  add("insectCode","Spore Code",0.f,1.f,.57f);
