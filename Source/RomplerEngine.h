@@ -405,11 +405,11 @@ public:
     // Pure, correlated cross-excitation: no stochastic hiss/noise generator.
     const float cross=clampf(p.xenoCross,0.f,1.f);
     const float interaction=cross>.0001f?std::tanh(baseA*baseB*(3.0f+1.7f*cross)):0.f;
-    sample+=cross*.31f*interaction;
+    sample+=cross*.09f*interaction;
      // Source A and B hybridization, without a parallel stochastic texture.
      const float sym=clampf(p.symbiosis,0.f,1.f);
      const float hybrid=sym>.0001f?std::tanh(2.4f*baseA*baseB+.7f*(baseA-baseB)*cellular):0.f;
-     sample+=.34f*sym*hybrid;
+     sample+=.10f*sym*hybrid;
     // Shared biome cycles above feed source morph, the moving read-head, FM and filters.
     // Source mixing is also modulated by Life, not just an inaudible detune.
     sample=sample*(1.f+.12f*biome);
@@ -473,7 +473,7 @@ public:
     const float fmA=std::sin(v.fmPhase+fmAmount*mod);
     const float fmB=std::sin(v.fmPhase*1.019f+(fmAmount*.7f)*std::sin(v.modPhase*(1.17f+p.fmInharmonic*.46f)));
     const float fmSignal=(.68f*fmA+.32f*fmB)*(.12f+.88f*v.motionEnv);
-    const float requestedFmMix=clampf(p.fmMix+aggression*.07f,0.f,1.f);
+    const float requestedFmMix=clampf(p.fmMix+aggression*.025f,0.f,1.f);
     v.smoothFmMix+=(requestedFmMix-v.smoothFmMix)*controlSlew;
     const float fmMix=v.smoothFmMix;
     sample=sample*(1.f-fmMix*.48f)+fmSignal*fmMix*.75f;
@@ -518,7 +518,7 @@ public:
         + (1.8f+3.4f*predator)*std::sin(v.modPhase*.41f+2.3f*bio2));
       const float breathing=.65f+.35f*std::sin(v.cellPhase*.67f+bio3);
       const float window=breathing*breathing;
-      sample+=throat*(.15f+.18f*predator)*predator*window*(.3f+.7f*v.motionEnv);
+      sample+=throat*(.05f+.07f*predator)*predator*window*(.3f+.7f*v.motionEnv);
     }
     if(insect>.0001f){
       // Insect calls are scattered in time, never quantized into musical notes.
@@ -530,14 +530,14 @@ public:
       const float glide=1.6f+.45f*std::sin(v.cellPhase*.53f+v.motionPhase);
       v.insectPhase=wrapPhase(v.insectPhase+2.f*pi*std::min((float)sr*.24f,carrier*glide)*dt);
       const float chirp=std::sin(v.insectPhase+1.5f*insect*std::sin(v.modPhase*.73f));
-      sample+=.25f*insect*env*chirp*(.48f+.52f*v.motionEnv);
+      sample+=.10f*insect*env*chirp*(.48f+.52f*v.motionEnv);
     }
     if(burrow>.0001f){
       const float phase=2.f*pi*(.09f+.32f*burrow)*globalTime+v.motionPhase*.13f;
       const float sweep=.5f+.5f*std::sin(phase+1.6f*bio2);
       const float mix=std::sin((2.3f+3.2f*burrow)*(baseA*.63f+baseB*.37f)+
          2.f*burrow*std::sin(v.cellPhase*.61f));
-      sample+=burrow*(.10f+.19f*burrow)*mix*(.35f+.65f*sweep);
+      sample+=burrow*(.04f+.09f*burrow)*mix*(.35f+.65f*sweep);
     }
     // Spectral wavefolding bypassed entirely to avoid bitcrushing artifacts.
     // Morphing pseudo-vocal tract with two narrow, stable resonant peaks.
@@ -583,7 +583,7 @@ public:
       float g=clampf(2.f*std::sin(pi*hz*dt),.001f,.70f);
       float q=clampf(1.60f-resonance*1.46f,.14f,1.8f);
       lp+=g*bp;
-      float hp=std::tanh(input*1.4f)*.715f-lp-q*bp;
+      float hp=input-lp-q*bp;
       bp+=g*hp;
       lp=clampf(lp,-4.f,4.f);bp=clampf(bp,-4.f,4.f);
       switch(mode){case 1:return bp;case 2:return hp;case 3:return hp+lp;default:return lp;}
@@ -602,10 +602,11 @@ public:
     dry+=p.spectralTilt*(clean-v.lp)*.6f;
     // Clarity macro preserves uncompressed detail while still allowing edge.
     const float cleanFraction=clampf(p.clarity,0.f,1.f);
-    float saturated=std::tanh(dry*(1.16f+drive*2.0f+p.filterDrive*1.2f))*.75f;
-    dry=saturated*(1.f-.62f*cleanFraction)+dry*.73f*(.62f*cleanFraction);
-    const float edge=std::tanh((clean-v.lp)*2.1f)*(.04f+.09f*drive);
-    dry+=edge*(1.f-.70f*clampf(p.clarity,0.f,1.f));
+    const float saturationAmount=(1.f-cleanFraction)*clampf(drive*.34f+p.filterDrive*.26f,0.f,.55f);
+     float saturated=std::tanh(dry*(1.f+.75f*drive));
+    dry=dry*(1.f-saturationAmount)+saturated*saturationAmount;
+    const float edge=(clean-v.lp)*(.02f+.04f*drive);
+    dry+=edge*(1.f-cleanFraction);
     // NOISE-FREE XENOBIOME: harmonic ghost events follow the rhythmic gate
     // without injecting white/pink noise. The event is ring-modulated from
     // the actual sample, with an exponential window and warm band-limited FM.
@@ -620,7 +621,7 @@ public:
     dry+=(sample-v.airLP)*.10f*clampf(p.hiFiAir,0.f,1.f);
     float layerGain=clampf(p.layers+atmosphere*.18f,0.f,1.f)*(.29f+.32f*organic);
     layerGain*=clampf(1.f+.35f*biome+.18f*linked,.40f,1.5f);
-    float stereoLayer=std::tanh(layer*(1.25f+drive*2.2f))*.76f*layerGain;
+    float stereoLayer=layer*layerGain*(.70f+.10f*drive);
     // Organic fundamental/subharmonic, never overly prominent for percussive banks.
     float fundamental=std::clamp(440.f*std::exp2((v.pitch-69.f)/12.f),20.f,1500.f);
     v.bodyPhase+=dt*fundamental*pi; // sub oscillator at half fundamental
@@ -709,9 +710,9 @@ public:
    // A softly limited master bus retains transient punch and space width.
    // More headroom and less blanket drive than Earthforge v6 master limiter.
    // Soft limiting is retained to make accidental dense chords manageable.
-   float masterBoost=1.05f+.20f*(1.f-clampf(p.clarity,0.f,1.f));
-   left[i]+=std::tanh((mixL+wetL)*amp*masterBoost)*.96f;
-   right[i]+=std::tanh((mixR+wetR)*amp*masterBoost)*.96f;
+   float masterBoost=.93f;
+   left[i]+=(mixL+wetL)*amp*masterBoost;
+   right[i]+=(mixR+wetR)*amp*masterBoost;
   }
  }
 private:
