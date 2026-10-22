@@ -101,19 +101,15 @@ NoctivoreEditor::ArtMenu::ArtMenu(AudioProcessorValueTreeState& st,const String&
  for(auto name:names)addItem(name,getNumItems()+1);
  attachment=std::make_unique<AudioProcessorValueTreeState::ComboBoxAttachment>(st,id,*this);
 }
-NoctivoreEditor::Dial::Dial(AudioProcessorValueTreeState& apvts,const String& id,const String& text,int colour){
- knob.setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
- knob.setRotaryParameters(MathConstants<float>::pi*1.2f,MathConstants<float>::pi*2.8f,true);
- knob.setTextBoxStyle(Slider::TextBoxBelow,false,85,17);
- knob.setMouseDragSensitivity(240);
+NoctivoreEditor::Dial::Dial(AudioProcessorValueTreeState& apvts,const String& id,const String& text,int colour)
+  :knob(apvts,id,text){
  knob.getProperties().set("tint",colour);
- auto* parameter=apvts.getParameter(id);
- if(parameter)knob.setDoubleClickReturnValue(true,parameter->convertFrom0to1(parameter->getDefaultValue()));
  addAndMakeVisible(knob);
  name.setText(text,dontSendNotification);
- name.setJustificationType(Justification::centred);name.setFont(Font(10.6f,Font::bold));
- name.setColour(Label::textColourId,soft);addAndMakeVisible(name);
- attachment=std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(apvts,id,knob);
+ name.setJustificationType(Justification::centred);
+ name.setFont(Font(10.6f,Font::bold));
+ name.setColour(Label::textColourId,painted::ivory);
+ addAndMakeVisible(name);
 }
 void NoctivoreEditor::Dial::resized(){auto r=getLocalBounds();name.setBounds(r.removeFromTop(17));knob.setBounds(r);}
 void NoctivoreEditor::Dial::paint(Graphics& g){
