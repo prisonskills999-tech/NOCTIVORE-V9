@@ -13,7 +13,7 @@ for name in ("OSC  /  SOURCE", "FILTER", "MOTION  /  LFO", "SPACE  /  FX",
              "ENVELOPE  /  AMP", "OUTPUT", "LIVING  /  MACROS"):
     assert name in draw, f"Missing visible section: {name}"
 for name in ("sourceWave(g,", "filter(g,", "lfo(g,", "env(g,", "effects(g,",
-             "scope(g,", "visualEye(g,", "drawKeyboardShell(g,"):
+             "scope(g,", "visualEye(g,", "drawKeyboardShell(g)"):
     assert name in draw, f"Missing live drawing: {name}"
 for signature in ("void VoidcoreEditor::OrbPad::mouseDown", "void VoidcoreEditor::OrbPad::mouseDrag",
                   "void VoidcoreEditor::OrbPad::mouseUp", "void VoidcoreEditor::soundSphere",
