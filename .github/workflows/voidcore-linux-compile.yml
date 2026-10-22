@@ -2,11 +2,15 @@ name: VOIDCORE GUI C++ compile test
 
 on:
   push:
-    branches: [v11-voidcore-live-gui, feature/voidcore-matrix-animated-gui]
+    branches: [v11-voidcore-live-gui, feature/voidcore-matrix-animated-gui, feature/voidcore-xeno-diverse-soundscapes]
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: voidcore-linux-gui-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   gui-compile:
