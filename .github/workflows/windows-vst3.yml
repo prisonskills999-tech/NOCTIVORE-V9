@@ -1,7 +1,7 @@
 name: Build VOIDCORE Astral Xeno VST3
 
 on:
-  push:
+  # Manual runs prevent repeated private-repository minute consumption on every commit.
   workflow_dispatch:
 
 permissions:
