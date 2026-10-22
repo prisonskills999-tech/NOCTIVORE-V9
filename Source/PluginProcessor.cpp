@@ -1,5 +1,5 @@
 #include "PluginProcessor.h"
-#include "PluginEditor.h"
+#include "VoidcoreEditor.h"
 #include <cstdlib>
 #if JUCE_WINDOWS
  #include <windows.h>
@@ -312,7 +312,7 @@ AudioProcessorEditor* NoctivoreProcessor::createEditor(){
 #if NOCTIVORE_GENERIC_EDITOR
  return new juce::GenericAudioProcessorEditor(*this);
 #else
- return new NoctivoreEditor(*this);
+ return new VoidcoreEditor(*this);
 #endif
 }
 AudioProcessor* JUCE_CALLTYPE createPluginFilter(){return new NoctivoreProcessor();}
