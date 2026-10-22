@@ -167,7 +167,10 @@ void VoidcoreEditor::timerCallback(){
  smoothedPeak=smoothedPeak*.76f+clamp01(processor.peak.load(std::memory_order_relaxed))*.24f;
  playing=processor.displayPlaying.load(std::memory_order_relaxed);
  for(int k=0;k<16;++k)
-   if(steps[(size_t)k]){steps[(size_t)k]->selected=value(String::formatted("gateStep%02d",k+1).toRawUTF8())>.5f;steps[(size_t)k]->repaint();}
+   if(auto* button=steps[(size_t)k]){
+    const bool on=value(String::formatted("gateStep%02d",k+1).toRawUTF8())>.5f;
+    if(button->selected!=on){button->selected=on;button->repaint();}
+   }
  if(cachedA!=(int)value("bank"))updatePreview(0);
  if(cachedB!=(int)value("bankB"))updatePreview(1);
  repaint();
