@@ -1,9 +1,9 @@
-name: Build VOIDCORE Astral Xeno VST3
+name: Build VOIDCORE XENO HiFi VST3
 
 on:
   # Manual runs prevent repeated private-repository minute consumption on every commit.
   push:
-    branches: [feature/voidcore-astral-full-reskin]
+    branches: [feature/voidcore-hifi-bank-diversity]
   workflow_dispatch:
 
 permissions:
@@ -121,7 +121,7 @@ jobs:
       - name: Upload downloadable Windows VST3
         uses: actions/upload-artifact@v4
         with:
-          name: VOIDCORE-ASTRAL-XENO-${{ matrix.edition }}-WIN64-VST3
+          name: VOIDCORE-XENO-HIFI-${{ matrix.edition }}-WIN64-VST3
           path: VOIDCORE_V12_XENO_${{ matrix.edition }}.zip
           if-no-files-found: error
           retention-days: 30
