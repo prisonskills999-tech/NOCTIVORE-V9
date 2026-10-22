@@ -507,68 +507,147 @@ void VoidcoreEditor::load(){
 }
 
 
-void VoidcoreEditor::panel(Graphics& g,Rectangle<float> r,const String& name,Colour accent){
- g.setColour(Colour::fromRGB(3,13,10).withAlpha(.96f));
- g.fillRoundedRectangle(r,9.f);
- ColourGradient shine(accent.withAlpha(.21f),r.getX(),r.getY(),Colour::fromRGB(0,10,6).withAlpha(0.f),r.getRight(),r.getBottom(),false);
- g.setGradientFill(shine);
- g.fillRoundedRectangle(r.removeFromTop(37.f),9.f);
- g.setColour(accent.withAlpha(.53f));g.drawRoundedRectangle(r.getUnion({r.getX(),r.getY()-37.f,r.getWidth(),37.f}),9.f,1.1f);
- g.setColour(accent.withAlpha(.95f));
- g.setFont(Font(14.f,Font::bold));
- g.drawText(name,r.getX()+17.f,r.getY()-29.f,r.getWidth()-34.f,19.f,Justification::centredLeft);
+void VoidcoreEditor::panel(Graphics& g,Rectangle<float> box,const String& name,Colour accent){
+ // Raised smoky-glass surface, chrome trim and animated organic corners.
+ const float x=box.getX(),y=box.getY(),w=box.getWidth(),h=box.getHeight();
+ g.setColour(Colour::fromRGB(0,3,2).withAlpha(.93f));
+ g.fillRoundedRectangle(box,14.f);
+ ColourGradient glass(Colour::fromRGB(17,38,27).withAlpha(.80f),x,y,
+                      Colour::fromRGB(1,7,4).withAlpha(.93f),x+w*.6f,y+h,true);
+ g.setGradientFill(glass);g.fillRoundedRectangle(box.reduced(3.f),12.f);
+ g.setColour(frost.withAlpha(.32f));
+ g.drawRoundedRectangle(box.reduced(.6f),14.f,1.1f);
+ g.setColour(grey.withAlpha(.32f));
+ g.drawRoundedRectangle(box.reduced(4.f),11.f,1.f);
+ g.setColour(accent.withAlpha(.54f));
+ g.drawRoundedRectangle(box.reduced(6.f),9.f,1.1f);
+ // Biomechanical ribs avoid buttons: only around panel borders.
+ for(int i=0;i<9;++i){
+  const float yy=y+12.f+i*(h-24.f)/8.f;
+  const float reach=5.f+5.f*std::sin(i*1.9f+clock*.55f);
+  Path left;left.startNewSubPath(x+4.f,yy);
+  left.quadraticTo(x-3.f,yy+3.f,x+reach,yy+8.f);
+  g.setColour((i%3?frost:accent).withAlpha(.12f));
+  g.strokePath(left,PathStrokeType(1.1f));
+  Path right;right.startNewSubPath(x+w-4.f,yy);
+  right.quadraticTo(x+w+3.f,yy-3.f,x+w-reach,yy+8.f);
+  g.strokePath(right,PathStrokeType(1.f));
+ }
+ // Reference-style luminous divider below the section title.
+ g.setColour(Colour::fromRGB(3,10,6).withAlpha(.88f));
+ g.fillRoundedRectangle(x+8.f,y+7.f,w-16.f,30.f,10.f);
+ g.setColour(accent.withAlpha(.67f));
+ g.drawLine(x+19.f,y+37.f,x+w-19.f,y+37.f,1.f);
+ g.setColour(accent.withAlpha(.77f));
+ g.fillEllipse(x+15.f,y+16.f,10.f,10.f);
+ g.setColour(frost);
+ g.setFont(Font("Consolas",13.f,Font::bold));
+ g.drawFittedText(name,(int)(x+34.f),(int)(y+10.f),(int)(w-58.f),22,Justification::centredLeft,1);
 }
 void VoidcoreEditor::drawBase(Graphics& g){
  g.fillAll(voidBlack);
- ColourGradient bg(Colour::fromRGB(10,34,23),0.f,80.f,Colour::fromRGB(4,7,7),W,H,false);
- g.setGradientFill(bg);g.fillRect(0,0,(int)W,(int)H);
- // Procedural Matrix starfield. No pictures: controls stay fully interactive.
- for(int k=0;k<78;++k){
-  const float xx=std::fmod(17.f+k*173.37f,W-24.f)+12.f;
-  const float yy=std::fmod(k*97.23f+clock*(4.f+(k%5)*2.f),H-143.f)+132.f;
-  const float shimmer=.5f+.5f*std::sin(clock*(.4f+k%4*.17f)+k*2.31f);
-  g.setColour((k%9==0?frost:acid).withAlpha(.055f+.15f*shimmer));
-  g.fillEllipse(xx,yy,(k%7==0?2.1f:1.1f),(k%7==0?2.1f:1.1f));
-  if(k%11==0){
-   g.setColour(acid.withAlpha(.04f+.04f*shimmer));
-   g.drawVerticalLine((int)xx,yy-20.f,yy);
+ ColourGradient nebula(Colour::fromRGB(17,42,24),W*.49f,H*.32f,
+                      Colour::fromRGB(0,1,1),W*.78f,H*.91f,true);
+ g.setGradientFill(nebula);g.fillRect(0,0,(int)W,(int)H);
+ // Distant galactic clouds, sparse to leave readability intact.
+ for(int c=0;c<15;++c){
+  const float x=60.f+std::fmod(c*173.7f,W-100.f);
+  const float y=70.f+std::fmod(c*107.3f,H-180.f);
+  const float pulse=.5f+.5f*std::sin(clock*.32f+c*1.6f);
+  const float r=45.f+15.f*(c%4);
+  ColourGradient vapour(acid.withAlpha(.025f+.018f*pulse),x,y,
+                         voidBlack.withAlpha(0.f),x+r,y+r,true);
+  g.setGradientFill(vapour);g.fillEllipse(x-r,y-r,2.f*r,2.f*r);
+ }
+ for(int k=0;k<175;++k){
+  const float x=13.f+std::fmod(k*193.47f,W-26.f);
+  const float y=8.f+std::fmod(k*79.23f,H-18.f);
+  const float twinkle=.5f+.5f*std::sin(clock*(.28f+.023f*(k%5))+k*2.1f);
+  g.setColour((k%7==0?frost:acid).withAlpha(.045f+.24f*twinkle));
+  const float dot=(k%17==0)?2.4f:1.f;
+  g.fillEllipse(x,y,dot,dot);
+ }
+ // Deep graphite outer bezel and crossing alien filaments.
+ g.setColour(Colour::fromRGB(3,9,6));g.drawRoundedRectangle(4.f,4.f,W-8.f,H-8.f,19.f,6.f);
+ g.setColour(frost.withAlpha(.48f));g.drawRoundedRectangle(8.f,8.f,W-16.f,H-16.f,17.f,1.3f);
+ g.setColour(acid.withAlpha(.41f));g.drawRoundedRectangle(12.f,12.f,W-24.f,H-24.f,14.f,1.2f);
+ for(int k=0;k<19;++k){
+  const float x=27.f+61.f*k;
+  Path rib;
+  rib.startNewSubPath(x,-5.f);
+  rib.cubicTo(x-36.f,114.f,x+58.f,170.f,x-8.f,330.f);
+  g.setColour((k%5==0?frost:acid).withAlpha(.024f));
+  g.strokePath(rib,PathStrokeType(1.f));
+ }
+ // Astral Bloom reference: integrated title plaque and black-glass command bar.
+ Rectangle<float> title{18.f,15.f,359.f,51.f};
+ g.setColour(Colour::fromRGB(2,7,5));g.fillRoundedRectangle(title,10.f);
+ g.setColour(frost.withAlpha(.43f));g.drawRoundedRectangle(title,10.f,1.25f);
+ g.setFont(Font("Consolas",32.f,Font::plain));
+ g.setColour(frost);g.drawFittedText("V O I D C O R E",26,15,341,38,Justification::centred,1);
+ g.setFont(Font(9.f,Font::bold));g.setColour(acid.withAlpha(.82f));
+ g.drawFittedText("S Y N T H E S I S   B E Y O N D   M A T T E R",38,50,320,13,Justification::centred,1);
+ g.setColour(Colour::fromRGB(2,8,5));
+ g.fillRoundedRectangle(387.f,12.f,802.f,51.f,11.f);
+ g.setColour(frost.withAlpha(.30f));g.drawRoundedRectangle(387.f,12.f,802.f,51.f,11.f,1.2f);
+ g.setColour(acid.withAlpha(.13f));
+ g.drawHorizontalLine(65,20.f,1180.f);
+ // Working preset operations render as JUCE child buttons atop this bezel.
+ g.setColour(acid.withAlpha(.26f));g.drawLine(394.f,63.f,1175.f,63.f,1.1f);
+ for(int k=0;k<6;++k){
+  const float x=26.f+k*215.f;
+  g.setColour(acid.withAlpha(.08f));
+  g.drawLine(x,75.f,x+22.f,77.f,1.1f);
+ }
+}
+void VoidcoreEditor::drawOrbitalFrame(Graphics& g,Point<float> centre,float radius){
+ // Scaled 3D orbital architecture: luminous elliptical rings and skeletal
+ // biological structures, without overlaying parameter controls.
+ const float x=centre.x,y=centre.y,theta=clock*.06f;
+ for(int i=0;i<6;++i){
+  const float r=radius*(1.12f+i*.085f);
+  Path ring;
+  ring.addCentredArc(x,y,r,r*(.25f+.045f*(i%3)),theta+i*.41f,
+                     theta+i*.41f,theta+i*.41f+2.f*pi,true);
+  g.setColour((i%2==0?acid:frost).withAlpha(.07f+.075f*(i%2==0)));
+  g.strokePath(ring,PathStrokeType(i%3==0?2.4f:1.1f));
+ }
+ // Curved chrome skeletal arms frame the core like the reference artwork.
+ for(int side=-1;side<=1;side+=2){
+  const float edge=x+side*radius*.96f;
+  for(int k=0;k<5;++k){
+   const float p=(float)k/4.f;
+   const float yy=y-radius*.9f+p*radius*1.8f;
+   Path bone;
+   bone.startNewSubPath(edge,yy);
+   bone.cubicTo(edge+side*37.f,yy-46.f,
+                edge+side*18.f,y+(yy-y)*.45f,
+                x+side*radius*.55f,y+(yy-y)*.27f);
+   g.setColour(Colour::fromRGB(24,45,31));
+   g.strokePath(bone,PathStrokeType(6.f,PathStrokeType::curved,PathStrokeType::rounded));
+   g.setColour(frost.withAlpha(.38f));
+   g.strokePath(bone,PathStrokeType(1.3f));
+   g.setColour(acid.withAlpha(.13f+.13f*std::sin(clock*.3f+k)));
+   g.fillEllipse(edge-4.f,yy-4.f,8.f,8.f);
   }
  }
- // Uneven bio-mechanical ribbing; procedurally drawn to avoid phantom knobs
- // and ensure every real control aligns with the hit-test geometry.
- for(int k=0;k<30;++k){
-  const float t=(float)k/30.f,alpha=.024f+.02f*std::sin(k*1.67f);
-  Path a;a.startNewSubPath(0.f,120.f+24.f*k);
-  a.cubicTo(130.f,142.f+20.f*k,405.f,88.f+25.f*k,W,126.f+22.f*k);
-  g.setColour((k%4==0?blood:acid).withAlpha(alpha));g.strokePath(a,PathStrokeType(k%3==0?2.1f:1.1f));
+ for(int k=0;k<9;++k){
+  const float a=clock*.14f+k*2.f*pi/9.f;
+  const float xx=x+std::cos(a)*radius*1.10f;
+  const float yy=y+std::sin(a)*radius*.45f;
+  g.setColour(acid.withAlpha(.10f));
+  g.fillEllipse(xx-7.f,yy-7.f,14.f,14.f);
+  g.setColour(frost.withAlpha(.75f));g.fillEllipse(xx-2.f,yy-2.f,4.f,4.f);
  }
- for(int k=0;k<23;++k){
-  const float x=15.f+52.f*k;
-  Path a;a.startNewSubPath(x,140.f);a.cubicTo(x-35.f,270.f,x+49.f,410.f,x-12.f,725.f);
-  g.setColour((k%3==0?blood:grey).withAlpha(.065f));
-  g.strokePath(a,PathStrokeType(1.15f));
- }
- // Title plaque, engraved sci-fi typography; icy rather than whimsical.
- g.setColour(Colour::fromRGB(2,9,7));g.fillRoundedRectangle(23.f,16.f,375.f,106.f,9.f);
- g.setColour(acid.withAlpha(.55f));g.drawRoundedRectangle(23.f,16.f,375.f,106.f,9.f,1.2f);
- g.setColour(frost);
- g.setFont(Font("Consolas",41.f,Font::bold));
- g.drawFittedText("V O I D C O R E",41,23,350,50,Justification::centredLeft,1);
- g.setColour(acid);g.setFont(Font(12.f,Font::bold));
- g.drawText("S P E C T R A L   O R G A N I S M",43,80,340,18,Justification::centredLeft);
- g.setColour(grey.withAlpha(.64f));
- g.drawLine(405.f,60.f,633.f,60.f,1.f);
- g.setColour(blood.withAlpha(.43f));g.drawLine(405.f,112.f,1167.f,112.f,1.5f);
- g.setColour(frost);g.setFont(Font(12.f));
- g.drawFittedText(lastScene,407,28,218,24,Justification::centred,1);
- // Thin corner claws shift slowly but never cover click areas.
- for(int k=0;k<12;++k){
-  const float a=(float)k*pi/6.f+clock*.022f;
-  const float radius=12.f+5.f*std::sin(clock*.75f+k);
-  g.setColour((k%2?acid:blood).withAlpha(.25f));
-  const float cx=k%2?1185.f:14.f,cy=150.f+(k/2)*106.f;
-  g.drawLine(cx,cy,cx+radius*std::cos(a),cy+radius*std::sin(a),1.5f);
- }
+}
+void VoidcoreEditor::drawKeyboardShell(Graphics& g){
+ const Rectangle<float> r{245.f,735.f,738.f,59.f};
+ g.setColour(Colour::fromRGB(2,7,4));
+ g.fillRoundedRectangle(r,9.f);
+ g.setColour(frost.withAlpha(.34f));
+ g.drawRoundedRectangle(r,9.f,1.f);
+ g.setColour(acid.withAlpha(.43f));
+ g.drawLine(r.getX()+20.f,r.getY()+4.f,r.getRight()-20.f,r.getY()+4.f,1.f);
 }
 void VoidcoreEditor::soundSphere(Graphics& g,Point<float> centre,float radius,Colour tint,float activity){
  // Visual-only, driven by GUI clock and a smoothed atomic peak.
