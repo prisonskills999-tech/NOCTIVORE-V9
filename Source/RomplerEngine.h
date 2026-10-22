@@ -185,6 +185,36 @@ public:
   lfoPhase=0;for(auto& l:modulators)l={};globalTime=0;motifBeats=0;hostBeatSynced=false;held.fill(false);sustained.fill(false);sustainDown=false;smoothedGate=1.f;smoothedAccent=1.f;
  }
  void setParameters(const Params& values){
+  // Changing sample banks while a key is held is audible immediately and
+  // fades over 75 ms to prevent switching transients.
+  if(values.bank!=p.bank||values.bankB!=p.bankB){
+   auto findZone=[&](int requested,int note,const Sample* fallback)->const Sample*{
+    const int bank=std::clamp(requested,0,50);
+    const int zone=std::clamp((int)std::lround((note-36)/12.f),0,3);
+    if(samples[(size_t)bank][(size_t)zone].loaded())return &samples[(size_t)bank][(size_t)zone];
+    for(int k=0;k<4;++k)if(samples[(size_t)bank][(size_t)k].loaded())
+     return &samples[(size_t)bank][(size_t)k];
+    return fallback;
+   };
+   for(auto& v:voices){
+    if(!v.stage||!v.sample||!v.sampleB)continue;
+    const auto* nextA=findZone(values.bank,v.note,v.sample);
+    const auto* nextB=findZone(values.bankB,v.note,v.sampleB);
+    if(nextA==v.sample&&nextB==v.sampleB)continue;
+    v.previousA=v.sample;v.previousB=v.sampleB;
+    v.previousPositionA=v.position;v.previousPositionB=v.positionB;
+    const float fracA=clampf(v.position/(float)v.sample->data.size(),0.f,.88f);
+    const float fracB=clampf(v.positionB/(float)v.sampleB->data.size(),0.f,.88f);
+    v.sample=nextA;v.sampleB=nextB;
+    v.position=fracA*(float)nextA->data.size();
+    v.positionB=fracB*(float)nextB->data.size();
+    v.aliveA=v.position;v.aliveB=v.positionB;
+    v.bank=std::clamp(values.bank,0,50);
+    v.bankB=std::clamp(values.bankB,0,50);
+    v.oneShot=v.bank<50?banks[(size_t)v.bank].oneShot:false;
+    v.bankFade=0.f;
+   }
+  }
   p=values;auto fx=p.fx;fx.psySpiral=p.psySpiral;fx.psySpiralRate=p.psySpiralRate;
   fx.wetLowCut=p.wetLowCut;
   spaceFX.setControls(fx);
@@ -235,7 +265,8 @@ public:
    for(int k=0;k<4;++k)if(samples[(size_t)bankB][(size_t)k].loaded()){zb=k;break;}
   v->sampleB=samples[(size_t)bankB][(size_t)zb].loaded()
    ? &samples[(size_t)bankB][(size_t)zb] : v->sample;
-  v->bank=bank;v->note=note;v->vel=clampf(velocity,0,1);
+  v->bank=bank;v->bankB=bankB;v->note=note;v->vel=clampf(velocity,0,1);
+  v->previousA=v->previousB=nullptr;v->bankFade=1.f;
   if(p.velocityCurve==0)v->vel=std::sqrt(v->vel);
   else if(p.velocityCurve==2)v->vel=v->vel*v->vel;
   v->target=(float)note;
@@ -450,6 +481,16 @@ public:
     const float mixA=std::cos(morph*pi*.5f),mixB=std::sin(morph*pi*.5f);
     const float baseA=readAt(s,v.position),baseB=readAt(sb,v.positionB);
     float sample=mixA*baseA+mixB*baseB;
+    if(v.bankFade<1.f&&v.previousA&&v.previousB){
+     const float aOld=readAt(*v.previousA,v.previousPositionA);
+     const float bOld=readAt(*v.previousB,v.previousPositionB);
+     const float alpha=v.bankFade*v.bankFade*(3.f-2.f*v.bankFade);
+     sample=sample*alpha+(mixA*aOld+mixB*bOld)*(1.f-alpha);
+     v.previousPositionA+=step;
+     v.previousPositionB+=stepB;
+     v.bankFade=std::min(1.f,v.bankFade+dt/.075f);
+     if(v.bankFade>=1.f)v.previousA=v.previousB=nullptr;
+    }
      if(lowLife>.0001f && droneLoop){
        // Recorded-speed motion survives pitch transposition, without any hiss.
        const float live=mixA*readAt(s,v.aliveA)+mixB*readAt(sb,v.aliveB);
@@ -786,7 +827,10 @@ private:
  struct Voice {
   const Sample* sample=nullptr;
   const Sample* sampleB=nullptr;
-  int note=-1,bank=0,stage=0;
+  int note=-1,bank=0,bankB=7,stage=0;
+   const Sample* previousA=nullptr;
+   const Sample* previousB=nullptr;
+   float previousPositionA=0.f,previousPositionB=0.f,bankFade=1.f;
   float vel=0,position=0,positionB=0,level=0,releaseLevel=1,pitch=0,target=0,lp=0,bp=0;
   float motionPhase=0,layerOffset=0,bodyPhase=0,breath=0,aliveA=0,aliveB=0;
    float cellPhase=0,organismPhase=0,organismTonePhase=0,foldLP=0,cleanBlend=0;
