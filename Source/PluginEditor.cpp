@@ -116,6 +116,18 @@ NoctivoreEditor::Dial::Dial(AudioProcessorValueTreeState& apvts,const String& id
  attachment=std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(apvts,id,knob);
 }
 void NoctivoreEditor::Dial::resized(){auto r=getLocalBounds();name.setBounds(r.removeFromTop(17));knob.setBounds(r);}
+void NoctivoreEditor::Dial::paint(Graphics& g){
+ auto r=getLocalBounds().toFloat().reduced(1.5f);
+ g.setColour(painted::soil.withAlpha(.25f));
+ g.fillRoundedRectangle(r,9.f);
+ g.setColour(painted::outline.withAlpha(.23f));
+ g.drawRoundedRectangle(r,9.f,.85f);
+ g.setColour(painted::ochre.withAlpha(.21f));
+ g.drawLine(10.f,r.getBottom()-5.f,r.getRight()-10.f,r.getBottom()-5.f,.9f);
+ // A painted fleck and a tiny moss spore on every parameter tablet.
+ g.setColour(painted::moss.withAlpha(.42f));g.fillEllipse(r.getRight()-9.f,8.f,3.f,3.f);
+}
+
 NoctivoreEditor::Selector::Selector(AudioProcessorValueTreeState& apvts,const String& id,const String& text,const StringArray& names){
  name.setText(text,dontSendNotification);name.setJustificationType(Justification::centredLeft);
  name.setFont(Font(10.5f,Font::bold));name.setColour(Label::textColourId,soft);
@@ -125,6 +137,13 @@ NoctivoreEditor::Selector::Selector(AudioProcessorValueTreeState& apvts,const St
  attachment=std::make_unique<AudioProcessorValueTreeState::ComboBoxAttachment>(apvts,id,box);
 }
 void NoctivoreEditor::Selector::resized(){auto r=getLocalBounds().reduced(4,1);name.setBounds(r.removeFromTop(17));box.setBounds(r.reduced(0,2));}
+void NoctivoreEditor::Selector::paint(Graphics& g){
+ auto r=getLocalBounds().toFloat().reduced(2.f,1.f);
+ g.setColour(painted::stone.withAlpha(.3f));g.fillRoundedRectangle(r,7.f);
+ g.setColour(painted::ochre.withAlpha(.28f));g.drawRoundedRectangle(r,7.f,1.f);
+ g.setColour(painted::moss.withAlpha(.48f));g.fillEllipse(r.getRight()-8.f,7.f,3.2f,3.2f);
+}
+
 NoctivoreEditor::Section& NoctivoreEditor::section(Page p,const String& name,Colour colour,int columns){
  sections.push_back({p,name,colour,columns,{}, {}});
  return sections.back();
