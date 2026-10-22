@@ -62,6 +62,9 @@ struct Params {
  float character=0.f,sourceSolo=0.f;
  float tuneA=0.f,tuneB=0.f,levelA=1.f,levelB=1.f;
  float toneLow=.5f,toneMid=.5f,toneHigh=.5f;
+ // Final XENO destruction matrix: deliberate, bank-linked character, never
+ // a permanent hiss/bitcrusher on every source.
+ float drop=.55f, hits=.24f, body=.46f, grit=.30f, dark=.43f;
  // V10.5 user-editable 16 step gate: default all steps active.
  std::array<float,16> gateSteps{{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}};
 
@@ -313,6 +316,12 @@ public:
      v->positionB=(float)v->sampleB->data.size()-4.f;
      v->aliveA=v->position;v->aliveB=v->positionB;}
    v->grainPhase=0.f;v->grainSecondHalf=false;
+   v->debris={};v->debrisCountdown=.07f;
+   v->bodyPosA=v->position;v->bodyPosB=v->positionB;v->bodyLP=0.f;
+   v->impactPosA=v->position;v->impactPosB=v->positionB;
+   v->impactProgress=1.f;v->impactCountdown=.08f;
+   v->impactLength=.2f;v->impactSpeed=.5f;v->impactPitch=0.f;
+   v->impactPhase=0.f;v->gritPre=v->gritPost=v->darkLP=0.f;
    v->anchorA[0]=v->position;v->anchorA[1]=v->position+.09f*v->sample->rate;
    v->anchorB[0]=v->positionB;v->anchorB[1]=v->positionB+.09f*v->sampleB->rate;
    v->level=0;v->stage=1;v->lp=0;v->bp=0;
@@ -928,6 +937,15 @@ private:
   float fmPhase=0,fmAltPhase=0,modPhase=0,prevMod=0,metalDamp=0,motifPitch=0,fxPhase=0,ghostLP=0;int fxStep=-1;
   std::array<float,4096> metalLine{};int metalPos=0;
   float grainPhase=0.f,fractureGain=1.f,stealL=0,stealR=0,stealFade=0,lastL=0,lastR=0;
+  struct Grain {
+   float posA=0.f,posB=0.f,progress=1.f,increment=0.f,rate=1.f,level=0.f;
+  };
+  std::array<Grain,2> debris{};
+  float debrisCountdown=0.f;
+  float bodyPosA=0.f,bodyPosB=0.f,bodyLP=0.f;
+  float impactPosA=0.f,impactPosB=0.f,impactProgress=1.f,impactLength=.2f;
+  float impactCountdown=0.f,impactSpeed=.5f,impactPitch=0.f;
+  float impactPhase=0.f,gritPre=0.f,gritPost=0.f,darkLP=0.f;
   float smoothMorph=.2f,smoothFmMix=0.f,smoothFold=0.f,smoothSolo=0.f;
   bool grainSecondHalf=false;
   std::array<float,2> anchorA{},anchorB{};uint32_t noiseState=1;
