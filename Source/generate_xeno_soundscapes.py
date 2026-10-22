@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""VOIDCORE XENO ATLAS V12: fifty genuinely distinct, deterministic alien soundscapes.
+"""VOIDCORE XENO ATLAS V13 HiFi: fifty original, distinct, high-resolution soundscapes.
 
 No third-party recordings, random broadband noise, or external sample downloads.
 Keeps 50 indexed banks x four MIDI roots at 48 kHz PCM16 for preset compatibility.
@@ -11,6 +11,7 @@ from scipy.io import wavfile
 import re
 
 SR = 48000
+SYNTH_SR = 96000  # 2x oversampling for ultrasonics, then sinc-polyphase reduction.
 ROOTS = (36, 48, 60, 72)
 FAMILIES = (
     ("ABYSSAL GRAVITY", "Sub-octave tectonic drones with slow pressure waves"),
@@ -44,14 +45,14 @@ def create(bank, note, category=0, model=None):
     family = bank % 10
     mutation = bank // 10
     duration = 8.0 + .26 * (bank % 5)
-    t = np.arange(round(duration * SR), dtype=np.float64) / SR
+    t = np.arange(round(duration * SYNTH_SR), dtype=np.float64) / SYNTH_SR
     f = 440. * 2. ** ((note - 69) / 12.)
     tau = 2. * np.pi
     phase_offset = ((bank * 97 + note * 43) % 257) * .021
     slow = np.sin(tau * (.035 + .013 * mutation) * t + phase_offset)
     drift = np.sin(tau * (.11 + .019 * (bank % 6)) * t + 1.3 * phase_offset)
     bends = 1. + (.002 + .002 * mutation) * (.7 * slow + .3 * drift)
-    phase = tau * f * np.cumsum(bends) / SR
+    phase = tau * f * np.cumsum(bends) / SYNTH_SR
     mod = np.sin(phase * (.39 + mutation * .047) + .8 * slow)
     pulse = _envelope(t, .45 + .16 * mutation, 3.0, phase_offset)
     airy = np.sin(phase * (3.1 + mutation * .37) + 1.9 * slow)
@@ -120,6 +121,40 @@ def create(bank, note, category=0, model=None):
         quantized = np.tanh(2.3 * np.sin(phase * (1.33 + mutation * .17) + airy))
         x = (.6 * alien + .4 * quantized) * (.025 + .68 * stutter + .31 * chopped)
 
+    # Bank-indexed morphologies: every one of the five mutations within each
+    # family has a different spectral/rhythmic architecture. These live *inside*
+    # the recorded sample, so selecting a bank is audibly different even with
+    # LFO/FX/drive and Bank B modulation completely disabled.
+    if mutation == 1:
+        # Formant lattice with two non-harmonic resonators.
+        centre = 350. + (family % 5) * 270.
+        q = 4.5 + (family % 4) * 2.5
+        b1, a1 = signal.iirpeak(centre, q, fs=SYNTH_SR)
+        b2, a2 = signal.iirpeak(centre * (1.5 + .05 * family), q * .8, fs=SYNTH_SR)
+        voices = signal.lfilter(b1, a1, x) + .5 * signal.lfilter(b2, a2, x)
+        x = .53 * x + (.58 + .1 * (family % 3)) * voices
+    elif mutation == 2:
+        # Liquid differential phase motion: glassy but not digital crushing.
+        period = .63 + .085 * (family % 5)
+        flux = _envelope(t, period, 1.4, phase_offset)
+        subphase = np.sin(phase * (.39 + .11 * (family % 4)) + 1.5 * slow)
+        x = (.29 + .52 * flux) * x + (.34 - .13 * flux) * subphase
+    elif mutation == 3:
+        # A different rhythmic identity: individually gated partials.
+        ratio = 1.16 + .23 * (family % 6)
+        signal_env = _envelope(t, .16 + .041 * (family % 7), 4.0, .43 * family)
+        overtone = np.sin(phase * ratio + 1.05 * slow)
+        x = (.44 + .23 * signal_env) * x + .33 * overtone * signal_env
+    elif mutation == 4:
+        # Nebulous echo membrane: feedback-free delays keep the signal pristine.
+        lag = int(SYNTH_SR * (.061 + .018 * (family % 6)))
+        long_lag = int(SYNTH_SR * (.18 + .036 * (family % 4)))
+        shadow = np.zeros_like(x)
+        shadow[lag:] = x[:-lag]
+        shadow2 = np.zeros_like(x)
+        shadow2[long_lag:] = x[:-long_lag]
+        x = .54 * x + .31 * shadow + .24 * shadow2
+
     # Contrasting mutation signatures rather than any shared synthetic base layer.
     if family not in (1, 5, 6, 9):
         x *= .86 + .14 * np.sin(tau * (.12 + .047 * mutation) * t + phase_offset)
@@ -129,18 +164,22 @@ def create(bank, note, category=0, model=None):
         cutoff = 8800 + 420 * mutation
     else:
         cutoff = 5200 + 640 * mutation
-    sos = signal.butter(2, min(cutoff, 11000), fs=SR, output='sos')
+    # Anti-aliased offline synthesis preserves high partials with no alias folded
+    # into the playable 48 kHz WAV, even for aggressive FM and chirps.
+    sos = signal.butter(3, min(cutoff, 14500), fs=SYNTH_SR, output='sos')
     x = signal.sosfilt(sos, x)
     attack = .08 + .09 * (family in (0, 3, 8))
     x *= -np.expm1(-t / attack)
     x *= -np.expm1(-(duration - t) / .19)
+    # Kaiser-windowed polyphase downsampling strongly rejects ultrasonics.
+    x = signal.resample_poly(x, 1, SYNTH_SR // SR, window=('kaiser', 10.5))
     x -= np.mean(x)
     rms = float(np.sqrt(np.mean(x * x)) + 1e-12)
-    target = .15 if family in (0, 3, 8) else .18
+    target = .115 if family in (0, 3, 8) else .14
     x *= target / rms
     peak = np.max(np.abs(x))
-    if peak > .87:
-        x *= .87 / peak
+    if peak > .80:
+        x *= .80 / peak
     return np.rint(np.clip(x, -1, 1) * 32767).astype('<i2')
 
 
@@ -154,11 +193,11 @@ def main():
             wavfile.write(out / f'{bank:02d}_{note}.wav', SR, create(bank, note, int(kind)))
         if bank % 10 == 9:
             print(f'Generated {bank+1}/50 varied xeno banks', flush=True)
-    (out / 'MANIFEST.txt').write_text('VOIDCORE XENO V12: 50 distinct 48 kHz banks / 200 original PCM16 WAV files.\n', encoding='utf-8')
+    (out / 'MANIFEST.txt').write_text('VOIDCORE XENO V13 HiFi: 50 unique banks rendered at 96 kHz, filtered to 48 kHz PCM16.\n', encoding='utf-8')
     lines = [
-        '# VOIDCORE XENO v12 — Diverse Alien Soundscape Atlas', '',
+        '# VOIDCORE XENO v13 — High-Fidelity Alien Soundscape Atlas', '',
         '50 original multi-zone bank slots / 200 48 kHz PCM16 WAV files.',
-        'Each family uses a different sound-generating topology. Every bank also has a distinct mutation.',
+        '96 kHz original synthesis, Kaiser polyphase anti-aliasing to 48 kHz PCM16. Fifty bank-specific morphologies.',
         'No third-party recordings or broadband random noise.', '',
         '| Slot | Bank | Synthesis family | Sonic identity |',
         '|---:|---|---|---|',
