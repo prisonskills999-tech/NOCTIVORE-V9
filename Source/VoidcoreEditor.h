@@ -80,6 +80,7 @@ private:
  std::array<Click*,4> pageButtons{},lfoButtons{};
  std::array<Click*,4> filterModeButtons{};
  Click* reverseButton=nullptr;
+ Click* sourceSoloButton=nullptr;
  std::array<std::array<float,192>,2> previews{};
  void updatePreview(int);
  std::unique_ptr<juce::FileChooser> chooser;
