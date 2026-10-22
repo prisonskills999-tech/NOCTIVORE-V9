@@ -131,7 +131,7 @@ public:
  void prepare(double sampleRate){
   sr=std::max(8000.,sampleRate);for(auto& v:voices)v={};
   spaceFX.prepare(sr);mixLowL=mixLowR=0;mixMidL=mixMidR=0;
-  lfoPhase=0;for(auto& l:modulators)l={};globalTime=0;motifBeats=0;held.fill(false);sustained.fill(false);sustainDown=false;smoothedGate=1.f;smoothedAccent=1.f;
+  lfoPhase=0;for(auto& l:modulators)l={};globalTime=0;motifBeats=0;hostBeatSynced=false;held.fill(false);sustained.fill(false);sustainDown=false;smoothedGate=1.f;smoothedAccent=1.f;
  }
  void setParameters(const Params& values){
   p=values;auto fx=p.fx;fx.psySpiral=p.psySpiral;fx.psySpiralRate=p.psySpiralRate;
@@ -139,7 +139,13 @@ public:
   spaceFX.setControls(fx);
  }
  void setTempo(double bpm){tempo=clampf((float)bpm,30.f,300.f);spaceFX.setTempo(bpm);}
- void setBeatClock(double ppq){if(std::isfinite(ppq))motifBeats=(float)std::fmod(ppq,65536.);}
+ void setBeatClock(double ppq){
+   if(!std::isfinite(ppq))return;
+   const double position=std::fmod(ppq,65536.);
+   if(!hostBeatSynced || std::abs(position-motifBeats)>.065){
+     motifBeats=position;hostBeatSynced=true;
+   }
+ }
  void pitchWheel(int value){bend=clampf(((float)value-8192.f)/8192.f,-1,1);}
  void controller(int cc,int value){
   if(cc==1)modwheel=clampf((float)value/127,0,1);
@@ -229,6 +235,7 @@ public:
   const float midCoeff=1.f-std::exp(-2.f*pi*625.f*dt);
   const float filterReleaseDecay=std::exp(-dt/std::max(.01f,p.filterEnvRelease));
   const float motionReleaseDecay=std::exp(-dt/std::max(.01f,p.motionEnvRelease));
+   const float modSlew=1.f-std::exp(-dt/.012f);
   for(int i=0;i<count;++i){
    std::array<float,11> destinations{};
    // Per-target accumulation allows true simultaneous four-LFO routing.
@@ -254,7 +261,8 @@ public:
     // Deliberate fine response for subtle organic movement.
     float depth=clampf(cfg.depth,0,1); depth=depth*depth;
     int dest=std::clamp(cfg.target,0,10);
-    destinations[(size_t)dest]+=shape*depth;
+    osc.smooth+=(shape-osc.smooth)*modSlew;
+     destinations[(size_t)dest]+=osc.smooth*depth;
    }
    // MIDI CC1 and the painted mod fader share a musical modulation macro.
    const float modAmount=clampf(modwheel+p.performanceMod,0.f,1.f);
@@ -274,10 +282,10 @@ public:
    static constexpr float divs[4]={2.f,4.f,8.f,3.f}; // eighth, 16th, 32nd, triplet
    const int grooveIndex=std::clamp(p.motif-1,0,5);
    const float beatsPerStep=divs[(size_t)std::clamp(p.motifDivision,0,3)];
-   const float beatClock=motifBeats*beatsPerStep;
+   const double beatClock=motifBeats*(double)beatsPerStep;
    const int rawStep=(int)std::floor(beatClock);
    const int stepNum=((rawStep%16)+16)%16;
-   float stepPhase=beatClock-std::floor(beatClock);
+   float stepPhase=(float)(beatClock-std::floor(beatClock));
    // Swing shifts alternating steps WITHOUT changing pitch or grid rate.
    float swing=clampf(p.motifGlide,0.f,1.f)*.27f;
    stepPhase=clampf(stepPhase+(stepNum%2==1?swing:-swing),0.f,.999f);
@@ -689,7 +697,7 @@ public:
     }else{mixL+=outL;mixR+=outR;}
    }
    globalTime+=dt;
-   motifBeats+=dt*tempo/60.f;
+   motifBeats+=(double)tempo/60.0/sr;
    if(motifBeats>65536.f)motifBeats-=65536.f;
    if(globalTime>100000.f)globalTime=0;
    float wetL=0,wetR=0;
@@ -758,14 +766,15 @@ private:
  }
  static float fundamentalHz(float midi){return clampf(440.f*std::exp2((midi-69.f)/12.f),20.f,8000.f);}
  static float wrapPhase(float phase){return phase>=2.f*pi?std::fmod(phase,2.f*pi):phase;}
- struct ModState {float phase=0.f,random=0.f;uint32_t seed=1234567u;};
+ struct ModState {float phase=0.f,random=0.f,smooth=0.f;uint32_t seed=1234567u;};
  double sr=44100.;Params p;
  std::array<ModState,4> modulators{};
  std::array<std::array<Sample,4>,51> samples{};
  std::array<Voice,voiceCount> voices{};
  std::array<bool,128> held{},sustained{};
  uint64_t voiceCounter=0;bool sustainDown=false;
- float bend=0,modwheel=0,lfoPhase=0,globalTime=0,motifBeats=0,tempo=145;
+ float bend=0,modwheel=0,lfoPhase=0,globalTime=0,tempo=145;
+ double motifBeats=0.;bool hostBeatSynced=false;
  float mixLowL=0,mixLowR=0,mixMidL=0,mixMidR=0;
  float smoothedGate=1.f,smoothedAccent=1.f;
  PsySpace spaceFX;std::string bankFolder;
