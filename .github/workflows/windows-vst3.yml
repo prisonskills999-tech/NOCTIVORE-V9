@@ -10,7 +10,7 @@ permissions:
 jobs:
   build-windows-vst3:
     name: VST3 ${{ matrix.edition }}
-    runs-on: windows-2022
+    runs-on: windows-2025
     strategy:
       fail-fast: false
       matrix:
@@ -72,7 +72,10 @@ jobs:
         shell: pwsh
         run: |
           $buildDir = 'C:/voidcore11_${{ matrix.edition }}'
-          cmake -S . -B $buildDir -G 'Visual Studio 17 2022' -A x64 '-DJUCE_DIR=C:/nfx-juce/JUCE-8.0.15' '-DJUCE_BUILD_EXTRAS=OFF' '-DNOCTIVORE_GENERIC_EDITOR=${{ matrix.generic }}'
+          $installed17 = & "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe" -latest -products * -version '[17.0,18.0)' -property installationPath
+          $generator = if ($installed17) { 'Visual Studio 17 2022' } else { 'Visual Studio 18 2026' }
+          Write-Host "Using CMake generator: $generator"
+          cmake -S . -B $buildDir -G $generator -A x64 '-DJUCE_DIR=C:/nfx-juce/JUCE-8.0.15' '-DJUCE_BUILD_EXTRAS=OFF' '-DNOCTIVORE_GENERIC_EDITOR=${{ matrix.generic }}'
           if ($LASTEXITCODE -ne 0) { throw 'CMake configure failed' }
 
       - name: Compile release VST3
