@@ -99,9 +99,9 @@ VoidcoreEditor::VoidcoreEditor(NoctivoreProcessor& p):AudioProcessorEditor(p),pr
  if(art.existsAsFile())reference=ImageFileFormat::loadFrom(art);
  buildCore();buildDeeper();setPage(Core);
  setResizable(true,true);
- setResizeLimits(960,640,1536,1024);
+ setResizeLimits(900,600,1500,1000);
  if(auto* constrainer=getConstrainer())constrainer->setFixedAspectRatio(1.5);
- setSize(1152,768);
+ setSize(1050,700);
  startTimerHz(30); // UI-only; DSP never renders on the GUI thread.
 }
 VoidcoreEditor::~VoidcoreEditor(){stopTimer();chooser.reset();}
@@ -145,7 +145,12 @@ void VoidcoreEditor::allClick(const String& label,float x,float y,float w,float 
 }
 void VoidcoreEditor::setPage(Page next){
  page=next;
- for(auto& node:ui)node.control->setVisible(node.onPage<0||node.onPage==(int)page);
+ for(auto& node:ui)node.control->setVisible(node.onPage<0||node.onPage==(int)page||
+   (page==Motion&&node.onPage==10+focusLfo));
+ for(int i=0;i<4;++i){
+  if(pageButtons[(size_t)i])pageButtons[(size_t)i]->selected=(int)page==i;
+  if(lfoButtons[(size_t)i])lfoButtons[(size_t)i]->selected=focusLfo==i;
+ }
  repaint();
 }
 void VoidcoreEditor::resized(){
@@ -161,5 +166,188 @@ void VoidcoreEditor::timerCallback(){
  if(clock>60000.f)clock=0.f;
  smoothedPeak=smoothedPeak*.76f+clamp01(processor.peak.load(std::memory_order_relaxed))*.24f;
  playing=processor.displayPlaying.load(std::memory_order_relaxed);
+ for(int k=0;k<16;++k)
+   if(steps[(size_t)k])steps[(size_t)k]->selected=value(String::formatted("gateStep%02d",k+1).toRawUTF8())>.5f;
+ if(cachedA!=(int)value("bank"))updatePreview(0);
+ if(cachedB!=(int)value("bankB"))updatePreview(1);
  repaint();
+}
+
+
+VoidcoreEditor::Fader::Fader(NoctivoreProcessor& p,const String& id){
+ setSliderStyle(Slider::LinearHorizontal);
+ setTextBoxStyle(Slider::NoTextBox,false,0,0);
+ setMouseDragSensitivity(180);
+ link=std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(p.state,id,*this);
+}
+void VoidcoreEditor::Fader::paint(Graphics& g){
+ auto r=getLocalBounds().toFloat();
+ const float norm=getMaximum()>getMinimum()?clamp01((float)((getValue()-getMinimum())/(getMaximum()-getMinimum()))):0.f;
+ const float y=r.getCentreY(), x=r.getX()+12.f+(r.getWidth()-24.f)*norm;
+ g.setColour(grey.withAlpha(.5f));g.fillRoundedRectangle(r.getX()+10.f,y-3.f,r.getWidth()-20.f,6.f,3.f);
+ g.setColour(acid.withAlpha(.86f));g.fillRoundedRectangle(r.getX()+10.f,y-3.f,std::max(1.f,x-r.getX()-10.f),6.f,3.f);
+ g.setColour(blood.withAlpha(.35f));g.fillEllipse(x-13.f,y-13.f,26.f,26.f);
+ g.setColour(frost);g.fillRoundedRectangle(x-5.f,y-14.f,10.f,28.f,2.f);
+ g.setColour(blood);g.drawRoundedRectangle(x-5.f,y-14.f,10.f,28.f,2.f,1.5f);
+}
+void VoidcoreEditor::fader(const char* id,float x,float y,float w,float h,Page pg){
+ auto c=std::make_unique<Fader>(processor,id);
+ ui.push_back({std::move(c),{x,y,w,h},(int)pg});
+}
+void VoidcoreEditor::buildCore(){
+ for(int i=0;i<4;++i){
+  const Page target=(Page)i;
+  allClick(pageNames[(size_t)i],667.f+i*120.f,29.f,110.f,33.f,[this,target]{setPage(target);});
+  pageButtons[(size_t)i]=dynamic_cast<Click*>(ui.back().control.get());
+ }
+ allClick("SAVE",437,73,75,28,[this]{save();});
+ allClick("LOAD",522,73,75,28,[this]{load();});
+ allClick("MUTATE",607,73,88,28,[this]{mutation(false);},1);
+ allClick("EVOLVE",705,73,86,28,[this]{mutation(true);});
+ // Main page: only the controls that actually shape the instrument.
+ StringArray banks;
+ for(const auto& bank:noctivore::banks)banks.add(bank.name);
+ banks.add("User");
+ choice("bank",banks,58,177,305,33,Core);
+ choice("bankB",banks,838,177,305,33,Core);
+ knob("start","START",112,404,95,Core);
+ knob("xenoFormant","THROAT",285,404,95,Core,1);
+ knob("texture","TEXTURE",915,404,95,Core);
+ knob("xenoCross","COUPLE",1084,404,95,Core,1);
+ fader("morph",463,444,274,42,Core);
+ const char* ids[]={"cutoff","resonance","creatures","biomeDepth","reverbMix","volume"};
+ const char* labels[]={"FILTER","RES","CREATURE","EVOLVE","SPACE","OUTPUT"};
+ for(int i=0;i<6;++i)knob(ids[i],labels[i],142.f+182.f*i,600.f,109.f,Core,i==1||i==5);
+}
+void VoidcoreEditor::buildDeeper(){
+ // MOTION: one selected LFO at a time, one ADSR, editable 16-step gate.
+ for(int i=0;i<4;++i){
+  click("LFO "+String(i+1),68.f+i*110.f,165.f,103.f,29.f,Motion,[this,i]{focusLfo=i;setPage(Motion);});
+  lfoButtons[(size_t)i]=dynamic_cast<Click*>(ui.back().control.get());
+  const String pre=i==0?"":String("lfo")+String(i+1);
+  const String rate=i==0?"rate":pre+"Rate",depth=i==0?"depth":pre+"Depth";
+  const String wave=i==0?"wave":pre+"Wave",target=i==0?"target":pre+"Target";
+  const String sync=i==0?"lfo1Sync":pre+"Sync";
+  const Page sub=(Page)(10+i);
+  knob(rate.toRawUTF8(),"RATE",144,394,110,sub);
+  knob(depth.toRawUTF8(),"DEPTH",316,394,110,sub,1);
+  choice(wave.toRawUTF8(),{"Sine","Triangle","Saw","Square","Sample & Hold","Fractal"},62,318,170,32,sub);
+  choice(sync.toRawUTF8(),{"Free","1 bar","1/2 bar","1/4 bar","1/8 bar","1/16 bar"},255,318,153,32,sub);
+  choice(target.toRawUTF8(),{"Volume","Pan","Pitch","Filter 1","Filter 2","FM Index","A/B Morph","Metal Exciter","Grain Density","Delay Warp","Reverb Motion"},62,354,350,30,sub);
+ }
+ knob("attack","ATTACK",679,395,96,Motion);
+ knob("decay","DECAY",814,395,96,Motion);
+ knob("sustain","SUSTAIN",947,395,96,Motion);
+ knob("release","RELEASE",1077,395,96,Motion);
+ choice("motif",{"Off","Serpent","Ritual","Insect","Portal","Fracture","Hollow"},62,490,172,32,Motion);
+ choice("motifDivision",{"1/8","1/16","1/32","Triplet"},248,490,120,32,Motion);
+ knob("motifGate","GATE",902,530,86,Motion);
+ knob("motifGlide","SWING",1061,530,86,Motion);
+ for(int i=0;i<16;++i){
+  const auto id=String::formatted("gateStep%02d",i+1);
+  click(String(i+1),72.f+65.f*i,595.f,55.f,51.f,Motion,[this,id]{
+    const float v=value(id.toRawUTF8());
+    set(id.toRawUTF8(),v>.5f?0.f:1.f);
+  });
+  steps[(size_t)i]=dynamic_cast<Click*>(ui.back().control.get());
+ }
+ // FX: retain the whole engine but expose only genuinely audible master controls.
+ knob("delayMix","DELAY MIX",123,322,105,Fx);
+ knob("delayFeedback","FEEDBACK",289,322,105,Fx,1);
+ knob("delayTone","TONE",454,322,105,Fx);
+ choice("division",{"1/4","1/8","1/8 dotted","1/16","1/16 dotted","1/32","1/4 triplet","1/8 triplet"},62,395,428,32,Fx);
+ knob("reverbMix","REVERB MIX",724,322,105,Fx);
+ knob("reverbSize","SIZE",889,322,105,Fx,1);
+ knob("reverbDecay","DECAY",1054,322,105,Fx);
+ knob("drive","DRIVE",123,595,100,Fx,1);
+ knob("psySpiral","SPACE MOTION",316,595,100,Fx);
+ knob("predator","PREDATOR",508,595,100,Fx,1);
+ knob("insectCode","SIGNALS",708,595,100,Fx);
+ knob("burrow","BURROW",908,595,100,Fx,1);
+ // SYSTEM: performance controls, preset / session actions, no 48-knob wall.
+ choice("voiceLimit",{"8 voices","12 voices","16 voices","24 voices"},85,240,245,40,System);
+ choice("mode",{"Polyphonic","Mono","Legato"},374,240,220,40,System);
+ choice("quality",{"Linear","Cubic"},630,240,220,40,System);
+ choice("reverse",{"Forward","Reverse"},881,240,228,40,System);
+ knob("glide","GLIDE",200,402,114,System);
+ knob("pan","PAN",471,402,114,System,1);
+ knob("stereo","WIDTH",740,402,114,System);
+ knob("clarity","CLARITY",997,402,114,System);
+ const char* scenes[]={"ALIEN RADIO","PREDATOR","PULSE FIELD","DEEP SIGNAL"};
+ for(int i=0;i<4;++i)click(scenes[i],85.f+i*275.f,550.f,255.f,48.f,System,[this,i]{preset(i);},i%2);
+ click("SAVE PATCH",300,631,256,43,System,[this]{save();});
+ click("LOAD PATCH",650,631,256,43,System,[this]{load();});
+}
+void VoidcoreEditor::updatePreview(int which){
+ const int index=std::clamp((int)value(which?"bankB":"bank"),0,50);
+ if(which)cachedB=index;else cachedA=index;
+ auto& samples=previews[(size_t)which];
+ samples.fill(0.f);
+ auto file=processor.paintingFile().getParentDirectory().getParentDirectory()
+                     .getChildFile("Banks").getChildFile(String::formatted("%02d_60.wav",index));
+ if(index==50)file=file.getParentDirectory().getChildFile("User").getChildFile("60.wav");
+ if(!file.existsAsFile())return;
+ AudioFormatManager fm;fm.registerBasicFormats();
+ std::unique_ptr<AudioFormatReader> reader(fm.createReaderFor(file));
+ if(!reader||reader->lengthInSamples<192)return;
+ const auto n=(int)std::min<juce::int64>(reader->lengthInSamples,480000);
+ AudioBuffer<float> waveform(1,n);
+ if(!reader->read(&waveform,0,n,0,true,false))return;
+ const float* data=waveform.getReadPointer(0);
+ for(int i=0;i<192;++i){
+   const int start=i*n/192,finish=std::min(n,(i+1)*n/192);
+   float peak=0.f;
+   for(int j=start;j<finish;++j)peak=std::max(peak,std::abs(data[j]));
+   samples[(size_t)i]=peak;
+ }
+}
+void VoidcoreEditor::mutation(bool gentle){
+ Random random;
+ for(auto* id:{"morph","xenoFormant","xenoCross","creatures","biomeDepth","cutoff","resonance","predator","insectCode","burrow"}){
+  if(auto* par=processor.state.getParameter(id)){
+   const float normalized=par->getValue();
+   const float target=gentle?clamp01(normalized+(random.nextFloat()-.5f)*.17f):random.nextFloat();
+   par->beginChangeGesture();par->setValueNotifyingHost(target);par->endChangeGesture();
+  }
+ }
+ lastScene=gentle?"EVOLVED ORGANISM":"MUTATED ORGANISM";
+}
+void VoidcoreEditor::preset(int index){
+ const float presets[4][8]={{.18f,.65f,.28f,.70f,.76f,.64f,.60f,.20f},
+ {.70f,.82f,.71f,.88f,.50f,.83f,.23f,.75f},
+ {.50f,.40f,.32f,.55f,.91f,.22f,.87f,.24f},
+ {.39f,.80f,.12f,.35f,.70f,.76f,.61f,.88f}};
+ const char* ids[]={"morph","xenoFormant","xenoCross","creatures","biomeDepth","predator","insectCode","burrow"};
+ index=std::clamp(index,0,3);
+ for(int i=0;i<8;++i){
+  if(auto* p=processor.state.getParameter(ids[i])){
+   p->beginChangeGesture();p->setValueNotifyingHost(presets[index][i]);p->endChangeGesture();
+  }
+ }
+ lastScene=StringArray{"ALIEN RADIO","PREDATOR","PULSE FIELD","DEEP SIGNAL"}[index];
+}
+void VoidcoreEditor::save(){
+ chooser=std::make_unique<FileChooser>("Save VOIDCORE preset",File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("Voidcore.nfx"),"*.nfx");
+ Component::SafePointer<VoidcoreEditor> safe(this);
+ chooser->launchAsync(FileBrowserComponent::saveMode|FileBrowserComponent::canSelectFiles|FileBrowserComponent::warnAboutOverwriting,
+ [safe](const FileChooser& fc){
+  if(!safe)return;
+  const auto file=fc.getResult();
+  if(file==File())return;
+  MemoryBlock data;safe->processor.getStateInformation(data);
+  FileOutputStream out(file);
+  if(out.openedOk()){out.write(data.getData(),data.getSize());out.flush();safe->lastScene="PRESET SAVED";}
+ });
+}
+void VoidcoreEditor::load(){
+ chooser=std::make_unique<FileChooser>("Load VOIDCORE preset",File::getSpecialLocation(File::userDocumentsDirectory),"*.nfx");
+ Component::SafePointer<VoidcoreEditor> safe(this);
+ chooser->launchAsync(FileBrowserComponent::openMode|FileBrowserComponent::canSelectFiles,
+ [safe](const FileChooser& fc){
+  if(!safe)return;
+  const auto file=fc.getResult();
+  if(file==File())return;
+  MemoryBlock data;
+  if(file.loadFileAsData(data)){safe->processor.setStateInformation(data.getData(),(int)data.getSize());safe->lastScene="PRESET LOADED";}
+ });
 }
