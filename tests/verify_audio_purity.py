@@ -22,6 +22,11 @@ assert "const float pureL=pureSource*gain" in engine
 assert "const float pureR=pureSource*gain" in engine
 assert "v.smoothSolo+=" in engine
 assert "wetL*=1.f-smoothedSoloFx" in engine
+assert 'add("morph","Source Crossfade",0,1,0.f)' in processor
+assert "p.morphMotion*(.5f*(osc+" in engine
+assert "masterGain=std::min(masterGain,target)" in engine
+assert "left[i]+=rawL*masterGain" in engine
+assert "std::tanh((mixL+wetL)" not in engine
 assert 'add("character","XENO Exciter Amount",0.f,1.f,0.f)' in processor
 assert 'choose("sourceSolo","Pure Source Audition",{"Normal Mix","Pure Source"})' in processor
 assert 'p.character=get("character");p.sourceSolo=get("sourceSolo");' in processor
