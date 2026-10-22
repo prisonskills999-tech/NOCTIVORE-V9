@@ -57,6 +57,19 @@ private:
   explicit Click(const juce::String&,juce::Colour);
   void paintButton(juce::Graphics&,bool,bool) override;
  };
+ struct OrbPad final : juce::Component {
+  NoctivoreProcessor& processor;
+  bool dragging=false;
+  explicit OrbPad(NoctivoreProcessor& p):processor(p){
+   setMouseCursor(juce::MouseCursor::DraggingHandCursor);
+   setTooltip("Drag left/right: A-B morph. Up/down: biome evolution.");
+  }
+  void mouseDown(const juce::MouseEvent&) override;
+  void mouseDrag(const juce::MouseEvent&) override;
+  void mouseUp(const juce::MouseEvent&) override;
+  void paint(juce::Graphics&) override;
+  void apply(const juce::MouseEvent&);
+ };
  struct Positioned {
   std::unique_ptr<juce::Component> control;
   juce::Rectangle<float> area;
