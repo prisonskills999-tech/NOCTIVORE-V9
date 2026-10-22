@@ -175,6 +175,10 @@ void VoidcoreEditor::timerCallback(){
     const bool on=value(String::formatted("gateStep%02d",k+1).toRawUTF8())>.5f;
     if(button->selected!=on){button->selected=on;button->repaint();}
    }
+ if(reverseButton){
+  const bool newValue=value("reverse")>.5f;
+  if(reverseButton->selected!=newValue){reverseButton->selected=newValue;reverseButton->repaint();}
+ }
  if(cachedA!=(int)value("bank"))updatePreview(0);
  if(cachedB!=(int)value("bankB"))updatePreview(1);
  repaint();
@@ -276,7 +280,10 @@ void VoidcoreEditor::buildDeeper(){
  choice("voiceLimit",{"8 voices","12 voices","16 voices","24 voices"},85,240,245,40,System);
  choice("mode",{"Polyphonic","Mono","Legato"},374,240,220,40,System);
  choice("quality",{"Linear","Cubic"},630,240,220,40,System);
- choice("reverse",{"Forward","Reverse"},881,240,228,40,System);
+ click("REVERSE AUDIO",881,240,228,40,System,[this]{
+  set("reverse",value("reverse")>.5f?0.f:1.f);
+ },1);
+ reverseButton=dynamic_cast<Click*>(ui.back().control.get());
  knob("glide","GLIDE",200,402,114,System);
  knob("pan","PAN",471,402,114,System,1);
  knob("stereo","WIDTH",740,402,114,System);
