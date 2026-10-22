@@ -85,13 +85,13 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  add("movement","Micro Movement",0,1,.52f);
  add("sub","Sub Body",0,1,.08f);
  choose("division","Delay Division",{"1/4","1/8","1/8 dotted","1/16","1/16 dotted","1/32","1/4 triplet","1/8 triplet"},3);
- add("delayMix","Delay Wet",0,1,.24f);
+ add("delayMix","Delay Wet",0,1,0.f);
  add("delayFeedback","Delay Feedback",0,.92f,.51f);
  add("delayTone","Delay Brightness",0,1,.59f);
  add("delayWarp","Delay Warp",0,1,.35f);
  add("delaySpread","Ping-Pong",0,1,.87f);
  add("delayDiffusion","Delay Smear",0,1,.52f);
- add("reverbMix","Reverb Wet",0,1,.26f);
+ add("reverbMix","Reverb Wet",0,1,0.f);
  add("reverbSize","Reverb Size",0,1,.94f);
  add("reverbDecay","Reverb Decay",0,1,.78f);
  add("reverbDark","Reverb Darkness",0,1,.49f);
@@ -127,7 +127,7 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  add("motionEnvAttack","Motion Env Attack",.003f,15.f,.5f);
  add("motionEnvRelease","Motion Env Release",.01f,20.f,4.f);
  add("motionEnvDepth","Motion Env Amount",0.f,1.f,.6f);
- add("fmMix","FM Amount",0.f,1.f,.006f);
+ add("fmMix","FM Amount",0.f,1.f,0.f);
  add("fmRatio","FM Ratio",.25f,16.f,1.f);
  add("fmIndex","FM Index",0.f,12.f,.85f);
  add("fmFeedback","FM Feedback",0.f,.95f,.025f);
@@ -137,7 +137,7 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  add("metalDecay","Metal Decay",0.f,1.f,.6f);
  add("metalTone","Metal Tone",0.f,1.f,.42f);
  add("macroAtmosphere","Macro Atmosphere",0.f,1.f,.64f);
- add("macroAggression","Macro Aggression",0.f,1.f,.025f);
+ add("macroAggression","Macro Aggression",0.f,1.f,0.f);
  // V7: independent musical groove and high-fidelity controls.
  add("trancePulse","Psy Pulse",0.f,1.f,.17f);
  add("tranceRate","Pulse Speed",.25f,8.f,2.f);
@@ -162,26 +162,29 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
    NormalisableRange<float>(.002f,.35f,0.f,2.8f),.034f));
  add("biomeChaos","Biome Complexity",0.f,1.f,.60f);
  // v10: optional expressive resonant interaction, never continuous noise.
- add("xenoFormant","Alien Formants",0.f,1.f,.31f);
- add("xenoCross","Organism Coupling",0.f,1.f,.04f);
+ add("xenoFormant","Alien Formants",0.f,1.f,0.f);
+ add("xenoCross","Organism Coupling",0.f,1.f,0.f);
  add("xenoWrithe","Body Mutation",0.f,1.f,.54f);
- add("lowRegisterLife","Low Register Life",0.f,1.f,.72f);
+ add("lowRegisterLife","Low Register Life",0.f,1.f,0.f);
  add("coupledMotion","Coupled Motion",0.f,1.f,.53f);
  add("performanceMod","Performance Mod Wheel",0.f,1.f,0.f);
  choose("voiceLimit","CPU / Polyphony",{"8 voices","12 voices","16 voices","24 voices"},1);
  add("colony","Mutant Colony",0.f,1.f,.33f);
  add("creatures","Living Creatures",0.f,1.f,.39f);
  add("psyFold","Spectral Fold",0.f,1.f,.22f);
- add("symbiosis","Source Symbiosis",0.f,1.f,.08f);
- add("predator","Predator Throat",0.f,1.f,.12f);
- add("insectCode","Spore Code",0.f,1.f,.12f);
- add("burrow","Burrow Interference",0.f,1.f,.09f);
+ add("symbiosis","Source Symbiosis",0.f,1.f,0.f);
+ add("predator","Predator Throat",0.f,1.f,0.f);
+ add("insectCode","Spore Code",0.f,1.f,0.f);
+ add("burrow","Burrow Interference",0.f,1.f,0.f);
  for(int i=0;i<16;++i){
   auto key=juce::String::formatted("gateStep%02d",i+1);
   auto label=juce::String("Forest Gate Step ")+juce::String(i+1);
   add(key.toRawUTF8(),label.toRawUTF8(),0.f,1.f,1.f);
  }
 
+ // New controls are additive; existing preset parameter IDs stay intact.
+ add("character","XENO Exciter Amount",0.f,1.f,0.f);
+ choose("sourceSolo","Pure Source Audition",{"Normal Mix","Pure Source"});
  return {a.begin(),a.end()};
 }
 juce::File NoctivoreProcessor::paintingFile() const {
@@ -261,6 +264,7 @@ void NoctivoreProcessor::processBlock(AudioBuffer<float>& output,MidiBuffer& eve
  p.colony=get("colony");p.creatures=get("creatures");
  p.psyFold=get("psyFold");p.symbiosis=get("symbiosis");
  p.predator=get("predator");p.insectCode=get("insectCode");p.burrow=get("burrow");
+ p.character=get("character");p.sourceSolo=get("sourceSolo");
  for(int i=0;i<16;++i){auto key=juce::String::formatted("gateStep%02d",i+1);
   p.gateSteps[(size_t)i]=get(key.toRawUTF8());
  }
