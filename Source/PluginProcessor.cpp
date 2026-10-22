@@ -171,6 +171,9 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  add("creatures","Living Creatures",0.f,1.f,.39f);
  add("psyFold","Spectral Fold",0.f,1.f,.22f);
  add("symbiosis","Source Symbiosis",0.f,1.f,.26f);
+ add("predator","Predator Throat",0.f,1.f,.63f);
+ add("insectCode","Spore Code",0.f,1.f,.57f);
+ add("burrow","Burrow Interference",0.f,1.f,.46f);
  for(int i=0;i<16;++i){
   auto key=juce::String::formatted("gateStep%02d",i+1);
   auto label=juce::String("Forest Gate Step ")+juce::String(i+1);
@@ -255,6 +258,7 @@ void NoctivoreProcessor::processBlock(AudioBuffer<float>& output,MidiBuffer& eve
   p.maxVoices=limits[std::clamp((int)get("voiceLimit"),0,3)];}
  p.colony=get("colony");p.creatures=get("creatures");
  p.psyFold=get("psyFold");p.symbiosis=get("symbiosis");
+ p.predator=get("predator");p.insectCode=get("insectCode");p.burrow=get("burrow");
  for(int i=0;i<16;++i){auto key=juce::String::formatted("gateStep%02d",i+1);
   p.gateSteps[(size_t)i]=get(key.toRawUTF8());
  }
