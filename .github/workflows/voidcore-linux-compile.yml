@@ -2,7 +2,7 @@ name: VOIDCORE GUI C++ compile test
 
 on:
   push:
-    branches: [v11-voidcore-live-gui, feature/voidcore-matrix-animated-gui, feature/voidcore-xeno-diverse-soundscapes]
+    branches: [v11-voidcore-live-gui, feature/voidcore-matrix-animated-gui, feature/voidcore-xeno-diverse-soundscapes, feature/voidcore-astral-full-reskin]
   workflow_dispatch:
 
 permissions:
@@ -18,8 +18,10 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-      - name: Verify VOIDCORE controls and parameter IDs
-        run: python3 tests/verify_voidcore_ui.py
+      - name: Verify VOIDCORE and Astral GUI attachments
+        run: |
+          python3 tests/verify_voidcore_ui.py
+          python3 tests/verify_astral_skin.py
 
       - name: Install Linux JUCE dependencies
         run: |
