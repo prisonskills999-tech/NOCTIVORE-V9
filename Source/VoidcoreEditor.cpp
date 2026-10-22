@@ -372,10 +372,17 @@ void VoidcoreEditor::buildCore(){
  knob("movement","MOVEMENT",326,481,69,Core);
  // Character is the genuine filter/organism macro; the two neighboring
  // parameters change the granular time structure, not cosmetic animations.
- choice("textureMode",{"Flow","Grain","Orbit","Pulse","Liquid","Spectral"},986,378,173,27,Core);
- knob("character","XENO",900,452,108,Core);
- knob("grain","GRAIN",1029,473,71,Core);
- knob("texture","TEXTURE",1120,473,71,Core);
+ // The full XENO sound matrix stays on this one screen. All knobs are
+ // actual host-automatable DSP; larger marked caps aid fast live tweaks.
+ choice("textureMode",{"Flow","Grain","Orbit","Pulse","Liquid","Spectral"},854,367,306,23,Core);
+ knob("character","XENO",857,429,65,Core);
+ knob("grain","GRAIN",944,429,65,Core);
+ knob("drop","DROP",1032,429,65,Core);
+ knob("hits","HITS",1120,429,65,Core);
+ knob("body","BODY",857,495,65,Core);
+ knob("grit","GRIT",944,495,65,Core);
+ knob("dark","DARK",1032,495,65,Core);
+ knob("texture","SCATTER",1120,495,65,Core);
  // 16-click performance strip controls the live gating engine.
  choice("motif",{"Off","Serpent","Ritual","Insect","Portal","Fracture","Hollow"},85,551,142,26,Core);
  knob("trancePulse","PULSE",278,558,55,Core);
@@ -918,7 +925,7 @@ void VoidcoreEditor::drawCore(Graphics& g){
  panel(g,{394,79,412,442},"VOID CORE  /  MORPH",acid);
  panel(g,{815,79,369,248},"FILTER  /  SPECTRAL",acid);
  panel(g,{16,335,369,186},"MOTION  /  MODULATION",acid);
- panel(g,{815,335,369,186},"XENO  /  CHARACTER",acid);
+ panel(g,{815,335,369,186},"XENO  /  DEBRIS & IMPACT",acid);
  panel(g,{16,530,1168,55},"GATE  /  16 STEP",acid);
  panel(g,{16,593,327,103},"SPACE  /  DELAY & REVERB",acid);
  panel(g,{351,593,272,103},"TONE  /  THREE BAND EQ",acid);
