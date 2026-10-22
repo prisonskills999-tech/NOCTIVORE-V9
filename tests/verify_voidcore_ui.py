@@ -15,7 +15,7 @@ cmake=(base/"CMakeLists.txt").read_text(encoding="utf-8")
 
 functions=["knob","fader","choice","click","allClick"]
 for fn in functions:
-    hit=re.search(r"void\s+VoidcoreEditor::"+fn+r"\s*\([^)]*\)\s*\{([\s\S]*?)\n\}",editor)
+    hit=re.search(r"void\s+VoidcoreEditor::"+fn+r"\s*\([^\{]*\)\s*\{([\s\S]*?)\n\}",editor)
     assert hit, f"Missing method {fn}"
     assert "addAndMakeVisible(*c);" in hit.group(1), f"{fn} forgot to add the control as a JUCE child"
 
