@@ -30,6 +30,7 @@ public:
  bool libraryLoaded=false;
  juce::File paintingFile() const;
  std::atomic<float> peak{0.f};
+ std::atomic<float> peakLeft{0.f},peakRight{0.f};
  std::atomic<float> displayTempo{145.f};
  std::atomic<float> displayPpq{0.f};
  std::atomic<bool> displayPlaying{false};

@@ -288,6 +288,9 @@ void NoctivoreProcessor::processBlock(AudioBuffer<float>& output,MidiBuffer& eve
   }
  sampler.setParameters(p);
  int cur=0,n=output.getNumSamples();float* left=output.getWritePointer(0),*right=output.getWritePointer(1);
+ // Add GUI keyboard notes into this very same MIDI stream, on the audio thread.
+ // DAW MIDI continues to work unchanged; there is no synth engine on the UI thread.
+ keyboardState.processNextMidiBuffer(events,0,n,true);
  for(const auto event:events){
   int pos=jlimit(cur,n,event.samplePosition);
   if(pos>cur)sampler.render(left+cur,right+cur,pos-cur);
@@ -300,7 +303,11 @@ void NoctivoreProcessor::processBlock(AudioBuffer<float>& output,MidiBuffer& eve
   cur=pos;
  }
  if(cur<n)sampler.render(left+cur,right+cur,n-cur);
- float v=jmax(output.getMagnitude(0,0,n),output.getMagnitude(1,0,n));
+ const float leftMagnitude=output.getMagnitude(0,0,n);
+ const float rightMagnitude=output.getMagnitude(1,0,n);
+ const float v=jmax(leftMagnitude,rightMagnitude);
+ peakLeft.store(leftMagnitude,std::memory_order_relaxed);
+ peakRight.store(rightMagnitude,std::memory_order_relaxed);
  peak.store(jmax(v,peak.load(std::memory_order_relaxed)*.88f),std::memory_order_relaxed);
  // Low-rate display trace, safe for the message thread to read.
  for(int s=0;s<n;s+=64){auto k=scopeCursor.fetch_add(1,std::memory_order_relaxed)%scope.size();

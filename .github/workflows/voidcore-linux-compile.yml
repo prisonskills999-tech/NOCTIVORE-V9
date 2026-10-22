@@ -2,7 +2,7 @@ name: VOIDCORE GUI C++ compile test
 
 on:
   push:
-    branches: [v11-voidcore-live-gui]
+    branches: [v11-voidcore-live-gui, feature/voidcore-matrix-animated-gui]
   workflow_dispatch:
 
 permissions:

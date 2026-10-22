@@ -26,6 +26,7 @@ private:
  NoctivoreProcessor& processor;
  Page page=Core;
  float clock=0.f,smoothedPeak=0.f;
+ std::array<float,2> meterLevels{{0.f,0.f}};
  int focusLfo=0,focusEnv=0;
  bool playing=false;
  std::array<juce::String,4> pageNames{{"CORE","MOTION","FX","SYSTEM"}};
@@ -33,21 +34,25 @@ private:
   std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> link;
   juce::String label;
   juce::Colour accent;
+  float animationPhase=0.f;
   Dial(NoctivoreProcessor&,const juce::String&,const juce::String&,juce::Colour);
   void paint(juce::Graphics&) override;
  };
  struct Fader final : juce::Slider {
   std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> link;
+  float animationPhase=0.f;
   Fader(NoctivoreProcessor&,const juce::String&);
   void paint(juce::Graphics&) override;
  };
  struct Choice final : juce::ComboBox {
   std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> link;
+  float animationPhase=0.f;
   Choice(NoctivoreProcessor&,const juce::String&,const juce::StringArray&);
   void paint(juce::Graphics&) override;
  };
  struct Click final : juce::TextButton {
   bool selected=false;
+  float animationPhase=0.f;
   juce::Colour accent;
   explicit Click(const juce::String&,juce::Colour);
   void paintButton(juce::Graphics&,bool,bool) override;
@@ -86,6 +91,7 @@ private:
  void panel(juce::Graphics&,juce::Rectangle<float>,const juce::String&,juce::Colour);
  void scope(juce::Graphics&,juce::Rectangle<float>,int,juce::Colour);
  void sourceWave(juce::Graphics&,juce::Rectangle<float>,bool);
+ void soundSphere(juce::Graphics&,juce::Point<float>,float,juce::Colour,float);
  void env(juce::Graphics&,juce::Rectangle<float>);
  void lfo(juce::Graphics&,juce::Rectangle<float>,int);
  void filter(juce::Graphics&,juce::Rectangle<float>);
