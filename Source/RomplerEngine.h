@@ -73,6 +73,25 @@ struct Sample {
   const size_t i=(size_t)pos;const float frac=pos-(float)i;
   return data[i]+(data[i+1]-data[i])*frac;
  }
+ // Anti-alias reconstruction for samples played above their recorded root.
+ float bandLimited(float pos,float increment)const {
+  const float ratio=std::fabs(increment);
+  if(ratio<=1.12f)return cubic(pos);
+  if(!loaded()||pos<9.f||pos>(float)(data.size()-10))return cubic(pos);
+  constexpr int taps=8;
+  const int origin=(int)std::floor(pos);
+  const float cutoff=std::min(.48f,.47f/ratio);
+  float sum=0.f,norm=0.f;
+  for(int tap=-taps;tap<=taps;++tap){
+   const float distance=pos-(float)(origin+tap);
+   const float theta=2.f*pi*cutoff*distance;
+   const float sinc=std::fabs(theta)<1e-4f?1.f:std::sin(theta)/theta;
+   const float window=.5f+.5f*std::cos(pi*distance/(float)(taps+1));
+   const float weight=2.f*cutoff*sinc*window;
+   sum+=data[(size_t)(origin+tap)]*weight;norm+=weight;
+  }
+  return sum/std::max(norm,.00001f);
+ }
  float cubic(float pos)const {
   if(!loaded()||pos<1||pos>=(float)(data.size()-3))return linear(pos);
   size_t i=(size_t)pos;float t=pos-(float)i;
@@ -341,12 +360,13 @@ public:
       if(x>end-overlap && x<end){
        const float u=clampf((x-(end-overlap))/overlap,0.f,1.f);
        const float a=u*u*(3.f-2.f*u);
-       const float near=source.cubic(x);
-       const float far=source.cubic(begin+x-(end-overlap));
+       const float increment=(&source==&s)?step:stepB;
+       const float near=source.bandLimited(x,increment);
+       const float far=source.bandLimited(begin+x-(end-overlap),increment);
        return (1.f-a)*near+a*far;
       }
      }
-     return source.cubic(x);
+     return source.bandLimited(x,(&source==&s)?step:stepB);
     };
     auto advance=[&](const Sample& source,float& pos,float delta){
      pos+=delta;
