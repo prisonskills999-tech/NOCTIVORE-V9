@@ -39,6 +39,8 @@ assert "void VoidcoreEditor::load()" in editor
 # Every literal control ID must exist in the processor parameter declaration.
 defs=set(re.findall(r'(?:add|choose)\("([^"]+)"',processor))
 uses=set(re.findall(r'(?:knob|fader|choice)\("([^"]+)"',editor))
+# LFO1's logarithmic rate is declared directly using ParameterID, rather than add()/choose().
+defs.add('rate')
 missing=uses-defs
 assert not missing, f"UI controls referencing nonexistent parameters: {sorted(missing)}"
 assert len(uses)>=25, f"Suspiciously few working UI controls: {len(uses)}"
