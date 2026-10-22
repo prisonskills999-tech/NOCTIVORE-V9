@@ -41,10 +41,10 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  StringArray names;for(const auto& b:noctivore::banks)names.add(b.name);names.add("User Bank");
  choose("bank","Instrument Bank",names);
  choose("mode","Voice Mode",{"Polyphonic","Mono","Legato"});
- add("attack","Attack",.001f,8,.28f);
+ add("attack","Attack",.001f,8,.028f);
  add("decay","Decay",.01f,9,3.2f);
  add("sustain","Sustain",0,1,.93f);
- add("release","Release",.01f,12,4.4f);
+ add("release","Release",.01f,12,2.2f);
  choose("filterMode","Filter Mode",{"Low Pass","Band Pass","High Pass"});
  add("cutoff","Filter Cutoff",.015f,1,.95f);
  add("resonance","Filter Resonance",0,1,.14f);
