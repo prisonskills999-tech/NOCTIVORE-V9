@@ -81,6 +81,20 @@ jobs:
           cmake --build 'C:/nfx1010_${{ matrix.edition }}' --config Release --target NOCTIVORE_FX_VST3 --parallel 4
           if ($LASTEXITCODE -ne 0) { throw 'Windows C++ compilation failed' }
 
+      - name: Verify matching sound at 128 / 256 / 512 sample buffers
+        if: matrix.edition == 'FULL_GUI'
+        shell: pwsh
+        run: |
+          $buildDir = 'C:/nfx1010_${{ matrix.edition }}'
+          cmake --build $buildDir --config Release --target NOCTIVORE_BUFFER_TEST --parallel 4
+          if ($LASTEXITCODE -ne 0) { throw 'Buffer regression test compilation failed' }
+          $testBanks = Join-Path $env:RUNNER_TEMP 'NfxTestBanks'
+          New-Item -ItemType Directory -Force -Path $testBanks | Out-Null
+          Copy-Item 'Banks/00_60.wav' $testBanks
+          Copy-Item 'Banks/07_60.wav' $testBanks
+          & "$buildDir/Release/NOCTIVORE_BUFFER_TEST.exe" $testBanks
+          if ($LASTEXITCODE -ne 0) { throw '128/256/512 sound-consistency regression FAILED' }
+
       - name: Verify and ZIP the installable plugin
         shell: pwsh
         run: |
