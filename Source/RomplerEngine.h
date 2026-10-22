@@ -522,6 +522,25 @@ public:
       if(v.bankFade<=0.f)v.oldSample=v.oldSampleB=nullptr;
      }
      const float pureSource=sample; // Before FM, added organisms, filter and FX.
+     // Unlike the old inert grain parameter, GRAIN now crossfades in a
+     // continuously moving delayed sample head. No buffer discontinuities.
+     const float grainAmount=clampf(p.grain,0.f,1.f);
+     if(grainAmount>.0001f){
+      const float aOffset=(float)s.rate*(.008f+.095f*grainAmount)*
+                          (.5f+.5f*std::sin(v.motionPhase*1.0f));
+      const float bOffset=(float)sb.rate*(.008f+.095f*grainAmount)*
+                          (.5f+.5f*std::sin(v.motionPhase*1.0f+.9f));
+      const float shifted=mixA*readAt(s,v.position-aOffset)+
+                          mixB*readAt(sb,v.positionB-bOffset);
+      sample=sample*(1.f-.78f*grainAmount)+shifted*(.78f*grainAmount);
+     }
+     // TEXTURE supplies overt organic amplitude movement in every algorithm.
+     // Zero is identical to the input bank; there is no shared default layer.
+     const float texturing=clampf(p.texture,0.f,1.f);
+     if(texturing>.0001f){
+      const float phase=.5f+.5f*std::sin(globalTime*(1.0f+2.5f*texturing)+v.motionPhase);
+      sample*=1.f-.72f*texturing*phase;
+     }
      const float character=clampf(p.character,0.f,1.f);
      if(lowLife>.0001f && droneLoop){
        // Recorded-speed motion survives pitch transposition, without any hiss.
