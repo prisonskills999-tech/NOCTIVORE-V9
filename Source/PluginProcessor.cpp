@@ -183,6 +183,14 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  }
 
  // New controls are additive; existing preset parameter IDs stay intact.
+ // Final one-page source and tone controls (actual DSP parameters).
+ add("tuneA","Source A Semitones",-12.f,12.f,0.f);
+ add("tuneB","Source B Semitones",-12.f,12.f,0.f);
+ add("levelA","Source A Level",0.f,1.5f,1.f);
+ add("levelB","Source B Level",0.f,1.5f,1.f);
+ add("toneLow","Tone Low",0.f,1.f,.5f);
+ add("toneMid","Tone Mid",0.f,1.f,.5f);
+ add("toneHigh","Tone High",0.f,1.f,.5f);
  add("character","XENO Exciter Amount",0.f,1.f,0.f);
  choose("sourceSolo","Pure Source Audition",{"Normal Mix","Pure Source"});
  return {a.begin(),a.end()};
@@ -265,6 +273,9 @@ void NoctivoreProcessor::processBlock(AudioBuffer<float>& output,MidiBuffer& eve
  p.psyFold=get("psyFold");p.symbiosis=get("symbiosis");
  p.predator=get("predator");p.insectCode=get("insectCode");p.burrow=get("burrow");
  p.character=get("character");p.sourceSolo=get("sourceSolo");
+ p.tuneA=get("tuneA");p.tuneB=get("tuneB");
+ p.levelA=get("levelA");p.levelB=get("levelB");
+ p.toneLow=get("toneLow");p.toneMid=get("toneMid");p.toneHigh=get("toneHigh");
  for(int i=0;i<16;++i){auto key=juce::String::formatted("gateStep%02d",i+1);
   p.gateSteps[(size_t)i]=get(key.toRawUTF8());
  }
