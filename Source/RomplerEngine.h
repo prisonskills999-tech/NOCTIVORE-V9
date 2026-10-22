@@ -527,7 +527,7 @@ public:
      const float grainAmount=clampf(p.grain,0.f,1.f);
      if(grainAmount>.0001f){
       const float aOffset=(float)s.rate*(.008f+.095f*grainAmount)*
-                          (.5f+.5f*std::sin(v.motionPhase*1.0f));
+                          (.5f+.5f*std::sin(v.motionPhase));
       const float bOffset=(float)sb.rate*(.008f+.095f*grainAmount)*
                           (.5f+.5f*std::sin(v.motionPhase*1.0f+.9f));
       const float shifted=mixA*readAt(s,v.position-aOffset)+
