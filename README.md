@@ -23,9 +23,29 @@ The 50 original bank **indices** and four note roots (36, 48, 60, 72) are preser
 
 The System page's four scene buttons now select contrasting A/B bank combinations and distinct FX treatments. **MUTATE** also chooses new bank families; **EVOLVE** makes gentler modifications.
 
+## Private Windows VST3 build without GitHub Actions
+
+You can compile VOIDCORE without changing this repository to public, and without consuming GitHub-hosted Actions minutes.
+Install Visual Studio 2022 with Desktop development with C++, CMake, and Python 3.10+ on your Windows x64 computer.
+Use GitHub Desktop to clone the private repository and select branch feature/voidcore-astral-full-reskin, then from the project root run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Build-VOIDCORE-Private.ps1
+# Optional fallback; after creating the sound banks:
+powershell -ExecutionPolicy Bypass -File .\Build-VOIDCORE-Private.ps1 -Edition SAFE_GUI -SkipBanks
+```
+
+The private builder runs the GUI preflight, generates and verifies 200 sound-bank WAVs, downloads public JUCE 8.0.15, compiles a Windows x64 VST3, verifies the bank files and native module, and creates a ZIP inside Private-Builds. It does not upload your private repository code. The script has not been tested on a Windows build machine here.
+
+### Recover GitHub Actions for a private repository
+
+Private GitHub repositories can build normally, but hosted runners use the account owner's included Actions minutes and billing budget. If jobs fail in seconds with runner_id 0 and no steps, check the account's Settings > Billing and licensing > Budgets and alerts for exhausted Actions usage, restrictive budgets or payment restrictions. Check Repository Settings > Actions > General for allowed workflow usage.
+
+Both workflows on this branch require manually choosing Run workflow to avoid automatically consuming private-runner minutes on each commit. If billing permits, use Actions and choose this branch to request a build. Local or self-hosted builds do not use GitHub-hosted runner minutes.
+
 ## Build Windows VST3
 
-Open [GitHub Actions](../../actions/workflows/windows-vst3.yml) and run **Build VOIDCORE v12 Xeno Soundscapes VST3** from this branch, or push a commit. Both FULL_GUI and SAFE_GUI build variants are produced.
+Open [GitHub Actions](../../actions/workflows/windows-vst3.yml), select this branch and choose **Run workflow** for **Build VOIDCORE Astral Xeno VST3**. Both FULL_GUI and SAFE_GUI variants are produced. Automatic push builds are disabled to conserve private Actions minutes.
 
 The Windows workflow:
 1. Runs source-level GUI checks.

@@ -1,7 +1,9 @@
-name: Build VOIDCORE v12 Xeno Soundscapes VST3
+name: Build VOIDCORE Astral Xeno VST3
 
 on:
+  # Manual runs prevent repeated private-repository minute consumption on every commit.
   push:
+    branches: [feature/voidcore-astral-full-reskin]
   workflow_dispatch:
 
 permissions:
@@ -28,9 +30,13 @@ jobs:
       - name: Get source
         uses: actions/checkout@v4
 
-      - name: Verify VOIDCORE controls and parameter IDs
+      - name: Verify VOIDCORE controls, automation and Astral skin
         shell: pwsh
-        run: python tests/verify_voidcore_ui.py
+        run: |
+          python tests/verify_voidcore_ui.py
+          if ($LASTEXITCODE -ne 0) { throw 'Legacy UI preflight failed' }
+          python tests/verify_astral_skin.py
+          if ($LASTEXITCODE -ne 0) { throw 'Astral GUI preflight failed' }
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -115,7 +121,7 @@ jobs:
       - name: Upload downloadable Windows VST3
         uses: actions/upload-artifact@v4
         with:
-          name: VOIDCORE-V12-XENO-${{ matrix.edition }}-WIN64-VST3
+          name: VOIDCORE-ASTRAL-XENO-${{ matrix.edition }}-WIN64-VST3
           path: VOIDCORE_V12_XENO_${{ matrix.edition }}.zip
           if-no-files-found: error
           retention-days: 30

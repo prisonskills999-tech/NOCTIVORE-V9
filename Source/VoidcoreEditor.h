@@ -18,8 +18,8 @@ public:
 private:
  enum Page { Core=0, Motion, Fx, System, PageCount };
  static constexpr float W=1200.f,H=800.f;
- const juce::Colour green=juce::Colour::fromRGB(88,233,151);
- const juce::Colour red=juce::Colour::fromRGB(255,55,67);
+ const juce::Colour green=juce::Colour::fromRGB(53,255,105);
+ const juce::Colour red=juce::Colour::fromRGB(232,255,238);
  const juce::Colour text=juce::Colour::fromRGB(204,238,220);
  const juce::Colour dim=juce::Colour::fromRGB(102,144,128);
  const juce::Colour black=juce::Colour::fromRGB(7,12,10);
@@ -57,6 +57,19 @@ private:
   explicit Click(const juce::String&,juce::Colour);
   void paintButton(juce::Graphics&,bool,bool) override;
  };
+ struct OrbPad final : juce::Component, juce::SettableTooltipClient {
+  NoctivoreProcessor& processor;
+  bool dragging=false;
+  explicit OrbPad(NoctivoreProcessor& p):processor(p){
+   setMouseCursor(juce::MouseCursor::DraggingHandCursor);
+   setTooltip("Drag left/right: A-B morph. Up/down: biome evolution.");
+  }
+  void mouseDown(const juce::MouseEvent&) override;
+  void mouseDrag(const juce::MouseEvent&) override;
+  void mouseUp(const juce::MouseEvent&) override;
+  void paint(juce::Graphics&) override;
+  void apply(const juce::MouseEvent&);
+ };
  struct Positioned {
   std::unique_ptr<juce::Component> control;
   juce::Rectangle<float> area;
@@ -65,6 +78,7 @@ private:
  std::vector<Positioned> ui;
  std::array<Click*,16> steps{};
  std::array<Click*,4> pageButtons{},lfoButtons{};
+ std::array<Click*,4> filterModeButtons{};
  Click* reverseButton=nullptr;
  std::array<std::array<float,192>,2> previews{};
  void updatePreview(int);
@@ -92,6 +106,8 @@ private:
  void scope(juce::Graphics&,juce::Rectangle<float>,int,juce::Colour);
  void sourceWave(juce::Graphics&,juce::Rectangle<float>,bool);
  void soundSphere(juce::Graphics&,juce::Point<float>,float,juce::Colour,float);
+ void drawOrbitalFrame(juce::Graphics&,juce::Point<float>,float);
+ void drawKeyboardShell(juce::Graphics&);
  void env(juce::Graphics&,juce::Rectangle<float>);
  void lfo(juce::Graphics&,juce::Rectangle<float>,int);
  void filter(juce::Graphics&,juce::Rectangle<float>);
