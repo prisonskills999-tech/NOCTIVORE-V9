@@ -40,35 +40,49 @@ VoidcoreEditor::Dial::Dial(NoctivoreProcessor& p,const String& id,const String& 
 void VoidcoreEditor::Dial::paint(Graphics& g){
  const auto r=getLocalBounds().toFloat();
  const float w=r.getWidth(),h=r.getHeight();
- const float rad=std::max(9.f,std::min(w*.31f,h*.32f));
- const float cx=r.getCentreX(),cy=r.getY()+h*.36f;
+ const float rad=std::max(9.f,std::min(w*.30f,h*.31f));
+ const float cx=r.getCentreX(),cy=r.getY()+h*.34f;
  const float lo=pi*1.22f,hi=pi*2.78f;
- const float norm=getMaximum()>getMinimum()?clamp01((float)((getValue()-getMinimum())/(getMaximum()-getMinimum()))):0.f;
- auto a=lo+(hi-lo)*norm;
- ColourGradient shade(Colour::fromRGB(57,68,58),cx-rad,cy-rad,voidBlack,cx+rad,cy+rad,false);
- g.setGradientFill(shade);g.fillEllipse(cx-rad*.86f,cy-rad*.86f,rad*1.72f,rad*1.72f);
- g.setColour(Colour::fromRGB(9,24,18));g.drawEllipse(cx-rad,cy-rad,rad*2,rad*2,3.f);
- g.setColour(grey.withAlpha(.55f));g.drawEllipse(cx-rad*.78f,cy-rad*.78f,rad*1.56f,rad*1.56f,1.f);
- Path empty;empty.addCentredArc(cx,cy,rad*.95f,rad*.95f,0,lo,hi,true);
- g.setColour(accent.withAlpha(.22f));g.strokePath(empty,PathStrokeType(4.f));
- Path active;active.addCentredArc(cx,cy,rad*.95f,rad*.95f,0,lo,a,true);
- g.setColour(accent);g.strokePath(active,PathStrokeType(3.7f));
- // The knob is a live sound-sphere; animation never changes the host parameter.
+ const float norm=getMaximum()>getMinimum()?
+    clamp01((float)((getValue()-getMinimum())/(getMaximum()-getMinimum()))):0.f;
+ const float angle=lo+(hi-lo)*norm;
  const float pulse=.5f+.5f*std::sin(animationPhase*1.8f);
- g.setColour(accent.withAlpha(.11f+.17f*pulse));
- g.drawEllipse(cx-rad*1.12f,cy-rad*1.12f,rad*2.24f,rad*2.24f,1.2f);
- const float orbit=animationPhase*.48f+norm*pi;
- g.setColour(accent.withAlpha(.5f+.4f*pulse));
- g.fillEllipse(cx+std::cos(orbit)*rad*1.08f-2.f,
-               cy+std::sin(orbit)*rad*1.08f-2.f,4.f,4.f);
- float angle=a-pi*.5f;
- g.setColour(accent.brighter(.3f));g.drawLine(cx,cy,cx+std::cos(angle)*rad*.72f,cy+std::sin(angle)*rad*.72f,2.5f);
- g.fillEllipse(cx-2.f,cy-2.f,4.f,4.f);
- g.setColour(frost);g.setFont(Font(10.5f,Font::bold));
- g.drawText(label,0,roundToInt(h*.73f),roundToInt(w),roundToInt(h*.14f),Justification::centred);
- g.setColour(accent.withAlpha(.86f));g.setFont(Font(9.7f));
- const String v=String(getValue(),(getMaximum()>5?1:2));
- g.drawText(v,0,roundToInt(h*.85f),roundToInt(w),roundToInt(h*.14f),Justification::centred);
+ // A real rotary JUCE Slider with a black-glass xeno-orb skin.
+ g.setColour(accent.withAlpha(.05f+.09f*pulse));
+ g.fillEllipse(cx-rad*1.37f,cy-rad*1.37f,2.74f*rad,2.74f*rad);
+ g.setColour(frost.withAlpha(.42f));
+ g.fillEllipse(cx-rad*1.12f,cy-rad*1.12f,2.24f*rad,2.24f*rad);
+ g.setColour(voidBlack);
+ g.fillEllipse(cx-rad,cy-rad,2.f*rad,2.f*rad);
+ ColourGradient shell(accent.withAlpha(.43f),cx-rad*.45f,cy-rad*.65f,
+                      Colour::fromRGB(1,9,4),cx+rad*.7f,cy+rad*.8f,true);
+ g.setGradientFill(shell);
+ g.fillEllipse(cx-rad*.89f,cy-rad*.89f,1.78f*rad,1.78f*rad);
+ g.setColour(frost.withAlpha(.36f));
+ g.drawEllipse(cx-rad*.78f,cy-rad*.78f,rad*1.56f,rad*1.56f,1.0f);
+ for(int k=0;k<3;++k){
+  const float a=animationPhase*.30f+k*2.094f;
+  const float py=cy+std::sin(a)*rad*.40f;
+  const float px=cx+std::cos(a)*rad*.71f;
+  g.setColour(accent.withAlpha(.16f+.13f*pulse));
+  g.drawEllipse(cx-rad*.65f,cy-rad*(.17f+.085f*k),
+                1.3f*rad,rad*(.34f+.17f*k),1.f);
+  g.setColour(frost.withAlpha(.62f));
+  g.fillEllipse(px-1.3f,py-1.3f,2.6f,2.6f);
+ }
+ Path rail;rail.addCentredArc(cx,cy,rad*1.07f,rad*1.07f,0.f,lo,hi,true);
+ g.setColour(accent.withAlpha(.22f));g.strokePath(rail,PathStrokeType(2.6f));
+ Path active;active.addCentredArc(cx,cy,rad*1.07f,rad*1.07f,0.f,lo,angle,true);
+ g.setColour(accent);g.strokePath(active,PathStrokeType(2.7f));
+ const float marker=angle-pi*.5f;
+ g.setColour(frost);
+ g.drawLine(cx+std::cos(marker)*rad*.46f,cy+std::sin(marker)*rad*.46f,
+            cx+std::cos(marker)*rad*.83f,cy+std::sin(marker)*rad*.83f,1.8f);
+ g.setColour(frost);g.setFont(Font(std::clamp(h*.176f,8.f,11.f),Font::bold));
+ g.drawFittedText(label,0,roundToInt(h*.69f),roundToInt(w),roundToInt(h*.18f),Justification::centred,1);
+ g.setColour(accent.withAlpha(.95f));g.setFont(Font(std::clamp(h*.147f,8.f,10.f)));
+ g.drawFittedText(String(getValue(),getMaximum()>5?1:2),0,roundToInt(h*.85f),
+                  roundToInt(w),roundToInt(h*.14f),Justification::centred,1);
 }
 VoidcoreEditor::Choice::Choice(NoctivoreProcessor& p,const String& id,const StringArray& items){
  addItemList(items,1);
@@ -650,43 +664,58 @@ void VoidcoreEditor::drawKeyboardShell(Graphics& g){
  g.drawLine(r.getX()+20.f,r.getY()+4.f,r.getRight()-20.f,r.getY()+4.f,1.f);
 }
 void VoidcoreEditor::soundSphere(Graphics& g,Point<float> centre,float radius,Colour tint,float activity){
- // Visual-only, driven by GUI clock and a smoothed atomic peak.
- const float x=centre.x,y=centre.y,energy=clamp01(activity);
- const float r=radius*(1.f+.025f*std::sin(clock*1.45f)+.045f*energy);
- ColourGradient shell(tint.withAlpha(.45f+.20f*energy),x-r*.47f,y-r*.65f,
-                      voidBlack,x+r*.75f,y+r*.82f,true);
- g.setGradientFill(shell);g.fillEllipse(x-r,y-r,r*2.f,r*2.f);
- g.setColour(tint.withAlpha(.26f+.18f*energy));
- g.drawEllipse(x-r*.98f,y-r*.98f,1.96f*r,1.96f*r,1.4f);
- for(int ring=0;ring<4;++ring){
-  const float inner=r*(.39f+.16f*ring);
-  g.setColour((ring%2?frost:tint).withAlpha(.08f+.07f*energy));
-  g.drawEllipse(x-inner,y-inner,inner*2.f,inner*2.f,1.1f);
+ // Audio-reactive orbital planet rendered from rings, living plasma and
+ // faceted glass. No graphics resources or allocations on the audio thread.
+ const float x=centre.x,y=centre.y,p=clamp01(activity);
+ const float breathing=1.f+.018f*std::sin(clock*1.6f)+.03f*p;
+ const float r=radius*breathing;
+ for(int glow=5;glow>=0;--glow){
+  const float R=r*(1.f+glow*.07f);
+  g.setColour(tint.withAlpha(.008f+.016f*p));
+  g.fillEllipse(x-R,y-R,2.f*R,2.f*R);
  }
- for(int k=0;k<3;++k){
-  const float orbit=clock*(.17f+.06f*k)+k*2.0944f;
-  const float ry=r*(.39f+.13f*k);
-  Path ellipse;
-  ellipse.addCentredArc(x,y,r*(.95f+.12f*k),ry,orbit*.45f,
-                        orbit,orbit+pi*1.34f,true);
-  neonLine(g,ellipse,tint.withAlpha(.30f+.17f*energy),1.2f);
-  const float px=x+std::cos(orbit)*r*(.91f+.08f*k);
-  const float py=y+std::sin(orbit)*ry;
-  g.setColour(frost.withAlpha(.70f));
-  g.fillEllipse(px-2.4f,py-2.4f,4.8f,4.8f);
+ ColourGradient ball(Colour::fromRGB(45,126,66).withAlpha(.90f),
+                      x-r*.56f,y-r*.76f,voidBlack,x+r*.78f,y+r*.85f,true);
+ g.setGradientFill(ball);g.fillEllipse(x-r,y-r,2.f*r,2.f*r);
+ // Dark shadow inside the lower-right hemisphere gives planet curvature.
+ ColourGradient edge(Colour::fromRGB(0,3,2).withAlpha(0.f),
+                     x-r*.43f,y-r*.55f,
+                     Colour::fromRGB(0,1,1).withAlpha(.87f),x+r*.56f,y+r*.71f,true);
+ g.setGradientFill(edge);g.fillEllipse(x-r*.96f,y-r*.96f,1.92f*r,1.92f*r);
+ g.setColour(frost.withAlpha(.42f));
+ g.drawEllipse(x-r*.98f,y-r*.98f,r*1.96f,r*1.96f,1.45f);
+ g.setColour(tint.withAlpha(.44f+.20f*p));
+ g.drawEllipse(x-r*1.02f,y-r*1.02f,r*2.04f,r*2.04f,2.4f);
+ // Irregular luminous wisps suggest living plasma / nebula filaments.
+ for(int k=0;k<34;++k){
+  const float a=k*2.f*pi/34.f+.25f*std::sin(clock*.07f+k);
+  const float rr=r*(.20f+.62f*(.5f+.5f*std::sin(k*8.617f+clock*.18f)));
+  const float xx=x+rr*std::cos(a),yy=y+rr*std::sin(a);
+  const float rr2=rr*(.83f+.07f*std::sin(k+clock*.08f));
+  Path plasma;
+  plasma.startNewSubPath(xx,yy);
+  plasma.quadraticTo(x+(rr*.97f)*std::cos(a+.43f),y+(rr*.97f)*std::sin(a+.43f),
+                     x+rr2*std::cos(a+.72f),y+rr2*std::sin(a+.72f));
+  g.setColour((k%4==0?frost:tint).withAlpha(.07f+.13f*p+.08f*(k%3==0)));
+  g.strokePath(plasma,PathStrokeType(k%7==0?2.f:1.1f));
  }
- for(int k=0;k<11;++k){
-  const float theta=k*2.f*pi/11.f+clock*(k%2?.11f:-.09f);
-  const float distance=r*(.24f+.055f*(k%6));
-  g.setColour(tint.withAlpha(.11f+.23f*energy));
-  g.drawLine(x+std::cos(theta)*distance,y+std::sin(theta)*distance,
-             x+std::cos(theta+.7f)*distance*1.8f,
-             y+std::sin(theta+.7f)*distance*1.8f,1.0f);
+ for(int ring=0;ring<5;++ring){
+  const float orbit=clock*(.11f+.028f*ring)+ring*.86f;
+  const float rr=r*(.52f+ring*.11f);
+  Path track;
+  track.addCentredArc(x,y,rr,r*(.16f+ring*.041f),orbit*.36f,
+                       orbit,orbit+1.65f*pi,true);
+  neonLine(g,track,tint.withAlpha(.16f+.11f*p),ring%2==0?1.45f:.75f);
+  const float px=x+std::cos(orbit)*rr;
+  const float py=y+std::sin(orbit)*r*(.16f+ring*.041f);
+  g.setColour(frost.withAlpha(.87f));g.fillEllipse(px-2.4f,py-2.4f,4.8f,4.8f);
  }
- const float pupil=r*(.23f+.06f*energy);
- g.setColour(voidBlack);g.fillEllipse(x-pupil,y-pupil,pupil*2.f,pupil*2.f);
- g.setColour(frost.withAlpha(.55f+.30f*energy));
- g.drawEllipse(x-pupil,y-pupil,pupil*2.f,pupil*2.f,1.35f);
+ // Organic void iris carries the reactor name without occluding the rings.
+ const float iris=r*(.20f+.026f*p);
+ g.setColour(Colour::fromRGB(0,2,2).withAlpha(.92f));
+ g.fillEllipse(x-iris,y-iris,2.f*iris,2.f*iris);
+ g.setColour(frost.withAlpha(.29f));
+ g.drawEllipse(x-iris,y-iris,2.f*iris,2.f*iris,1.25f);
 }
 void VoidcoreEditor::visualEye(Graphics& g,float x,float y,float radius){
  soundSphere(g,{x,y},radius,acid,smoothedPeak);
@@ -695,7 +724,7 @@ void VoidcoreEditor::visualEye(Graphics& g,float x,float y,float radius){
  const Point<float> b{x-std::cos(turn)*distance,y-std::sin(turn)*distance*.39f};
  soundSphere(g,a,20.f+7.f*(1.f-mix),acid,smoothedPeak);
  soundSphere(g,b,20.f+7.f*mix,blood,smoothedPeak);
- g.setColour(frost);g.setFont(Font("Consolas",22.f,Font::bold));
+ g.setColour(frost);g.setFont(Font("Consolas",25.f,Font::bold));
  g.drawFittedText("V O I D C O R E",(int)(x-147.f),(int)(y-16.f),294,33,Justification::centred,1);
  g.setColour(acid.withAlpha(.85f));g.setFont(Font(11.f,Font::bold));
  g.drawFittedText("XENO  /  SOUND SPHERE",(int)(x-125.f),(int)(y+33.f),250,23,Justification::centred,1);
