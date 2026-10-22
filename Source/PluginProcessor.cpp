@@ -105,8 +105,8 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  add("morph","Source Crossfade",0,1,0.f);
  add("morphMotion","Autonomous Morph",0,1,0.f);
  add("morphRate","Morph Rate (Hz)",.005f,1.2f,.065f);
- add("texture","Algorithm Intensity",0,1,.42f);
- add("grain","Grain Density",0,1,.36f);
+ add("texture","Algorithm Intensity",0,1,0.f);
+ add("grain","Grain Density",0,1,0.f);
  add("scatter","Time Scatter",0,1,.31f);
  add("pulseRate","Pulse (beats)",.25f,16.f,2.f);
  add("spectralTilt","Spectral Color",-1,1,0.f);
