@@ -6,9 +6,9 @@ using namespace juce;
 namespace {
 constexpr float pi=juce::MathConstants<float>::pi;
 // Strict Matrix palette: luminous green, black and neutral white/grey only.
-const Colour acid=Colour::fromRGB(53,255,105), blood=Colour::fromRGB(229,255,235);
-const Colour frost=Colour::fromRGB(248,255,249), grey=Colour::fromRGB(143,161,149);
-const Colour voidBlack=Colour::fromRGB(2,5,3);
+const Colour acid=Colour::fromRGB(237,48,57), blood=Colour::fromRGB(230,232,236);
+const Colour frost=Colour::fromRGB(249,250,252), grey=Colour::fromRGB(136,142,151);
+const Colour voidBlack=Colour::fromRGB(5,6,9);
 float clamp01(float v){return std::clamp(v,0.f,1.f);}
 float phaseWave(int shape,float t){
  float p=t-std::floor(t);
@@ -40,8 +40,8 @@ VoidcoreEditor::Dial::Dial(NoctivoreProcessor& p,const String& id,const String& 
 void VoidcoreEditor::Dial::paint(Graphics& g){
  const auto r=getLocalBounds().toFloat();
  const float w=r.getWidth(),h=r.getHeight();
- const float rad=std::max(9.f,std::min(w*.30f,h*.31f));
- const float cx=r.getCentreX(),cy=r.getY()+h*.34f;
+ const float rad=std::max(10.f,std::min(w*.39f,h*.37f));
+ const float cx=r.getCentreX(),cy=r.getY()+h*.40f;
  const float lo=pi*1.22f,hi=pi*2.78f;
  const float norm=getMaximum()>getMinimum()?
     clamp01((float)((getValue()-getMinimum())/(getMaximum()-getMinimum()))):0.f;
@@ -55,7 +55,7 @@ void VoidcoreEditor::Dial::paint(Graphics& g){
  g.setColour(voidBlack);
  g.fillEllipse(cx-rad,cy-rad,2.f*rad,2.f*rad);
  ColourGradient shell(accent.withAlpha(.43f),cx-rad*.45f,cy-rad*.65f,
-                      Colour::fromRGB(1,9,4),cx+rad*.7f,cy+rad*.8f,true);
+                      Colour::fromRGB(10,10,14),cx+rad*.7f,cy+rad*.8f,true);
  g.setGradientFill(shell);
  g.fillEllipse(cx-rad*.89f,cy-rad*.89f,1.78f*rad,1.78f*rad);
  g.setColour(frost.withAlpha(.36f));
@@ -112,8 +112,8 @@ void VoidcoreEditor::OrbPad::paint(Graphics& g){
  const auto* d=processor.state.getRawParameterValue("biomeDepth");
  const float xx=(m?m->load():.5f)*getWidth();
  const float yy=(1.f-(d?d->load():.5f))*getHeight();
- const Colour green=Colour::fromRGB(53,255,105);
- const Colour white=Colour::fromRGB(246,255,247);
+ const Colour green=Colour::fromRGB(237,48,57);
+ const Colour white=Colour::fromRGB(246,246,249);
  const float rad=dragging?11.f:7.f;
  g.setColour(green.withAlpha(dragging?.70f:.34f));
  g.drawEllipse(xx-rad,yy-rad,rad*2.f,rad*2.f,1.2f);
@@ -128,13 +128,13 @@ void VoidcoreEditor::OrbPad::paint(Graphics& g){
 VoidcoreEditor::Choice::Choice(NoctivoreProcessor& p,const String& id,const StringArray& items){
  addItemList(items,1);
  setJustificationType(Justification::centredLeft);
- setColour(ComboBox::backgroundColourId,Colour::fromRGB(6,18,14));
+ setColour(ComboBox::backgroundColourId,Colour::fromRGB(10,11,15));
  setColour(ComboBox::textColourId,frost);
  setColour(ComboBox::outlineColourId,grey.withAlpha(.8f));
  setColour(ComboBox::arrowColourId,acid);
  setColour(PopupMenu::backgroundColourId,voidBlack);
  setColour(PopupMenu::textColourId,frost);
- setColour(PopupMenu::highlightedBackgroundColourId,Colour::fromRGB(20,93,53));
+ setColour(PopupMenu::highlightedBackgroundColourId,Colour::fromRGB(105,19,29));
  link=std::make_unique<AudioProcessorValueTreeState::ComboBoxAttachment>(p.state,id,*this);
 }
 void VoidcoreEditor::Choice::paint(Graphics& g){
@@ -155,7 +155,7 @@ void VoidcoreEditor::Click::paintButton(Graphics& g,bool over,bool pressed){
  const auto r=getLocalBounds().toFloat().reduced(1.f);
  const float pulse=.5f+.5f*std::sin(animationPhase*2.5f);
  const bool lit=selected||over||pressed;
- g.setColour(lit?Colour::fromRGB(9,44,22):Colour::fromRGB(5,16,9));
+ g.setColour(lit?Colour::fromRGB(48,11,19):Colour::fromRGB(12,13,18));
  g.fillRoundedRectangle(r,4.f);
  g.setColour(accent.withAlpha(lit?.60f+.30f*pulse:.18f+.13f*pulse));
  g.drawRoundedRectangle(r,4.f,lit?1.7f:1.f);
@@ -592,96 +592,55 @@ void VoidcoreEditor::load(){
 
 
 void VoidcoreEditor::panel(Graphics& g,Rectangle<float> box,const String& name,Colour accent){
- // Raised smoky-glass surface, chrome trim and animated organic corners.
  const float x=box.getX(),y=box.getY(),w=box.getWidth(),h=box.getHeight();
- g.setColour(Colour::fromRGB(0,3,2).withAlpha(.93f));
- g.fillRoundedRectangle(box,14.f);
- ColourGradient glass(Colour::fromRGB(17,38,27).withAlpha(.80f),x,y,
-                      Colour::fromRGB(1,7,4).withAlpha(.93f),x+w*.6f,y+h,true);
- g.setGradientFill(glass);g.fillRoundedRectangle(box.reduced(3.f),12.f);
- g.setColour(frost.withAlpha(.32f));
- g.drawRoundedRectangle(box.reduced(.6f),14.f,1.1f);
- g.setColour(grey.withAlpha(.32f));
- g.drawRoundedRectangle(box.reduced(4.f),11.f,1.f);
- g.setColour(accent.withAlpha(.54f));
- g.drawRoundedRectangle(box.reduced(6.f),9.f,1.1f);
- // Biomechanical ribs avoid buttons: only around panel borders.
- for(int i=0;i<9;++i){
-  const float yy=y+12.f+i*(h-24.f)/8.f;
-  const float reach=5.f+5.f*std::sin(i*1.9f+clock*.55f);
-  Path left;left.startNewSubPath(x+4.f,yy);
-  left.quadraticTo(x-3.f,yy+3.f,x+reach,yy+8.f);
-  g.setColour((i%3?frost:accent).withAlpha(.12f));
-  g.strokePath(left,PathStrokeType(1.1f));
-  Path right;right.startNewSubPath(x+w-4.f,yy);
-  right.quadraticTo(x+w+3.f,yy-3.f,x+w-reach,yy+8.f);
-  g.strokePath(right,PathStrokeType(1.f));
- }
- // Reference-style luminous divider below the section title.
- g.setColour(Colour::fromRGB(3,10,6).withAlpha(.88f));
- g.fillRoundedRectangle(x+8.f,y+7.f,w-16.f,30.f,10.f);
- g.setColour(accent.withAlpha(.67f));
- g.drawLine(x+19.f,y+37.f,x+w-19.f,y+37.f,1.f);
- g.setColour(accent.withAlpha(.77f));
- g.fillEllipse(x+15.f,y+16.f,10.f,10.f);
+ g.setColour(Colour::fromRGB(8,9,12));
+ g.fillRoundedRectangle(box,7.f);
+ ColourGradient glass(Colour::fromRGB(20,21,27),x,y,
+                      Colour::fromRGB(6,7,10),x+w,y+h,true);
+ g.setGradientFill(glass);
+ g.fillRoundedRectangle(box.reduced(2.f),5.f);
+ g.setColour(Colour::fromRGB(65,67,75));
+ g.drawRoundedRectangle(box.reduced(.8f),7.f,1.f);
+ g.setColour(accent.withAlpha(.72f));
+ g.fillRoundedRectangle(x+13.f,y+12.f,3.f,15.f,1.f);
+ g.drawHorizontalLine((int)(y+34.f),x+14.f,x+w-14.f);
  g.setColour(frost);
  g.setFont(Font("Consolas",13.f,Font::bold));
- g.drawFittedText(name,(int)(x+34.f),(int)(y+10.f),(int)(w-58.f),22,Justification::centredLeft,1);
+ g.drawFittedText(name,(int)(x+24.f),(int)(y+9.f),(int)(w-46.f),22,Justification::centredLeft,1);
 }
 void VoidcoreEditor::drawBase(Graphics& g){
  g.fillAll(voidBlack);
- ColourGradient nebula(Colour::fromRGB(17,42,24),W*.49f,H*.32f,
-                      Colour::fromRGB(0,1,1),W*.78f,H*.91f,true);
- g.setGradientFill(nebula);g.fillRect(0,0,(int)W,(int)H);
- // Distant galactic clouds, sparse to leave readability intact.
- for(int c=0;c<15;++c){
-  const float x=60.f+std::fmod(c*173.7f,W-100.f);
-  const float y=70.f+std::fmod(c*107.3f,H-180.f);
-  const float pulse=.5f+.5f*std::sin(clock*.32f+c*1.6f);
-  const float r=45.f+15.f*(c%4);
-  ColourGradient vapour(acid.withAlpha(.025f+.018f*pulse),x,y,
-                         voidBlack.withAlpha(0.f),x+r,y+r,true);
-  g.setGradientFill(vapour);g.fillEllipse(x-r,y-r,2.f*r,2.f*r);
+ const Rectangle<float> screen{5.f,5.f,W-10.f,H-10.f};
+ ColourGradient metal(Colour::fromRGB(23,23,29),0.f,0.f,
+                      Colour::fromRGB(4,5,8),W*.8f,H,true);
+ g.setGradientFill(metal);
+ g.fillRoundedRectangle(screen,11.f);
+ g.setColour(Colour::fromRGB(75,77,83));
+ g.drawRoundedRectangle(screen,11.f,1.5f);
+ g.setColour(acid.withAlpha(.63f));
+ g.drawLine(18.f,65.f,1180.f,65.f,1.f);
+ // Brushed steel cross-hatching; intentionally subtle behind all controls.
+ for(int k=0;k<80;++k){
+  const float x=(float)k*15.f;
+  g.setColour(frost.withAlpha(.009f));
+  g.drawVerticalLine((int)x,8.f,H-8.f);
  }
- for(int k=0;k<175;++k){
-  const float x=13.f+std::fmod(k*193.47f,W-26.f);
-  const float y=8.f+std::fmod(k*79.23f,H-18.f);
-  const float twinkle=.5f+.5f*std::sin(clock*(.28f+.023f*(k%5))+k*2.1f);
-  g.setColour((k%7==0?frost:acid).withAlpha(.045f+.24f*twinkle));
-  const float dot=(k%17==0)?2.4f:1.f;
-  g.fillEllipse(x,y,dot,dot);
- }
- // Deep graphite outer bezel and crossing alien filaments.
- g.setColour(Colour::fromRGB(3,9,6));g.drawRoundedRectangle(4.f,4.f,W-8.f,H-8.f,19.f,6.f);
- g.setColour(frost.withAlpha(.48f));g.drawRoundedRectangle(8.f,8.f,W-16.f,H-16.f,17.f,1.3f);
- g.setColour(acid.withAlpha(.41f));g.drawRoundedRectangle(12.f,12.f,W-24.f,H-24.f,14.f,1.2f);
- for(int k=0;k<19;++k){
-  const float x=27.f+61.f*k;
-  Path rib;
-  rib.startNewSubPath(x,-5.f);
-  rib.cubicTo(x-36.f,114.f,x+58.f,170.f,x-8.f,330.f);
-  g.setColour((k%5==0?frost:acid).withAlpha(.024f));
-  g.strokePath(rib,PathStrokeType(1.f));
- }
- // Astral Bloom reference: integrated title plaque and black-glass command bar.
- Rectangle<float> title{18.f,15.f,359.f,51.f};
- g.setColour(Colour::fromRGB(2,7,5));g.fillRoundedRectangle(title,10.f);
- g.setColour(frost.withAlpha(.43f));g.drawRoundedRectangle(title,10.f,1.25f);
- g.setFont(Font("Consolas",32.f,Font::plain));
- g.setColour(frost);g.drawFittedText("V O I D C O R E",26,15,341,38,Justification::centred,1);
- g.setFont(Font(9.f,Font::bold));g.setColour(acid.withAlpha(.82f));
- g.drawFittedText("S Y N T H E S I S   B E Y O N D   M A T T E R",38,50,320,13,Justification::centred,1);
- g.setColour(Colour::fromRGB(2,8,5));
- g.fillRoundedRectangle(387.f,12.f,802.f,51.f,11.f);
- g.setColour(frost.withAlpha(.30f));g.drawRoundedRectangle(387.f,12.f,802.f,51.f,11.f,1.2f);
- g.setColour(acid.withAlpha(.13f));
- g.drawHorizontalLine(65,20.f,1180.f);
- // Working preset operations render as JUCE child buttons atop this bezel.
- g.setColour(acid.withAlpha(.26f));g.drawLine(394.f,63.f,1175.f,63.f,1.1f);
- for(int k=0;k<6;++k){
-  const float x=26.f+k*215.f;
-  g.setColour(acid.withAlpha(.08f));
-  g.drawLine(x,75.f,x+22.f,77.f,1.1f);
+ Rectangle<float> header{13,12,1174,48};
+ g.setColour(Colour::fromRGB(5,6,9));
+ g.fillRoundedRectangle(header,7.f);
+ g.setColour(Colour::fromRGB(80,83,91));
+ g.drawRoundedRectangle(header,7.f,1.f);
+ g.setFont(Font("Consolas",27.f,Font::bold));
+ g.setColour(frost);
+ g.drawFittedText("V O I D C O R E",31,15,363,33,Justification::centredLeft,1);
+ g.setFont(Font("Consolas",10.f,Font::bold));
+ g.setColour(acid);
+ g.drawText("X E N O   /   F I N A L   E D I T I O N",36,46,357,13,Justification::centredLeft);
+ for(int i=0;i<4;++i){
+  const float x=i%2?1180.f:18.f;
+  const float y=i/2?H-18.f:18.f;
+  g.setColour(acid.withAlpha(.68f));
+  g.fillEllipse(x-2.f,y-2.f,4.f,4.f);
  }
 }
 void VoidcoreEditor::drawOrbitalFrame(Graphics& g,Point<float> centre,float radius){
@@ -707,7 +666,7 @@ void VoidcoreEditor::drawOrbitalFrame(Graphics& g,Point<float> centre,float radi
    bone.cubicTo(edge+side*37.f,yy-46.f,
                 edge+side*18.f,y+(yy-y)*.45f,
                 x+side*radius*.55f,y+(yy-y)*.27f);
-   g.setColour(Colour::fromRGB(24,45,31));
+   g.setColour(Colour::fromRGB(38,36,42));
    g.strokePath(bone,PathStrokeType(6.f,PathStrokeType::curved,PathStrokeType::rounded));
    g.setColour(frost.withAlpha(.38f));
    g.strokePath(bone,PathStrokeType(1.3f));
@@ -744,7 +703,7 @@ void VoidcoreEditor::soundSphere(Graphics& g,Point<float> centre,float radius,Co
   g.setColour(tint.withAlpha(.008f+.016f*p));
   g.fillEllipse(x-R,y-R,2.f*R,2.f*R);
  }
- ColourGradient ball(Colour::fromRGB(45,126,66).withAlpha(.90f),
+ ColourGradient ball(Colour::fromRGB(135,21,29).withAlpha(.90f),
                       x-r*.56f,y-r*.76f,voidBlack,x+r*.78f,y+r*.85f,true);
  g.setGradientFill(ball);g.fillEllipse(x-r,y-r,2.f*r,2.f*r);
  // Dark shadow inside the lower-right hemisphere gives planet curvature.
@@ -800,7 +759,7 @@ void VoidcoreEditor::visualEye(Graphics& g,float x,float y,float radius){
  g.drawFittedText("XENO  /  SOUND SPHERE",(int)(x-125.f),(int)(y+33.f),250,23,Justification::centred,1);
 }
 void VoidcoreEditor::sourceWave(Graphics& g,Rectangle<float> r,bool second){
- g.setColour(Colour::fromRGB(2,13,11));g.fillRoundedRectangle(r,5.f);
+ g.setColour(Colour::fromRGB(9,10,14));g.fillRoundedRectangle(r,5.f);
  for(int k=0;k<=8;++k){const float xx=r.getX()+r.getWidth()*k/8.f;
   g.setColour(acid.withAlpha(.09f));g.drawVerticalLine((int)xx,r.getY(),r.getBottom());}
  for(int k=0;k<5;++k){const float yy=r.getY()+r.getHeight()*k/4.f;
@@ -884,7 +843,7 @@ void VoidcoreEditor::env(Graphics& g,Rectangle<float> r){
  g.setColour(frost.withAlpha(.65f));g.fillEllipse(start+marker*w*.70f-3.f,base-height*sust-3.f,6.f,6.f);
 }
 void VoidcoreEditor::lfo(Graphics& g,Rectangle<float> r,int which){
- g.setColour(Colour::fromRGB(2,15,12));g.fillRoundedRectangle(r,5.f);
+ g.setColour(Colour::fromRGB(9,10,14));g.fillRoundedRectangle(r,5.f);
  const String pre=which==0?"":String("lfo")+String(which+1);
  const String shape=which==0?"wave":pre+"Wave";
  const String hz=which==0?"rate":pre+"Rate";
@@ -906,7 +865,7 @@ void VoidcoreEditor::lfo(Graphics& g,Rectangle<float> r,int which){
  g.drawText("LIVE MODULATION  //  "+String(value(hz.toRawUTF8()),3)+" Hz",r.getX()+8.f,r.getY()+6.f,r.getWidth()-16.f,18.f,Justification::topLeft);
 }
 void VoidcoreEditor::filter(Graphics& g,Rectangle<float> r){
- g.setColour(Colour::fromRGB(2,14,10));g.fillRoundedRectangle(r,5.f);
+ g.setColour(Colour::fromRGB(9,10,14));g.fillRoundedRectangle(r,5.f);
  const float cutoff=clamp01(value("cutoff")),q=clamp01(value("resonance"));
  Path p;
  for(int i=0;i<240;++i){
@@ -954,63 +913,53 @@ void VoidcoreEditor::effects(Graphics& g,Rectangle<float> r,int which){
  neonLine(g,wave,which?blood:acid,1.6f);
 }
 void VoidcoreEditor::drawCore(Graphics& g){
- // Exact reference composition: upper-left twin source organisms, dominant
- // centre orbit, right filter/FX; lower motion/env, macros, output and keyboard.
- panel(g,{17,81,378,271},"OSC  /  SOURCE",acid);
- panel(g,{817,81,369,237},"FILTER",acid);
- panel(g,{17,356,378,198},"MOTION  /  LFO",acid);
- panel(g,{817,325,369,229},"SPACE  /  FX",acid);
- panel(g,{17,562,289,168},"ENVELOPE  /  AMP",acid);
- panel(g,{893,561,293,169},"OUTPUT",acid);
- panel(g,{314,625,576,105},"LIVING  /  MACROS",acid);
- // The core has its own ornamental framing rather than an opaque panel:
- // distant stars remain visible around its living reactor.
- drawOrbitalFrame(g,{600.f,308.f},172.f);
- visualEye(g,600.f,305.f,150.f);
- // Live sampled source previews (no waveform art baked into the controls).
- sourceWave(g,{31,169,166,91},false);
- sourceWave(g,{212,169,166,91},true);
- g.setColour(acid);g.setFont(Font(12.f,Font::bold));
- g.drawText("A",30,117,20,22,Justification::centred);
- g.drawText("B",205,117,20,22,Justification::centred);
- g.setColour(frost.withAlpha(.74f));g.setFont(Font(9.f));
- g.drawFittedText("SOURCE A",40,260,148,18,Justification::centred,1);
- g.drawFittedText("SOURCE B",216,260,148,18,Justification::centred,1);
- g.setColour(frost);g.setFont(Font(10.f,Font::bold));
- g.drawText("A",24,324,28,20,Justification::centred);
- g.drawText("B",370,324,21,20,Justification::centred);
- g.drawText("MORPH",168,322,68,19,Justification::centred);
- // The actual APVTS sliders occupy the entire A--B morph rail.
- // The filter graph uses the selected cutoff/resonance parameters.
- filter(g,{986,176,113,77});
- lfo(g,{38,428,326,60},0);
- env(g,{33,599,255,64});
- effects(g,{836,415,332,78},0);
- // Animated sound-sphere in the FX space visualizer: decorative, not a
- // fake clickable control. The four FX knobs beneath are real sliders.
- soundSphere(g,{1101.f,441.f},31.f,acid,smoothedPeak);
- // The actual processor scope supplies moving audio points, not a loop GIF.
- scope(g,{338,577,547,41},0,acid);
- g.setColour(frost.withAlpha(.77f));g.setFont(Font(10.f,Font::bold));
- g.drawText("LIVE AUDIO  /  XENO SPECTRUM",407,558,408,16,Justification::centred);
- // Physical left/right output meter magnitudes from the audio processor.
- const Rectangle<float> meter{1061.f,642.f,48.f,76.f};
- g.setColour(Colour::fromRGB(2,11,7));g.fillRoundedRectangle(meter,3.f);
- g.setColour(frost.withAlpha(.25f));g.drawRoundedRectangle(meter,3.f,1.f);
+ panel(g,{16,79,369,248},"SOURCE  /  DUAL SAMPLE",acid);
+ panel(g,{394,79,412,442},"VOID CORE  /  MORPH",acid);
+ panel(g,{815,79,369,248},"FILTER  /  SPECTRAL",acid);
+ panel(g,{16,335,369,186},"MOTION  /  MODULATION",acid);
+ panel(g,{815,335,369,186},"XENO  /  CHARACTER",acid);
+ panel(g,{16,530,1168,55},"GATE  /  16 STEP",acid);
+ panel(g,{16,593,327,103},"SPACE  /  DELAY & REVERB",acid);
+ panel(g,{351,593,272,103},"TONE  /  THREE BAND EQ",acid);
+ panel(g,{630,593,220,103},"WIDTH  /  SPATIAL",acid);
+ panel(g,{858,593,326,103},"OUTPUT  /  PERFORMANCE",acid);
+ // Bank-specific WAV waveforms: never an invented procedural bank display.
+ sourceWave(g,{29,160,169,73},false);
+ sourceWave(g,{207,160,169,73},true);
+ g.setColour(frost);g.setFont(Font(11.f,Font::bold));
+ g.drawText("A",29,129,19,20,Justification::centred);
+ g.drawText("B",207,129,18,20,Justification::centred);
+ // The core responds directly to actual DSP audio peaks and morph state.
+ drawOrbitalFrame(g,{599.f,269.f},111.f);
+ visualEye(g,599.f,267.f,109.f);
+ scope(g,{425,393,349,30},0,acid);
+ g.setColour(grey);g.setFont(Font(10.f,Font::bold));
+ g.drawFittedText("XY CORE: HORIZONTAL MORPH  /  VERTICAL EVOLUTION",433,426,334,17,Justification::centred,1);
+ // Filter and LFO curves update with the real parameter values, not GIFs.
+ filter(g,{985,168,179,73});
+ lfo(g,{44,403,312,37},0);
+ g.setColour(frost.withAlpha(.66f));g.setFont(Font(9.f));
+ g.drawText("SAMPLE A",48,239,132,16,Justification::centred);
+ g.drawText("SAMPLE B",231,239,132,16,Justification::centred);
+ g.drawFittedText("MORPH",560,517,76,16,Justification::centred,1);
+ // Lower panel readouts are live DSP measurements, not ornamental meters.
  for(int ch=0;ch<2;++ch){
-  const float magnitude=std::sqrt(clamp01(meterLevels[(size_t)ch]));
-  for(int seg=0;seg<18;++seg){
-   const bool active=(float)seg/18.f<=magnitude;
-   g.setColour((seg>=15?frost:acid).withAlpha(active?.90f:.10f));
-   g.fillRoundedRectangle(1066.f+ch*21.f,708.f-seg*3.4f,13.f,2.6f,1.f);
+  const float m=std::sqrt(clamp01(meterLevels[(size_t)ch]));
+  for(int seg=0;seg<15;++seg){
+   const bool on=(float)seg/15.f<m;
+   g.setColour((seg>12?frost:acid).withAlpha(on?.93f:.12f));
+   g.fillRoundedRectangle(1022.f+ch*19.f,680.f-seg*3.25f,11.f,2.5f,1.f);
   }
+  g.setColour(grey);
+  g.drawText(ch?"R":"L",1020+ch*19,682,14,11,Justification::centred);
  }
- g.setColour(frost);g.setFont(Font(9.f,Font::bold));
- g.drawText("L",1066,718,13,10,Justification::centred);
- g.drawText("R",1087,718,13,10,Justification::centred);
- g.setColour(frost.withAlpha(.84f));g.setFont(Font(11.f,Font::bold));
- g.drawFittedText(lastScene,464,518,266,26,Justification::centred,1);
- drawKeyboardShell(g);
+ // The animated sequence is represented by genuinely clickable steps above.
+ g.setColour(frost.withAlpha(.51f));g.setFont(Font(9.f,Font::bold));
+ g.drawText("PURE SOURCE isolates the actual sample bank, without FX.",414,704,395,14,Justification::centred);
+ g.setColour(Colour::fromRGB(8,9,12));
+ g.fillRoundedRectangle(225.f,705.f,831.f,41.f,4.f);
+ g.setColour(acid.withAlpha(.49f));
+ g.drawRoundedRectangle(225.f,705.f,831.f,41.f,4.f,1.f);
 }
 void VoidcoreEditor::drawDeep(Graphics& g){
  if(page==Motion){
@@ -1036,18 +985,14 @@ void VoidcoreEditor::drawDeep(Graphics& g){
  }
 }
 void VoidcoreEditor::paintStatus(Graphics& g){
- const float tempo=processor.displayTempo.load(std::memory_order_relaxed);
- g.setColour(acid.withAlpha(.58f));g.setFont(Font(11.f,Font::bold));
- g.drawText(String::formatted("%.1f BPM",tempo),42.f,765.f,135.f,19.f,Justification::centredLeft);
- g.setColour(playing?acid:grey);
- g.drawText(playing?"● LIVE":"● IDLE",200.f,765.f,96.f,19.f,Justification::centredLeft);
- g.setColour(frost.withAlpha(.75f));
- g.drawFittedText("VOIDCORE  /  MATRIX XENO ENGINE  /  LIVE JUCE VST3",675,761,490,24,Justification::centredRight,1);
+ g.setColour(grey);g.setFont(Font(9.f,Font::bold));
+ g.drawText(playing?"AUDIO ACTIVE":"READY",28,716,184,14,Justification::centredLeft);
+ g.drawText("VOIDCORE  /  ONE-PAGE XENO ENGINE",1040,716,140,14,Justification::centredRight);
 }
 void VoidcoreEditor::paint(Graphics& g){
  Graphics::ScopedSaveState state(g);
  g.addTransform(AffineTransform::scale((float)getWidth()/W,(float)getHeight()/H));
  drawBase(g);
- if(page==Core)drawCore(g);else drawDeep(g);
+ drawCore(g);
  paintStatus(g);
 }
