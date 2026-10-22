@@ -15,8 +15,8 @@ public:
  void paint(juce::Graphics&) override;
  void resized() override;
 private:
- enum Page { Core=0, Morph, Mod, Fx, Matrix, System, PageCount };
- static constexpr float W=1536.f,H=1024.f;
+ enum Page { Core=0, Motion, Fx, System, PageCount };
+ static constexpr float W=1200.f,H=800.f;
  const juce::Colour green=juce::Colour::fromRGB(88,233,151);
  const juce::Colour red=juce::Colour::fromRGB(255,55,67);
  const juce::Colour text=juce::Colour::fromRGB(204,238,220);
@@ -27,12 +27,17 @@ private:
  float clock=0.f,smoothedPeak=0.f;
  int focusLfo=0,focusEnv=0;
  bool playing=false;
- std::array<juce::String,6> pageNames{{"CORE","MORPH","LFO","FX","MATRIX","SYSTEM"}};
+ std::array<juce::String,4> pageNames{{"CORE","MOTION","FX","SYSTEM"}};
  struct Dial final : juce::Slider {
   std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> link;
   juce::String label;
   juce::Colour accent;
   Dial(NoctivoreProcessor&,const juce::String&,const juce::String&,juce::Colour);
+  void paint(juce::Graphics&) override;
+ };
+ struct Fader final : juce::Slider {
+  std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> link;
+  Fader(NoctivoreProcessor&,const juce::String&);
   void paint(juce::Graphics&) override;
  };
  struct Choice final : juce::ComboBox {
@@ -52,17 +57,20 @@ private:
   int onPage=0; // -1 all pages
  };
  std::vector<Positioned> ui;
- std::vector<std::unique_ptr<juce::Component>> ownedExtras;
+ std::array<Click*,16> steps{};
+ std::array<std::array<float,192>,2> previews{};
+ void updatePreview(int);
  std::unique_ptr<juce::FileChooser> chooser;
  juce::Image reference;
  std::array<float,128> bankTraceA{},bankTraceB{};
  int cachedA=-1,cachedB=-1;
  juce::String lastScene="A1 FRACTURED SIGNAL";
  void knob(const char*,const char*,float,float,float,Page,int style=0);
+ void fader(const char*,float,float,float,float,Page);
  void choice(const char*,juce::StringArray,float,float,float,float,Page);
  void click(const juce::String&,float,float,float,float,Page,std::function<void()>,int style=0);
  void allClick(const juce::String&,float,float,float,float,std::function<void()>,int style=0);
- void group(Page,juce::StringArray,const juce::String&,float,float,float,float);
+ 
  void setPage(Page);
  float value(const char*)const;
  void set(const char*,float);
