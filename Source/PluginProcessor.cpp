@@ -196,7 +196,7 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  // oscillators. Defaults create weight and irregular life, without forced
  // high-frequency aliasing or brickwall crushing.
  add("drop","Granular Pitch Drop",0.f,1.f,.58f);
- add("hits","Random Impact Density",0.f,1.f,.34f);
+ add("hits","Random Impact Density",0.f,1.f,.48f);
  add("body","Pitched Sample Body",0.f,1.f,.49f);
  add("grit","Dark Parallel Grit",0.f,1.f,.28f);
  add("dark","Dark Spectral Roll-Off",0.f,1.f,.43f);
