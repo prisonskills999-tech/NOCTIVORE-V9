@@ -27,6 +27,20 @@ void NoctivoreEditor::Skin::drawRotarySlider(Graphics& g,int x,int y,int w,int h
 void NoctivoreEditor::Skin::drawButtonBackground(Graphics& g,Button& button,const Colour&,bool hovered,bool down){painted::button(g,button,hovered,down,painted::accents[(size_t)std::clamp((int)button.getProperties().getWithDefault("tint",0),0,4)]);}
 void NoctivoreEditor::Skin::drawComboBox(Graphics& g,int w,int h,bool,int,int,int,int,ComboBox&){painted::selector(g,w,h);}
 
+// Custom painted button renderer: required for the FULL_GUI edition.
+// The declaration in PluginEditor.h must have this out-of-line definition.
+void NoctivoreEditor::ArtHotspot::paintButton(Graphics& g,bool hovered,bool down){
+ const bool lit=hovered||down||selected;
+ if(!lit)return;
+ const auto bounds=getLocalBounds().toFloat().reduced(1.0f);
+ const auto ochre=Colour::fromRGB(238,185,90);
+ const auto moss=Colour::fromRGB(144,168,109);
+ g.setColour((selected?moss:ochre).withAlpha(down?.31f:selected?.24f:.13f));
+ g.fillRoundedRectangle(bounds,5.5f);
+ g.setColour(ochre.withAlpha(down?.96f:selected?.76f:.58f));
+ g.drawRoundedRectangle(bounds,5.5f,1.25f);
+}
+
 NoctivoreEditor::ArtKnob::ArtKnob(AudioProcessorValueTreeState& st,const String& id,const String& label){
  setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
  setTextBoxStyle(Slider::NoTextBox,false,0,0);
