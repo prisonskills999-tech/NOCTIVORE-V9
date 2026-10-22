@@ -105,8 +105,8 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  add("morph","Source Crossfade",0,1,0.f);
  add("morphMotion","Autonomous Morph",0,1,0.f);
  add("morphRate","Morph Rate (Hz)",.005f,1.2f,.065f);
- add("texture","Algorithm Intensity",0,1,0.f);
- add("grain","Grain Density",0,1,0.f);
+ add("texture","Algorithm Intensity",0,1,.18f);
+ add("grain","Grain Density",0,1,.38f);
  add("scatter","Time Scatter",0,1,.31f);
  add("pulseRate","Pulse (beats)",.25f,16.f,2.f);
  add("spectralTilt","Spectral Color",-1,1,0.f);
@@ -117,7 +117,7 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  add("cutoff2","Filter 2 Cutoff",.008f,1.f,.70f);
  add("resonance2","Filter 2 Resonance",0.f,.95f,.15f);
  add("filterBlend","Filter 2 Mix",0.f,1.f,.50f);
- add("filterDrive","Filter Drive",0.f,1.f,.025f);
+ add("filterDrive","Filter Drive",0.f,1.f,0.f);
  add("keytrack","Filter Key Track",0.f,1.f,.12f);
  add("filterEnvAttack","Filter Env Attack",.003f,10.f,.3f);
  add("filterEnvDecay","Filter Env Decay",.01f,14.f,2.5f);
@@ -188,10 +188,18 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  add("tuneB","Source B Semitones",-12.f,12.f,0.f);
  add("levelA","Source A Level",0.f,1.5f,1.f);
  add("levelB","Source B Level",0.f,1.5f,1.f);
- add("toneLow","Tone Low",0.f,1.f,.5f);
+ add("toneLow","Tone Low",0.f,1.f,.56f);
  add("toneMid","Tone Mid",0.f,1.f,.5f);
- add("toneHigh","Tone High",0.f,1.f,.5f);
+ add("toneHigh","Tone High",0.f,1.f,.45f);
  add("character","XENO Exciter Amount",0.f,1.f,0.f);
+ // These five macros are intentionally independent of the old shared
+ // oscillators. Defaults create weight and irregular life, without forced
+ // high-frequency aliasing or brickwall crushing.
+ add("drop","Granular Pitch Drop",0.f,1.f,.58f);
+ add("hits","Random Impact Density",0.f,1.f,.34f);
+ add("body","Pitched Sample Body",0.f,1.f,.49f);
+ add("grit","Dark Parallel Grit",0.f,1.f,.28f);
+ add("dark","Dark Spectral Roll-Off",0.f,1.f,.43f);
  choose("sourceSolo","Pure Source Audition",{"Normal Mix","Pure Source"});
  return {a.begin(),a.end()};
 }
@@ -273,6 +281,8 @@ void NoctivoreProcessor::processBlock(AudioBuffer<float>& output,MidiBuffer& eve
  p.psyFold=get("psyFold");p.symbiosis=get("symbiosis");
  p.predator=get("predator");p.insectCode=get("insectCode");p.burrow=get("burrow");
  p.character=get("character");p.sourceSolo=get("sourceSolo");
+ p.drop=get("drop");p.hits=get("hits");p.body=get("body");
+ p.grit=get("grit");p.dark=get("dark");
  p.tuneA=get("tuneA");p.tuneB=get("tuneB");
  p.levelA=get("levelA");p.levelB=get("levelB");
  p.toneLow=get("toneLow");p.toneMid=get("toneMid");p.toneHigh=get("toneHigh");
