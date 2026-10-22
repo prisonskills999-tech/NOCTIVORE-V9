@@ -52,6 +52,7 @@ struct Params {
  float xenoFormant=.31f, xenoCross=.12f, xenoWrithe=.54f;
  // V10.1: tuned life below MIDI note 57 and correlated slow organic motion.
  float lowRegisterLife=.72f, coupledMotion=.53f;
+ int maxVoices=12;
  // V10.6: no noise generator, transient strike, or preprogrammed MIDI jumps.
  float colony=.33f, creatures=.39f, psyFold=.22f, symbiosis=.26f;
  float performanceMod=0.f;
@@ -153,10 +154,14 @@ public:
   if(mode!=0){
    v=&voices[0];retrigger=mode==1||v->stage==0;
   }else{
-   for(auto& c:voices)if(c.stage==0){v=&c;break;}
-   if(!v)v=&*std::min_element(voices.begin(),voices.end(),[](const Voice&a,const Voice&b){return a.level<b.level;});
+   const int limit=std::clamp(p.maxVoices,1,voiceCount);
+   for(int i=0;i<limit;++i)if(voices[(size_t)i].stage==0){v=&voices[(size_t)i];break;}
+   if(!v)v=&*std::min_element(voices.begin(),voices.begin()+limit,
+    [](const Voice&a,const Voice&b){return a.level<b.level;});
   }
   if(!v)return;
+  const bool stolen=v->stage!=0;
+  const float previousL=stolen?v->lastL:0.f,previousR=stolen?v->lastR:0.f;
   float oldPitch=v->pitch;
   int bank=std::clamp(p.bank,0,50);
   int z=std::clamp((int)std::lround((note-36)/12.f),0,3);
@@ -180,6 +185,8 @@ public:
   // Each note gets its own repeatable phase/pitch drift so layers do not phase-lock.
   v->motionPhase=(float)((v->age*41+note*13)%101)/101.f*2.f*pi;
   v->bodyPhase=0;v->fmPhase=0;v->modPhase=0;v->prevMod=0;
+  v->stealL=previousL;v->stealR=previousR;v->stealFade=stolen?1.f:0.f;
+  v->lastL=v->lastR=0.f;v->fractureGain=1.f;
    v->cellPhase=v->organismPhase=v->organismTonePhase=v->foldLP=0.f;
   v->aliveA=v->aliveB=0.f;
   v->metalPos=0;v->metalDamp=0;v->fxPhase=0;v->fxStep=-1;v->filterEnv=0;v->filterAge=0;v->motionEnv=0;
@@ -372,11 +379,11 @@ public:
     // Two source organisms interact instead of merely fading between tracks.
     // Pure, correlated cross-excitation: no stochastic hiss/noise generator.
     const float cross=clampf(p.xenoCross,0.f,1.f);
-    const float interaction=std::tanh(baseA*baseB*(3.0f+1.7f*cross));
+    const float interaction=cross>.0001f?std::tanh(baseA*baseB*(3.0f+1.7f*cross)):0.f;
     sample+=cross*.31f*interaction;
      // Source A and B hybridization, without a parallel stochastic texture.
      const float sym=clampf(p.symbiosis,0.f,1.f);
-     const float hybrid=std::tanh(2.4f*baseA*baseB+.7f*(baseA-baseB)*cellular);
+     const float hybrid=sym>.0001f?std::tanh(2.4f*baseA*baseB+.7f*(baseA-baseB)*cellular):0.f;
      sample+=.34f*sym*hybrid;
     // Shared biome cycles above feed source morph, the moving read-head, FM and filters.
     // Source mixing is also modulated by Life, not just an inaudible detune.
@@ -517,6 +524,7 @@ public:
     // Physical-style damped resonator. Persistent delay provides real metallic
     // sustain; partials from inharmonic FM add bright scraped-metal motion.
     const float metalAmt=clampf(p.metalMix+.12f*destinations[7]+aggression*.035f,0.f,1.f);
+    if(metalAmt>.0001f){
     const int delaySamples=std::clamp((int)((float)sr/(carrier*(.51f+p.metalTune*3.8f))),16,4094);
     const int tap=(v.metalPos+4096-delaySamples)%4096;
     float ringing=v.metalLine[(size_t)tap];
@@ -526,6 +534,7 @@ public:
     v.metalLine[(size_t)v.metalPos]=std::tanh(v.metalDamp*feedback+excitation);
     v.metalPos=(v.metalPos+1)%4096;
     sample+=metalAmt*(ringing*.87f+.12f*fmSignal);
+    }
     // Stable two-stage SVFs, with serial, parallel or band-split routing.
     float baseCut=clampf(p.cutoff + .27f*destinations[3]*moveDepth +envAmt*.35f + (accent-.5f)*.11f*p.motifAccent*(p.motif>0?1.f:0.f)
                   +p.keytrack*(v.pitch-60.f)/120.f
@@ -622,8 +631,13 @@ public:
     // Equal-power output pan and subtle sample-bank stereo spread
     float spread=clampf(p.stereo,0,1.5f)*(((v.note%7)-3)/12.f);
     float a=clampf(pan+spread,-1,1);
-    mixL+=(dry*(1-layerGain*.4f)+stereoLayer*.44f+sub+air)*gain*std::sqrt(.5f*(1.f-a));
-    mixR+=(dry*(1-layerGain*.4f)+stereoLayer*.98f+sub-air*.36f)*gain*std::sqrt(.5f*(1.f+a));
+    const float outL=(dry*(1-layerGain*.4f)+stereoLayer*.44f+sub+air)*gain*std::sqrt(.5f*(1.f-a));
+    const float outR=(dry*(1-layerGain*.4f)+stereoLayer*.98f+sub-air*.36f)*gain*std::sqrt(.5f*(1.f+a));
+    v.lastL=outL;v.lastR=outR;
+    if(v.stealFade>0.f){
+      mixL+=outL+v.stealL*v.stealFade;mixR+=outR+v.stealR*v.stealFade;
+      v.stealFade=std::max(0.f,v.stealFade-dt/.008f);
+    }else{mixL+=outL;mixR+=outR;}
    }
    globalTime+=dt;
    motifBeats+=dt*tempo/60.f;
@@ -677,7 +691,8 @@ private:
   float xenoLp1=0,xenoBp1=0,xenoLp2=0,xenoBp2=0;
   float fmPhase=0,modPhase=0,prevMod=0,metalDamp=0,motifPitch=0,fxPhase=0,ghostLP=0;int fxStep=-1;
   std::array<float,4096> metalLine{};int metalPos=0;
-  float grainPhase=0.f,fractureGain=1.f;bool grainSecondHalf=false;
+  float grainPhase=0.f,fractureGain=1.f,stealL=0,stealR=0,stealFade=0,lastL=0,lastR=0;
+  bool grainSecondHalf=false;
   std::array<float,2> anchorA{},anchorB{};uint32_t noiseState=1;
   bool keyDown=false,oneShot=false;uint64_t age=0;
  };
