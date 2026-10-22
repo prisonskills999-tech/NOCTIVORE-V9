@@ -21,7 +21,7 @@ struct LFOConfig {
 };
 struct Params {
  int bank=0, mode=0, velocityCurve=1, resampling=1, lfoWave=0, lfoTarget=0, filterMode=0;
- float attack=.28f,decay=3.2f,sustain=.93f,release=4.4f;
+ float attack=.028f,decay=2.8f,sustain=.93f,release=2.2f;
  float cutoff=.95f, resonance=.14f,glide=.07f,space=.34f,volume=.76f,pan=0.f;
  float lfoRate=.009f,lfoDepth=0.f,bendRange=2.f,bend=0.f;
  float sampleStart=0.f,reverse=0.f,drive=.16f,stereo=1.13f;
@@ -927,9 +927,9 @@ public:
     const float air=0.f;
     sub*=v.oneShot?.33f:1.f;
     // Start voices as a slow swell; rhythmic bleeps live inside the sample, not at note-on.
-     const float voicedRise=clampf(v.filterAge/.18f,0.f,1.f);
+     const float voicedRise=clampf(v.filterAge/.034f,0.f,1.f);
      const float attackShape=voicedRise*voicedRise*(3.f-2.f*voicedRise);
-     float gain=v.level*v.vel*.46f*(1.f+.15f*lowLife)*(.70f+.30f*attackShape);
+     float gain=v.level*v.vel*.46f*(1.f+.15f*lowLife)*(.83f+.17f*attackShape);
     // Tempo-aware forest/psytrance polymetric breathing, available in every
     // texture algorithm. Pattern steps are softly interpolated, never clicked.
     constexpr float seq[16]={1.f,.64f,.92f,.48f,.98f,.56f,.72f,.39f,
@@ -964,7 +964,7 @@ public:
     float spread=clampf(p.stereo,0,1.5f)*(((v.note%7)-3)/12.f);
     float a=clampf(pan+spread,-1,1);
     v.smoothSolo+=(clampf(p.sourceSolo,0.f,1.f)-v.smoothSolo)*controlSlew;
-    const float pureGain=v.level*v.vel*.46f*(.70f+.30f*attackShape);
+    const float pureGain=v.level*v.vel*.46f*(.83f+.17f*attackShape);
     const float pureL=pureSource*pureGain*std::sqrt(.5f*(1.f-a));
     const float pureR=pureSource*pureGain*std::sqrt(.5f*(1.f+a));
     const float coloredL=(dry*(1-layerGain*.4f)+stereoLayer*.44f+sub+air)*gain*std::sqrt(.5f*(1.f-a));
