@@ -1,4 +1,4 @@
-name: Build NOCTIVORE V10.6 Forest Signals Windows VST3
+name: Build NOCTIVORE V10.6 Windows VST3 (reliable JUCE)
 
 on:
   push:
@@ -43,14 +43,36 @@ jobs:
           if ($n -ne 200) { throw "Expected 200 WAVs; found $n" }
           Write-Host "Generated $n banks"
 
+      - name: Download JUCE 8.0.15 with retries (avoid Git clone EOF)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Path C:/nfx-juce -Force | Out-Null
+          $archive = 'C:/nfx-juce/juce.zip'
+          $folder = 'C:/nfx-juce/JUCE-8.0.15'
+          $url = 'https://codeload.github.com/juce-framework/JUCE/zip/refs/tags/8.0.15'
+          $ok = $false
+          for ($attempt = 1; $attempt -le 5; $attempt++) {
+            try {
+              Remove-Item $archive -ErrorAction SilentlyContinue
+              Remove-Item $folder -Recurse -Force -ErrorAction SilentlyContinue
+              Invoke-WebRequest -Uri $url -OutFile $archive -TimeoutSec 180
+              Expand-Archive -LiteralPath $archive -DestinationPath 'C:/nfx-juce' -Force
+              if (!(Test-Path "$folder/CMakeLists.txt")) { throw 'Incomplete JUCE archive' }
+              $ok = $true
+              break
+            } catch {
+              Write-Warning "JUCE archive attempt $attempt failed: $_"
+              Start-Sleep -Seconds (3 * $attempt)
+            }
+          }
+          if (!$ok) { throw 'Could not download or unzip JUCE after five attempts' }
+
       - name: Configure JUCE 8 and Windows x64 VST3
         shell: pwsh
         run: |
-          $env:GIT_CONFIG_COUNT='1'
-          $env:GIT_CONFIG_KEY_0='core.longpaths'
-          $env:GIT_CONFIG_VALUE_0='true'
           $buildDir = 'C:/nfx106_${{ matrix.edition }}'
-          cmake -S . -B $buildDir -G 'Visual Studio 17 2022' -A x64 '-DJUCE_BUILD_EXTRAS=OFF' '-DNOCTIVORE_GENERIC_EDITOR=${{ matrix.generic }}'
+          cmake -S . -B $buildDir -G 'Visual Studio 17 2022' -A x64 '-DJUCE_DIR=C:/nfx-juce/JUCE-8.0.15' '-DJUCE_BUILD_EXTRAS=OFF' '-DNOCTIVORE_GENERIC_EDITOR=${{ matrix.generic }}'
           if ($LASTEXITCODE -ne 0) { throw 'CMake configure failed' }
 
       - name: Compile release VST3
