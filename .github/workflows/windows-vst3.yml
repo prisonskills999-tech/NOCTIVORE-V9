@@ -1,9 +1,9 @@
-name: VOIDCORE FINAL Windows VST3
+name: VOIDCORE DARK IMPACT FINAL VST3
 
 on:
   # Manual runs prevent repeated private-repository minute consumption on every commit.
   push:
-    branches: [feature/voidcore-astral-full-reskin, feature/voidcore-hifi-clean-diverse, feature/voidcore-phase-clean-source-audio, feature/voidcore-final-one-page-red]
+    branches: [feature/voidcore-astral-full-reskin, feature/voidcore-hifi-clean-diverse, feature/voidcore-phase-clean-source-audio, feature/voidcore-final-one-page-red, feature/voidcore-final-dark-granular-impact]
   workflow_dispatch:
 
 permissions:
@@ -37,6 +37,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Astral GUI preflight failed' }
           python tests/verify_audio_purity.py
           if ($LASTEXITCODE -ne 0) { throw 'Audio purity preflight failed' }
+          python tests/verify_dark_granular.py
+          if ($LASTEXITCODE -ne 0) { throw 'Dark granular preflight failed' }
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -121,7 +123,7 @@ jobs:
       - name: Upload downloadable Windows VST3
         uses: actions/upload-artifact@v4
         with:
-          name: VOIDCORE-FINAL-WIN64-VST3
+          name: VOIDCORE-DARK-IMPACT-FINAL-WIN64-VST3
           path: VOIDCORE_V12_XENO_${{ matrix.edition }}.zip
           if-no-files-found: error
           retention-days: 30
