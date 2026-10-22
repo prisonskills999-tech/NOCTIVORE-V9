@@ -102,7 +102,7 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  // New controls appended: keeps all legacy V4 parameter IDs intact for Ableton.
  choose("bankB","Source B Bank",names,7);
  choose("textureMode","Texture Algorithm",{"Flow","Grain Cloud","Orbital","Pulsar","Liquid Warp","Time Freeze"});
- add("morph","Source Crossfade",0,1,.20f);
+ add("morph","Source Crossfade",0,1,0.f);
  add("morphMotion","Autonomous Morph",0,1,0.f);
  add("morphRate","Morph Rate (Hz)",.005f,1.2f,.065f);
  add("texture","Algorithm Intensity",0,1,.42f);
