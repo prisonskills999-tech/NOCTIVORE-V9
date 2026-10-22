@@ -189,7 +189,7 @@ public:
   Sample::prepareSinc();
   sr=std::max(8000.,sampleRate);for(auto& v:voices)v={};
   spaceFX.prepare(sr);mixLowL=mixLowR=0;mixMidL=mixMidR=0;
-  lfoPhase=0;for(auto& l:modulators)l={};globalTime=0;motifBeats=0;hostBeatSynced=false;held.fill(false);sustained.fill(false);sustainDown=false;smoothedGate=1.f;smoothedAccent=1.f;smoothedSoloFx=0.f;
+  lfoPhase=0;for(auto& l:modulators)l={};globalTime=0;motifBeats=0;hostBeatSynced=false;held.fill(false);sustained.fill(false);sustainDown=false;smoothedGate=1.f;smoothedAccent=1.f;smoothedSoloFx=0.f;masterGain=1.f;
  }
  void setParameters(const Params& values){
   // Live bank changes crossfade held notes instead of waiting for new MIDI.
@@ -845,9 +845,18 @@ public:
    // A softly limited master bus retains transient punch and space width.
    // More headroom and less blanket drive than Earthforge v6 master limiter.
    // Soft limiting is retained to make accidental dense chords manageable.
-   float masterBoost=.93f;
-   left[i]+=(mixL+wetL)*amp*masterBoost;
-   right[i]+=(mixR+wetR)*amp*masterBoost;
+   const float masterBoost=.93f;
+   const float rawL=(mixL+wetL)*amp*masterBoost;
+   const float rawR=(mixR+wetR)*amp*masterBoost;
+   // Transparent linked peak guard: exactly linear for normal levels,
+   // unlike the always-on master distortion from previous versions.
+   const float peak=std::max(std::fabs(rawL),std::fabs(rawR));
+   const float target=std::min(1.f,.95f/std::max(peak,1.e-8f));
+   masterGain=std::min(masterGain,target); // instant overload catch
+   if(target>masterGain)
+    masterGain+=(target-masterGain)*(1.f-std::exp(-dt/.12f));
+   left[i]+=rawL*masterGain;
+   right[i]+=rawR*masterGain;
   }
  }
 private:
@@ -896,7 +905,7 @@ private:
  float bend=0,modwheel=0,lfoPhase=0,globalTime=0,tempo=145;
  double motifBeats=0.;bool hostBeatSynced=false;
  float mixLowL=0,mixLowR=0,mixMidL=0,mixMidR=0;
- float smoothedGate=1.f,smoothedAccent=1.f,smoothedSoloFx=0.f;
+ float smoothedGate=1.f,smoothedAccent=1.f,smoothedSoloFx=0.f,masterGain=1.f;
  PsySpace spaceFX;std::string bankFolder;
 };
 }
