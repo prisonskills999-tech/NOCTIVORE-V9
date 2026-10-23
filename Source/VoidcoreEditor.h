@@ -32,9 +32,9 @@ private:
  std::array<juce::String,4> pageNames{{"CORE","MOTION","FX","SYSTEM"}};
  struct Dial final : juce::Slider {
   std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> link;
-  juce::String label;
+  juce::String label,parameterID;
   juce::Colour accent;
-  float animationPhase=0.f;
+  float animationPhase=0.f,displayedNormal=-1.f;
   Dial(NoctivoreProcessor&,const juce::String&,const juce::String&,juce::Colour);
   void paint(juce::Graphics&) override;
  };
