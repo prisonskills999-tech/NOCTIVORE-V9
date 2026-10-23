@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""VOIDCORE LIVING ATLAS V13: fifty non-repeating evolving alien soundscapes.
+"""VOIDCORE DARK INDUSTRIAL ATLAS V14: fifty non-repeating evolving alien soundscapes.
 
 No third-party recordings, random broadband noise, or external sample downloads.
 Keeps 50 indexed banks x four MIDI roots at 48 kHz PCM16 for preset compatibility.
@@ -51,8 +51,8 @@ def create(bank, note, category=0, model=None):
     phase_offset = ((bank * 97 + note * 43) % 257) * .021
     slow = np.sin(tau * (.035 + .013 * mutation) * t + phase_offset)
     drift = np.sin(tau * (.11 + .019 * (bank % 6)) * t + 1.3 * phase_offset)
-    bends = 1. + (.002 + .002 * mutation) * (.7 * slow + .3 * drift)
-    phase = tau * f * np.cumsum(bends) / SR
+    # Keep the recorded root stable: spectral motion replaces pitch drift.
+    phase = tau * f * t
     mod = np.sin(phase * (.39 + mutation * .047) + .8 * slow)
     pulse = _envelope(t, .45 + .16 * mutation, 3.0, phase_offset)
     airy = np.sin(phase * (3.1 + mutation * .37) + 1.9 * slow)
@@ -169,6 +169,26 @@ def create(bank, note, category=0, model=None):
     stage_high = x - stage_below_high
     x = stage_low * low_curve + stage_mid * mid_curve + stage_high * high_curve
 
+    # Family-specific darkpsy/industrial transformations, without resampling.
+    # Metallic combs have fixed delays so their resonances never sweep pitch.
+    if family in (2, 4, 7, 9):
+        delay = int(SR * (.0013 + .00041 * ((bank * 3) % 9)))
+        comb = np.zeros_like(x)
+        comb[delay:] = x[:-delay]
+        feedback = (-.78 if family in (4, 9) else .68) * (.65 + .06 * mutation)
+        x = x + feedback * comb
+    if family in (0, 3, 6, 8):
+        crush = 1.3 + (1.2 + .3 * mutation) * (.5 + .5 * slow)
+        x = np.tanh(x * crush) / np.maximum(1., .55 * crush)
+    if family in (1, 5, 7, 9):
+        rate = 5.7 + 1.13 * mutation + 1.9 * (bank % 3)
+        clock = np.maximum(0., np.sin(tau * rate * t + .8 * drift)) ** (4 + mutation)
+        x *= .29 + .71 * clock
+    if family in (2, 3, 5, 9):
+        amount = .75 + .40 * mutation
+        folded = np.sin(amount * x + .16 * np.sin(tau * .23 * t))
+        x = .69 * x + .31 * folded
+
     # Irregular audible events are derived from the SAME source recording:
     # overlaps of a shifted family waveform under smoothly tapered envelopes.
     # They are neither white noise nor identical percussion on each bank.
@@ -235,9 +255,9 @@ def main():
             wavfile.write(out / f'{bank:02d}_{note}.wav', SR, create(bank, note, int(kind)))
         if bank % 10 == 9:
             print(f'Generated {bank+1}/50 varied xeno banks', flush=True)
-    (out / 'MANIFEST.txt').write_text('VOIDCORE LIVING ATLAS V13: 50 evolving 48 kHz banks / 200 multi-scene original PCM16 WAV files.\n', encoding='utf-8')
+    (out / 'MANIFEST.txt').write_text('VOIDCORE DARK INDUSTRIAL ATLAS V14: 50 evolving 48 kHz banks / 200 multi-scene original PCM16 WAV files.\n', encoding='utf-8')
     lines = [
-        '# VOIDCORE LIVING ATLAS v13 — Continuously Evolving Alien Sources', '',
+        '# VOIDCORE DARK INDUSTRIAL ATLAS v14 — Continuously Evolving Alien Sources', '',
         '50 original multi-zone bank slots / 200 48 kHz PCM16 WAV files.',
         'Each bank contains seven organically crossfaded spectral chapters and irregular bank-native events.',
         'Every bank is deterministic, sample-based and continuously changing; no broadband random noise.', '',
