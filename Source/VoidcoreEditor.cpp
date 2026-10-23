@@ -27,62 +27,103 @@ void neonLine(Graphics& g,Path& p,Colour c,float width){
 }
 }
 VoidcoreEditor::Dial::Dial(NoctivoreProcessor& p,const String& id,const String& text,Colour c)
- :label(text),accent(c){
- setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
+ :label(text),parameterID(id),accent(c){
+ setSliderStyle(Slider::RotaryVerticalDrag);
  setRotaryParameters(pi*1.22f,pi*2.78f,true);
- setTextBoxStyle(juce::Slider::NoTextBox,false,0,0);
- setMouseDragSensitivity(180);
- setTooltip(text+" — drag to adjust, double-click to reset");
+ setTextBoxStyle(Slider::NoTextBox,false,0,0);
+ // A long throw makes it easy to settle on a precise sound. JUCE's
+ // velocity modifier allows the user to switch to even finer gestures.
+ setMouseDragSensitivity(480);
+ setVelocityModeParameters(.24,2,0.,true,ModifierKeys::shiftModifier);
+ setScrollWheelEnabled(true);
+ setMouseCursor(MouseCursor::UpDownResizeCursor);
+ setTooltip(text+"  |  drag vertically to adjust  |  Shift for precision  |  double-click to reset");
  if(auto* param=p.state.getParameter(id))
-   setDoubleClickReturnValue(true,param->convertFrom0to1(param->getDefaultValue()));
+  setDoubleClickReturnValue(true,param->convertFrom0to1(param->getDefaultValue()));
  link=std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(p.state,id,*this);
 }
 void VoidcoreEditor::Dial::paint(Graphics& g){
  const auto r=getLocalBounds().toFloat();
  const float w=r.getWidth(),h=r.getHeight();
- const float rad=std::max(10.f,std::min(w*.39f,h*.37f));
- const float cx=r.getCentreX(),cy=r.getY()+h*.40f;
+ const float cx=r.getCentreX(),cy=r.getY()+h*.466f;
+ const float rad=std::max(11.f,std::min(w*.433f,h*.305f));
  const float lo=pi*1.22f,hi=pi*2.78f;
  const float norm=getMaximum()>getMinimum()?
-    clamp01((float)((getValue()-getMinimum())/(getMaximum()-getMinimum()))):0.f;
- const float angle=lo+(hi-lo)*norm;
- const float pulse=.5f+.5f*std::sin(animationPhase*1.8f);
- // A real rotary JUCE Slider with a black-glass xeno-orb skin.
- g.setColour(accent.withAlpha(.05f+.09f*pulse));
- g.fillEllipse(cx-rad*1.37f,cy-rad*1.37f,2.74f*rad,2.74f*rad);
- g.setColour(frost.withAlpha(.42f));
- g.fillEllipse(cx-rad*1.12f,cy-rad*1.12f,2.24f*rad,2.24f*rad);
- g.setColour(voidBlack);
- g.fillEllipse(cx-rad,cy-rad,2.f*rad,2.f*rad);
- ColourGradient shell(accent.withAlpha(.43f),cx-rad*.45f,cy-rad*.65f,
-                      Colour::fromRGB(10,10,10),cx+rad*.7f,cy+rad*.8f,true);
- g.setGradientFill(shell);
- g.fillEllipse(cx-rad*.89f,cy-rad*.89f,1.78f*rad,1.78f*rad);
- g.setColour(frost.withAlpha(.36f));
- g.drawEllipse(cx-rad*.78f,cy-rad*.78f,rad*1.56f,rad*1.56f,1.0f);
- for(int k=0;k<3;++k){
-  const float a=animationPhase*.30f+k*2.094f;
-  const float py=cy+std::sin(a)*rad*.40f;
-  const float px=cx+std::cos(a)*rad*.71f;
-  g.setColour(accent.withAlpha(.16f+.13f*pulse));
-  g.drawEllipse(cx-rad*.65f,cy-rad*(.17f+.085f*k),
-                1.3f*rad,rad*(.34f+.17f*k),1.f);
-  g.setColour(frost.withAlpha(.62f));
-  g.fillEllipse(px-1.3f,py-1.3f,2.6f,2.6f);
+  clamp01((float)((getValue()-getMinimum())/(getMaximum()-getMinimum()))):0.f;
+ if(displayedNormal<0.f)displayedNormal=norm;
+ // Mechanical visual damping only; the actual value reaches the DSP and
+ // host immediately, with no unwanted audio smoothing or parameter lag.
+ displayedNormal+=(norm-displayedNormal)*(isMouseButtonDown()? .50f:.30f);
+ if(std::fabs(displayedNormal-norm)<.00025f)displayedNormal=norm;
+ const float angle=lo+(hi-lo)*displayedNormal;
+ const bool focus=isMouseOverOrDragging()||isMouseButtonDown();
+ const Colour rim=Colour::fromRGB(164,164,164);
+ const Colour white=Colour::fromRGB(245,245,245);
+ const Colour steel=Colour::fromRGB(71,71,71);
+ const Colour base=Colour::fromRGB(9,9,9);
+ // Every knob is a physical-looking, matte front panel element; the white
+ // line, large ring and bright value strip distinguish it from background.
+ g.setColour(base);
+ g.fillRoundedRectangle(juce::Rectangle<float>(.7f,.7f,w-1.4f,h-1.4f),5.f);
+ g.setColour(focus?white.withAlpha(.62f):rim.withAlpha(.40f));
+ g.drawRoundedRectangle(juce::Rectangle<float>(.8f,.8f,w-1.6f,h-1.6f),5.f,focus?1.7f:.9f);
+ g.setColour(white);g.setFont(Font(std::clamp(w*.182f,10.f,14.f),Font::bold));
+ g.drawFittedText(label,2,2,roundToInt(w-4),roundToInt(h*.17f),
+                  Justification::centred,1,.78f);
+ // Machined tick notches allow precise reading without a computer cursor.
+ for(int tick=0;tick<=10;++tick){
+  const float a=lo+(hi-lo)*(float)tick/10.f-pi*.5f;
+  const float inner=rad*1.135f,outer=rad*(tick%5==0?1.33f:1.25f);
+  g.setColour((tick%5==0?white:rim).withAlpha(tick%5==0?.84f:.46f));
+  g.drawLine(cx+std::cos(a)*inner,cy+std::sin(a)*inner,
+             cx+std::cos(a)*outer,cy+std::sin(a)*outer,tick%5==0?1.5f:.85f);
  }
- Path rail;rail.addCentredArc(cx,cy,rad*1.07f,rad*1.07f,0.f,lo,hi,true);
- g.setColour(accent.withAlpha(.22f));g.strokePath(rail,PathStrokeType(2.6f));
- Path active;active.addCentredArc(cx,cy,rad*1.07f,rad*1.07f,0.f,lo,angle,true);
- g.setColour(accent);g.strokePath(active,PathStrokeType(2.7f));
- const float marker=angle-pi*.5f;
- g.setColour(frost);
- g.drawLine(cx+std::cos(marker)*rad*.46f,cy+std::sin(marker)*rad*.46f,
-            cx+std::cos(marker)*rad*.83f,cy+std::sin(marker)*rad*.83f,1.8f);
- g.setColour(frost);g.setFont(Font(std::clamp(h*.176f,8.f,11.f),Font::bold));
- g.drawFittedText(label,0,roundToInt(h*.69f),roundToInt(w),roundToInt(h*.18f),Justification::centred,1);
- g.setColour(accent.withAlpha(.95f));g.setFont(Font(std::clamp(h*.147f,8.f,10.f)));
- g.drawFittedText(label=="RATE" ? (getValue()<.01 ? String(getValue(),5) : String(getValue(),3)) : String(getValue(),getMaximum()>5?1:2),0,roundToInt(h*.85f),
-                  roundToInt(w),roundToInt(h*.14f),Justification::centred,1);
+ g.setColour(Colour::fromRGB(25,25,25));
+ g.fillEllipse(cx-rad*1.04f,cy-rad*1.04f,rad*2.08f,rad*2.08f);
+ g.setColour(rim);
+ g.drawEllipse(cx-rad*.99f,cy-rad*.99f,rad*1.98f,rad*1.98f,2.f);
+ ColourGradient machined(Colour::fromRGB(65,65,65),cx-rad,cy-rad,
+                         Colour::fromRGB(11,11,11),cx+rad,cy+rad,true);
+ g.setGradientFill(machined);
+ g.fillEllipse(cx-rad*.91f,cy-rad*.91f,rad*1.82f,rad*1.82f);
+ g.setColour(white.withAlpha(.20f));
+ g.drawEllipse(cx-rad*.70f,cy-rad*.70f,rad*1.40f,rad*1.40f,1.f);
+ Path track;track.addCentredArc(cx,cy,rad*1.10f,rad*1.10f,0.f,lo,hi,true);
+ g.setColour(steel);g.strokePath(track,PathStrokeType(3.5f));
+ Path valueArc;valueArc.addCentredArc(cx,cy,rad*1.10f,rad*1.10f,0.f,lo,angle,true);
+ g.setColour(white);g.strokePath(valueArc,PathStrokeType(3.7f));
+ const float a=angle-pi*.5f;
+ g.setColour(white);
+ g.drawLine(cx+std::cos(a)*rad*.22f,cy+std::sin(a)*rad*.22f,
+            cx+std::cos(a)*rad*.82f,cy+std::sin(a)*rad*.82f,3.f);
+ g.fillEllipse(cx-2.4f,cy-2.4f,4.8f,4.8f);
+ // High contrast persistent readout (not a fleeting popup).
+ String read;
+ const double v=getValue();
+ if(parameterID=="rate"||parameterID.endsWith("Rate")){
+  read=(v<.01?String(v,5):v<1.?String(v,3):String(v,2))+" Hz";
+ }else if(parameterID=="tuneA"||parameterID=="tuneB"){
+  read=String(v,1)+" st";
+ }else if(parameterID=="toneLow"||parameterID=="toneMid"||parameterID=="toneHigh"){
+  read=String::formatted("%+.1f dB",(v-.5)*18.);
+ }else if(parameterID=="attack"||parameterID=="release"||parameterID=="glide"){
+  read=String(v,v<1.?2:1)+" s";
+ }else if(parameterID=="pan"){
+  read=std::abs(v)<.01?"CENTER":(v<0?"L ":"R ")+String((int)std::round(std::abs(v)*100.));
+ }else if(getMinimum()>=0.&&getMaximum()<=1.001){
+  read=String((int)std::round(v*100.))+"%";
+ }else{
+  read=String(v,getMaximum()>5.?1:2);
+ }
+ const float stripY=h*.811f,stripH=h*.172f;
+ g.setColour(Colour::fromRGB(31,31,31));
+ g.fillRoundedRectangle(juce::Rectangle<float>(3.f,stripY,w-6.f,stripH),3.f);
+ g.setColour(focus?white:rim);
+ g.drawRoundedRectangle(juce::Rectangle<float>(3.f,stripY,w-6.f,stripH),3.f,focus?1.3f:.8f);
+ g.setColour(white);
+ g.setFont(Font(std::clamp(w*.167f,9.f,13.f),Font::bold));
+ g.drawFittedText(read,5,roundToInt(stripY),roundToInt(w-10),roundToInt(stripH),
+                  Justification::centred,1,.75f);
 }
 void VoidcoreEditor::OrbPad::apply(const MouseEvent& e){
  const float x=std::clamp(e.position.x/std::max(1.f,(float)getWidth()),0.f,1.f);
@@ -179,9 +220,9 @@ VoidcoreEditor::VoidcoreEditor(NoctivoreProcessor& p):AudioProcessorEditor(p),pr
  if(art.existsAsFile())reference=ImageFileFormat::loadFrom(art);
  buildCore();setPage(Core);
  setResizable(true,true);
- setResizeLimits(960,720,1800,1350);
+ setResizeLimits(960,720,1920,1440);
  if(auto* constrainer=getConstrainer())constrainer->setFixedAspectRatio(4.0/3.0);
- setSize(1200,900);
+ setSize(1440,1080);
  startTimerHz(30); // UI-only; DSP never renders on the GUI thread.
 }
 VoidcoreEditor::~VoidcoreEditor(){stopTimer();chooser.reset();}
@@ -208,7 +249,9 @@ void VoidcoreEditor::shift(const char* id,int n){
 void VoidcoreEditor::knob(const char* id,const char* label,float x,float y,float d,Page page_,int style){
  auto c=std::make_unique<Dial>(processor,id,label,(style%3==1)?blood:acid);
  addAndMakeVisible(*c);
- ui.push_back({std::move(c),{x-d*.5f,y-d*.43f,d,d*.95f},(int)page_});
+ // Allocate the tallest useful grip without touching the next panel.
+ const float height=(y>=620.f&&y<745.f?1.16f:(y>=350.f&&y<591.f?1.0f:1.05f))*d;
+ ui.push_back({std::move(c),{x-d*.5f,y-height*.50f,d,height},(int)page_});
 }
 void VoidcoreEditor::choice(const char* id,StringArray items,float x,float y,float w,float h,Page page_){
  auto c=std::make_unique<Choice>(processor,id,items);
@@ -294,21 +337,44 @@ void VoidcoreEditor::timerCallback(){
 VoidcoreEditor::Fader::Fader(NoctivoreProcessor& p,const String& id){
  setSliderStyle(Slider::LinearHorizontal);
  setTextBoxStyle(Slider::NoTextBox,false,0,0);
- setMouseDragSensitivity(180);
+ setMouseDragSensitivity(480);
+ setVelocityModeParameters(.24,2,0.,true,ModifierKeys::shiftModifier);
+ setScrollWheelEnabled(true);
+ setTooltip(id+"  |  drag precisely, Shift for fine movement");
+ if(auto* param=p.state.getParameter(id))
+  setDoubleClickReturnValue(true,param->convertFrom0to1(param->getDefaultValue()));
  link=std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(p.state,id,*this);
 }
 void VoidcoreEditor::Fader::paint(Graphics& g){
- auto r=getLocalBounds().toFloat();
+ const auto r=getLocalBounds().toFloat();
  const float norm=getMaximum()>getMinimum()?clamp01((float)((getValue()-getMinimum())/(getMaximum()-getMinimum()))):0.f;
- const float y=r.getCentreY(), x=r.getX()+12.f+(r.getWidth()-24.f)*norm;
- g.setColour(grey.withAlpha(.5f));g.fillRoundedRectangle(r.getX()+10.f,y-3.f,r.getWidth()-20.f,6.f,3.f);
- g.setColour(acid.withAlpha(.86f));g.fillRoundedRectangle(r.getX()+10.f,y-3.f,std::max(1.f,x-r.getX()-10.f),6.f,3.f);
- g.setColour(blood.withAlpha(.35f));g.fillEllipse(x-13.f,y-13.f,26.f,26.f);
- g.setColour(frost);g.fillRoundedRectangle(x-5.f,y-14.f,10.f,28.f,2.f);
- g.setColour(acid.withAlpha(.55f+.40f*(.5f+.5f*std::sin(animationPhase*2.f))));
- g.drawRoundedRectangle(x-5.f,y-14.f,10.f,28.f,2.f,1.5f);
- g.setColour(frost.withAlpha(.55f));
- g.fillEllipse(x-2.f,y-2.f,4.f,4.f);
+ const float left=14.f,right=r.getRight()-47.f;
+ const float cy=r.getCentreY();
+ const float x=left+std::max(1.f,right-left)*norm;
+ const bool hot=isMouseOverOrDragging()||isMouseButtonDown();
+ const Colour white=Colour::fromRGB(244,244,244);
+ g.setColour(Colour::fromRGB(11,11,11));g.fillRoundedRectangle(r.reduced(.8f),4.f);
+ g.setColour(hot?white.withAlpha(.7f):white.withAlpha(.30f));
+ g.drawRoundedRectangle(r.reduced(1.5f),4.f,hot?1.5f:.8f);
+ for(int i=0;i<=10;++i){
+  const float px=left+(right-left)*(float)i/10.f;
+  g.setColour(white.withAlpha(i%5==0?.65f:.32f));
+  g.drawVerticalLine((int)px,cy+11.f,cy+(i%5==0?17.f:14.f));
+ }
+ g.setColour(Colour::fromRGB(44,44,44));
+ g.fillRoundedRectangle(left,cy-5.f,right-left,10.f,3.f);
+ g.setColour(white.withAlpha(.88f));
+ g.fillRoundedRectangle(left,cy-4.f,std::max(1.f,x-left),8.f,2.f);
+ ColourGradient body(Colour::fromRGB(205,205,205),x-11.f,cy-19.f,
+                     Colour::fromRGB(82,82,82),x+11.f,cy+19.f,false);
+ g.setGradientFill(body);
+ g.fillRoundedRectangle(x-11.f,cy-19.f,22.f,38.f,3.f);
+ g.setColour(white);g.drawRoundedRectangle(x-11.f,cy-19.f,22.f,38.f,3.f,1.4f);
+ g.setColour(Colour::fromRGB(18,18,18));
+ g.fillRoundedRectangle(x-1.8f,cy-12.f,3.6f,24.f,1.f);
+ const String read=String((int)std::round(norm*100.f))+"%";
+ g.setColour(white);g.setFont(Font(12.f,Font::bold));
+ g.drawFittedText(read,roundToInt(r.getRight()-43.f),roundToInt(cy-9.f),38,18,Justification::centred,1);
 }
 void VoidcoreEditor::fader(const char* id,float x,float y,float w,float h,Page pg){
  auto c=std::make_unique<Fader>(processor,id);
@@ -444,6 +510,8 @@ void VoidcoreEditor::buildCore(){
  knob("volume","MASTER",555,805,92,Core);
  choice("mode",{"Polyphonic","Mono","Legato"},697,755,150,28,Core);
  knob("glide","GLIDE",732,812,70,Core);
+ // Long weighted performance fader directly drives the audible modulation macro.
+ fader("performanceMod",865,794,233,38,Core);
  // Real MIDI keyboard, available without any navigation or secondary page.
  auto keys=std::make_unique<MidiKeyboardComponent>(
     processor.keyboardState,MidiKeyboardComponent::horizontalKeyboard);
@@ -983,9 +1051,12 @@ void VoidcoreEditor::drawCore(Graphics& g){
  filter(g,{985,168,179,73});
  lfo(g,{188,416,170,34},focusLfo);
  g.setColour(frost.withAlpha(.66f));g.setFont(Font(9.f));
- g.drawText("SAMPLE A",48,239,132,16,Justification::centred);
- g.drawText("SAMPLE B",231,239,132,16,Justification::centred);
+ 
+ 
  g.drawFittedText("MORPH",560,517,76,16,Justification::centred,1);
+ // Compact fader legend stays separate from the moving thumb.
+ g.setColour(frost);g.setFont(Font(11.f,Font::bold));
+ g.drawText("PERFORMANCE MODULATION",869,780,230,13,Justification::centred);
  // Lower panel readouts are live DSP measurements, not ornamental meters.
  for(int ch=0;ch<2;++ch){
   const float m=std::sqrt(clamp01(meterLevels[(size_t)ch]));
