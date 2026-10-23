@@ -28,6 +28,9 @@ assert "setVelocityModeParameters(.24,2,0.,true)" in fader
 assert "fillRoundedRectangle(x-11.f,cy-19.f,22.f,38.f" in fader
 assert "std::max(1.f,x-left)" in fader
 assert "height=(y>=620.f&&y<745.f?1.16f" in e
+assert 'fader("performanceMod",865,794,233,38,Core);' in main
+assert 'add("performanceMod","Performance Mod Wheel",0.f,1.f,0.f)' in p
+assert 'p.performanceMod=get("performanceMod")' in p
 assert "buildCore();setPage(Core);" in e
 assert "node.onPage==20+focusLfo" in e
 for key in ("morph","character","grain","delayMix","reverbMix","toneLow","cutoff"):
