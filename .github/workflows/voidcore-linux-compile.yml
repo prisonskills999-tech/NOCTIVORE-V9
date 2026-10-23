@@ -3,7 +3,7 @@ name: VOIDCORE GUI C++ compile test
 on:
   # Run Linux GUI verification on demand; no automatic private-runner charges.
   push:
-    branches: [feature/voidcore-astral-full-reskin, feature/voidcore-hifi-clean-diverse, feature/voidcore-phase-clean-source-audio, feature/voidcore-final-one-page-red, feature/voidcore-final-dark-granular-impact, feature/voidcore-living-evolving-samples]
+    branches: [feature/voidcore-astral-full-reskin, feature/voidcore-hifi-clean-diverse, feature/voidcore-phase-clean-source-audio, feature/voidcore-final-one-page-red, feature/voidcore-final-dark-granular-impact, feature/voidcore-living-evolving-samples, feature/voidcore-monochrome-four-lfo-space]
   workflow_dispatch:
 
 permissions:
@@ -25,6 +25,7 @@ jobs:
           python3 tests/verify_astral_skin.py
           python3 tests/verify_audio_purity.py
           python3 tests/verify_dark_granular.py
+          python3 tests/verify_monochrome_four_lfo.py
 
       - name: Real DSP output verification (no JUCE)
         run: |
