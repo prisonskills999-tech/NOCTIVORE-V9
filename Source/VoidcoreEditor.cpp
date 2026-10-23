@@ -401,18 +401,6 @@ void VoidcoreEditor::buildCore(){
  knob("grit","GRIT",944,495,65,Core);
  knob("dark","DARK",1032,495,65,Core);
  knob("texture","SCATTER",1120,495,65,Core);
- // 16-click performance strip controls the live gating engine.
- choice("motif",{"Off","Serpent","Ritual","Insect","Portal","Fracture","Hollow"},85,551,142,26,Core);
- knob("trancePulse","PULSE",278,558,55,Core);
- for(int i=0;i<16;++i){
-  const auto id=String::formatted("gateStep%02d",i+1);
-  click(String(i+1),324.f+43.f*i,550.f,36.f,28.f,Core,[this,id]{
-   if(value("motif")<.5f)set("motif",1.f);
-   set(id.toRawUTF8(),value(id.toRawUTF8())>.5f?0.f:1.f);
-  });
-  steps[(size_t)i]=dynamic_cast<Click*>(ui.back().control.get());
- }
- knob("motifGate","GATE",1121,556,59,Core);
  // Two featured, algorithm-selectable effects: fully accessible on one page.
  choice("division",{"1/4","1/8","1/8 dotted","1/16","1/16 dotted","1/32","1/4 triplet","1/8 triplet"},33,579,167,27,Core);
  choice("delayMode",{"Tape","Ping Pong","Diffuse","Dub"},207,579,181,27,Core);
