@@ -12,7 +12,7 @@ main=e.split("void VoidcoreEditor::buildCore(){",1)[1].split("void VoidcoreEdito
 assert "setSize(1440,1080);" in e
 assert "setFixedAspectRatio(4.0/3.0)" in e
 assert "setMouseDragSensitivity(480)" in dial
-assert "setVelocityModeParameters(.24,2,0.,true)" in dial
+assert "setVelocityModeParameters(.24,2,0.,true,ModifierKeys::shiftModifier)" in dial
 assert "setDoubleClickReturnValue(true" in dial
 assert "setScrollWheelEnabled(true)" in dial
 assert "isMouseOverOrDragging()" in dial
@@ -24,7 +24,7 @@ assert "for(int tick=0;tick<=10;++tick)" in dial
 assert "String::formatted(\"%+.1f dB\"" in dial
 assert "stripY=h*.811f" in dial
 assert "setMouseDragSensitivity(480)" in fader
-assert "setVelocityModeParameters(.24,2,0.,true)" in fader
+assert "setVelocityModeParameters(.24,2,0.,true,ModifierKeys::shiftModifier)" in fader
 assert "fillRoundedRectangle(x-11.f,cy-19.f,22.f,38.f" in fader
 assert "std::max(1.f,x-left)" in fader
 assert "height=(y>=620.f&&y<745.f?1.16f" in e
