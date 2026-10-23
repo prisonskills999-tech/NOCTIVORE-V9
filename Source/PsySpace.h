@@ -18,6 +18,8 @@ public:
   float reverbMix=.34f, reverbSize=.89f, reverbDecay=.78f;
   float reverbDark=.49f, reverbMod=.71f, reverbPreDelay=.19f;
   float shimmer=.09f, duck=.24f;
+   float delayImpact=.58f,delayDrift=.46f,reverbImpact=.68f,reverbWidth=.75f;
+   int delayMode=0,reverbMode=0;
   float wetLowCut=.64f; // HP feeds both delay and reverb: no sub swamp
   float psySpiral=.28f, psySpiralRate=.16f;
  };
@@ -72,7 +74,7 @@ public:
   if(smoothedDelay<=0)smoothedDelay=desired;
   smoothedDelay+=(desired-smoothedDelay)*.00025f;
   // Dual out-of-phase modulation; the time deviation never crosses input head.
-  float timeMod=warp*(.002f+.009f*warp)*(float)sr;
+  float timeMod=(warp+.26f*std::clamp(c.delayDrift,0.f,1.f))*(.002f+.009f*warp)*(float)sr;
   float tapL=smoothedDelay+timeMod*std::sin(phase*6.2831853f*.23f);
   float tapR=smoothedDelay*1.008f-timeMod*std::sin(phase*6.2831853f*.19f+.8f);
   float feedbackL=read(delayL,delayPos,tapL);
@@ -84,7 +86,8 @@ public:
   float darkL=toneL-hpL,darkR=toneR-hpR;
   float diffusion=std::clamp(c.delayDiffusion,0.f,1.f)*.30f;
   float spread=std::clamp(c.delaySpread,0.f,1.f);
-  float fb=std::clamp(c.delayFeedback,0.f,.92f);
+   if(c.delayMode==1)spread=1.f;else if(c.delayMode==2)spread=0.f;else if(c.delayMode==3)spread=.5f+.5f*std::sin(phase*.29f);
+  float fb=std::clamp(c.delayFeedback+.095f*c.delayImpact,0.f,.965f);
   float writeL=(inL+fb*(darkL*(1-spread)+darkR*spread)+diffusion*diffL[0])*.83f;
   float writeR=(inR+fb*(darkR*(1-spread)+darkL*spread)+diffusion*diffR[0])*.83f;
   diffL[0]=darkL;diffR[0]=darkR;
@@ -92,8 +95,8 @@ public:
    delayL[delayPos]=writeL/std::sqrt(1.f+.13f*writeL*writeL);
    delayR[delayPos]=writeR/std::sqrt(1.f+.13f*writeR*writeR);
   if(++delayPos>=delayL.size())delayPos=0;
-  float wetDL=(feedbackL*.86f+feedbackR*.14f)*.95f;
-  float wetDR=(feedbackR*.86f+feedbackL*.14f)*.95f;
+  float wetDL=(feedbackL*.86f+feedbackR*.14f)*(.80f+1.8f*std::clamp(c.delayImpact,0.f,1.f));
+  float wetDR=(feedbackR*.86f+feedbackL*.14f)*(.80f+1.8f*std::clamp(c.delayImpact,0.f,1.f));
 
   // Up to 120ms pre-delay plus short independent early reflections.
   size_t preCount=preL.size();
@@ -110,6 +113,7 @@ public:
   // fractional modulated reads; decay mapping stays below unity.
   std::array<float,8> t{};
   float sz=.57f+std::clamp(c.reverbSize,0.f,1.f)*1.22f;
+   if(c.reverbMode==1)sz*=.42f;else if(c.reverbMode==2)sz*=1.38f;else if(c.reverbMode==3)sz*=1.75f;
   const float mod=std::clamp(c.reverbMod,0.f,1.f);
   const float dark=std::clamp(c.reverbDark,0.f,1.f);
   for(size_t k=0;k<8;++k){
@@ -147,6 +151,10 @@ public:
   float rvR=(t[1]-t[2]+t[4]-t[5]+t[6])*.28f;
   rvL=rvL*.82f+earlyL*.12f;
   rvR=rvR*.82f+earlyR*.12f;
+  const float width=std::clamp(c.reverbWidth,0.f,1.f);
+  const float middle=.5f*(rvL+rvR),side=.5f*(rvL-rvR)*(0.25f+1.75f*width);
+  rvL=(middle+side)*(0.65f+1.6f*c.reverbImpact);
+  rvR=(middle-side)*(0.65f+1.6f*c.reverbImpact);
   // Slowly sweeping four-stage allpass cloud: phase animation without
   // boosting narrow metallic resonances. Stages use opposite stereo sweeps.
   const float spiral=std::clamp(c.psySpiral,0.f,1.f);

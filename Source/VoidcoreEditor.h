@@ -17,12 +17,12 @@ public:
  void resized() override;
 private:
  enum Page { Core=0, Motion, Fx, System, PageCount };
- static constexpr float W=1200.f,H=750.f;
- const juce::Colour green=juce::Colour::fromRGB(232,44,52);
- const juce::Colour red=juce::Colour::fromRGB(244,246,249);
- const juce::Colour text=juce::Colour::fromRGB(235,237,240);
- const juce::Colour dim=juce::Colour::fromRGB(118,122,133);
- const juce::Colour black=juce::Colour::fromRGB(6,7,10);
+ static constexpr float W=1200.f,H=900.f;
+ const juce::Colour green=juce::Colour::fromRGB(240,240,240);
+ const juce::Colour red=juce::Colour::fromRGB(221,221,221);
+ const juce::Colour text=juce::Colour::fromRGB(232,232,232);
+ const juce::Colour dim=juce::Colour::fromRGB(142,142,142);
+ const juce::Colour black=juce::Colour::fromRGB(6,6,6);
  NoctivoreProcessor& processor;
  Page page=Core;
  float clock=0.f,smoothedPeak=0.f;

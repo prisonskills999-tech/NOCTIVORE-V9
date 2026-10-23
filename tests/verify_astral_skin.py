@@ -11,12 +11,12 @@ main=cpp.split("void VoidcoreEditor::buildCore(){",1)[1].split("void VoidcoreEdi
 draw=cpp.split("void VoidcoreEditor::drawCore(",1)[1].split("void VoidcoreEditor::drawDeep(",1)[0]
 ctor=cpp.split("VoidcoreEditor::VoidcoreEditor(",1)[1].split("VoidcoreEditor::~VoidcoreEditor",1)[0]
 assert "buildCore();setPage(Core);" in ctor and "buildDeeper();" not in ctor
-assert "W=1200.f,H=750.f" in hdr
-assert "setFixedAspectRatio(1.6)" in ctor
+assert "W=1200.f,H=900.f" in hdr
+assert "setFixedAspectRatio(4.0/3.0)" in ctor
 for name in ("SOURCE  /  DUAL SAMPLE","VOID CORE  /  MORPH","FILTER  /  SPECTRAL",
              "MOTION  /  MODULATION","XENO  /  DEBRIS & IMPACT","GATE  /  16 STEP",
-             "SPACE  /  DELAY & REVERB","TONE  /  THREE BAND EQ",
-             "WIDTH  /  SPATIAL","OUTPUT  /  PERFORMANCE"):
+             "FX / DELAY  -  SYNC & DIRECTION","FX / REVERB  -  CHAMBERS",
+             "TONE / EQ","STEREO / OUTPUT"):
     assert name in draw, "Missing single-page section: "+name
 for visual in ("sourceWave(g,","filter(g,","lfo(g,","scope(g,","visualEye(g,"):
     assert visual in draw, "Missing animated visual: "+visual

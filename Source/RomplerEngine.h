@@ -16,7 +16,7 @@ namespace noctivore {
 constexpr float pi=3.14159265358979323846f;
 inline float clampf(float x,float a,float b){return std::max(a,std::min(b,x));}
 struct LFOConfig {
- float rate=.009f, depth=0.f;
+ float rate=.001f, depth=0.f;
  int wave=0, target=0, sync=0;
 };
 struct Params {
@@ -376,7 +376,7 @@ public:
    // A small modulation envelope scales depth after attack and before release.
    for(size_t m=0;m<modulators.size();++m){
     auto& osc=modulators[m];const auto& cfg=p.lfos[m];
-    float hz=clampf(cfg.rate,.0002f,1.5f);
+    float hz=clampf(cfg.rate,.00001f,3.f);
     if(cfg.sync>0){constexpr float beatLengths[]={4.f,2.f,1.f,.5f,.25f,8.f,16.f,32.f,64.f,128.f};
       hz=(tempo/60.f)/beatLengths[(size_t)std::clamp(cfg.sync-1,0,9)];}
     osc.phase+=hz*dt;

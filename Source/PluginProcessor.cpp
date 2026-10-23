@@ -49,7 +49,7 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  add("cutoff","Filter Cutoff",.015f,1,.95f);
  add("resonance","Filter Resonance",0,1,.14f);
  a.push_back(std::make_unique<AudioParameterFloat>(ParameterID{"rate",1},"LFO 1 Rate",
-      NormalisableRange<float>(.001f,35.f,0.f,3.f),.035f));
+      NormalisableRange<float>(.00001f,3.f,0.f,3.f),.0015f));
  add("depth","LFO 1 Depth",0,1,0.f);
  choose("wave","LFO 1 Shape",{"Sine","Triangle","Saw","Square","Sample & Hold","Fractal"});
  StringArray modTargets{"Volume","Pan","Pitch","Filter 1","Filter 2","FM Index","A/B Morph","Metal Exciter","Grain Density","Delay Warp","Reverb Motion"};
@@ -62,7 +62,7 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
      a.push_back(std::make_unique<AudioParameterFloat>(ParameterID{id,1},name,
        NormalisableRange<float>(low,high,0.f,3.f),def));
    };
-   addSlow(r,"LFO "+j+" Rate",.001f,35.f,i==2?.022f:i==3?.071f:.12f);
+   addSlow(r,"LFO "+j+" Rate",.00001f,3.f,i==2?.0003f:i==3?.0007f:.001f);
    addSlow(d,"LFO "+j+" Depth",0.f,1.f,0.f);
    choose(w.toRawUTF8(),("LFO "+j+" Shape").toRawUTF8(),{"Sine","Triangle","Saw","Square","Sample & Hold","Fractal"});
    choose(t.toRawUTF8(),("LFO "+j+" Target").toRawUTF8(),modTargets,i==2?6:i==3?5:4);
@@ -104,7 +104,7 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  choose("textureMode","Texture Algorithm",{"Flow","Grain Cloud","Orbital","Pulsar","Liquid Warp","Time Freeze"});
  add("morph","Source Crossfade",0,1,0.f);
  add("morphMotion","Autonomous Morph",0,1,0.f);
- add("morphRate","Morph Rate (Hz)",.005f,1.2f,.065f);
+ add("morphRate","Morph Rate (Hz)",.00005f,1.2f,.005f);
  add("texture","Algorithm Intensity",0,1,.18f);
  add("grain","Grain Density",0,1,.38f);
  add("scatter","Time Scatter",0,1,.31f);
@@ -142,7 +142,13 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  add("trancePulse","Psy Pulse",0.f,1.f,0.f);
  add("tranceRate","Pulse Speed",.25f,8.f,2.f);
  add("psySpiral","Psy Spiral",0.f,1.f,.24f);
- add("psySpiralRate","Spiral Rate (Hz)",.005f,2.f,.16f);
+ add("psySpiralRate","Spiral Rate (Hz)",.00005f,2.f,.015f);
+ add("delayImpact","Delay Impact",0.f,1.f,.58f);
+ choose("delayMode","Delay Routing",{"Stereo","Ping Pong","Mono","Drifting"});
+ add("delayDrift","Delay Drift",0.f,1.f,.46f);
+ add("reverbImpact","Reverb Impact",0.f,1.f,.68f);
+ choose("reverbMode","Reverb Chamber Mode",{"Hall","Plate","Chamber","Infinite"});
+ add("reverbWidth","Reverb Width",0.f,1.f,.75f);
  add("hiFiAir","Hi-Fi Air",0.f,1.f,0.f);
  add("clarity","Master Clarity",0.f,1.f,1.f);
  // V9 rhythmic-only shadow gate (legacy parameters retained for automation).
@@ -297,6 +303,8 @@ void NoctivoreProcessor::processBlock(AudioBuffer<float>& output,MidiBuffer& eve
  p.fx.reverbMix=get("reverbMix");p.fx.reverbSize=get("reverbSize");p.fx.reverbDecay=get("reverbDecay");
  p.fx.reverbDark=get("reverbDark");p.fx.reverbMod=get("reverbMod");p.fx.reverbPreDelay=get("reverbPreDelay");
  p.fx.shimmer=get("shimmer");p.fx.duck=get("duck");
+ p.fx.delayImpact=get("delayImpact");p.fx.delayMode=(int)get("delayMode");p.fx.delayDrift=get("delayDrift");
+ p.fx.reverbImpact=get("reverbImpact");p.fx.reverbMode=(int)get("reverbMode");p.fx.reverbWidth=get("reverbWidth");
  // Preserve old saved 'Space' settings as a macro on the new reverb amount.
  p.fx.reverbMix=noctivore::clampf(p.fx.reverbMix*(.65f+get("space")),0,1);
  if(auto* playhead=getPlayHead())
