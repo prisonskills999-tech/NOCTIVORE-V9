@@ -19,7 +19,7 @@ std::vector<float> render(PsySpace::Controls p){
   engine.tick(source,source*.88f,left,right);
   if(!std::isfinite(left)||!std::isfinite(right)||std::abs(left)>8||std::abs(right)>8)
    throw std::runtime_error("nonfinite/unbounded DSP wet output");
-  result[i]=left*.5f+right*.5f;
+  result[i]=left*.75f+right*.25f; // preserve side energy to detect stereo width
  }
  return result;
 }
