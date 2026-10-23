@@ -144,10 +144,10 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  add("psySpiral","Psy Spiral",0.f,1.f,.24f);
  add("psySpiralRate","Spiral Rate (Hz)",.00005f,2.f,.015f);
  add("delayImpact","Delay Impact",0.f,1.f,.58f);
- add("delayMode","Delay Routing",0.f,3.f,0.f);
+ choose("delayMode","Delay Routing",{"Stereo","Ping Pong","Mono","Drifting"});
  add("delayDrift","Delay Drift",0.f,1.f,.46f);
  add("reverbImpact","Reverb Impact",0.f,1.f,.68f);
- add("reverbMode","Reverb Chamber Mode",0.f,3.f,0.f);
+ choose("reverbMode","Reverb Chamber Mode",{"Hall","Plate","Chamber","Infinite"});
  add("reverbWidth","Reverb Width",0.f,1.f,.75f);
  add("hiFiAir","Hi-Fi Air",0.f,1.f,0.f);
  add("clarity","Master Clarity",0.f,1.f,1.f);
