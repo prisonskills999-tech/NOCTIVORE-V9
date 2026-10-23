@@ -44,6 +44,7 @@ static noctivore::Params neutral(){
  p.bank=0;p.bankB=0;p.morph=0.f;p.morphMotion=0.f;
  p.cutoff=.97f;p.resonance=.05f;p.character=0.f;p.fmMix=0.f;
  p.grain=0.f;p.texture=0.f;p.body=0.f;p.drop=0.f;
+ p.evolution=0.f;
  p.hits=0.f;p.grit=0.f;p.dark=0.f;
  p.attack=.01f;p.decay=1.f;p.sustain=1.f;p.release=.3f;
  p.organic=0.f;p.motif=0;p.trancePulse=0.f;p.biomeDepth=0.f;
@@ -93,6 +94,7 @@ int main(){
   const auto base=play(dir,p);
   if(energy(base)<1e-7)throw std::runtime_error("Silent playback fixture");
   p.dark=.92f;requiresChange("DARK",base,play(dir,p));p=neutral();
+  p.evolution=1.f;requiresChange("EVOLVE",base,play(dir,p),.025);p=neutral();
   p.grit=.82f;requiresChange("GRIT",base,play(dir,p));p=neutral();
   p.body=.83f;requiresChange("BODY",base,play(dir,p));p=neutral();
   p.hits=.91f;requiresChange("HITS",base,play(dir,p));p=neutral();

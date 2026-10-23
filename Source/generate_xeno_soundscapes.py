@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""VOIDCORE XENO ATLAS V12: fifty genuinely distinct, deterministic alien soundscapes.
+"""VOIDCORE LIVING ATLAS V13: fifty non-repeating evolving alien soundscapes.
 
 No third-party recordings, random broadband noise, or external sample downloads.
 Keeps 50 indexed banks x four MIDI roots at 48 kHz PCM16 for preset compatibility.
@@ -43,7 +43,8 @@ def create(bank, note, category=0, model=None):
     """Generate an original playable, pitched mono bank at one MIDI root."""
     family = bank % 10
     mutation = bank // 10
-    duration = 8.0 + .26 * (bank % 5)
+    # Every source has enough recorded evolution for 5-7 successive scenes.
+    duration = 12.0 + .32 * (bank % 5)
     t = np.arange(round(duration * SR), dtype=np.float64) / SR
     f = 440. * 2. ** ((note - 69) / 12.)
     tau = 2. * np.pi
@@ -120,6 +121,75 @@ def create(bank, note, category=0, model=None):
         quantized = .65 * np.sin(phase * (1.33 + mutation * .17) + airy) + .35 * np.sin(phase * (.48 + mutation * .09) + drift)
         x = (.6 * alien + .4 * quantized) * (.025 + .68 * stutter + .31 * chopped)
 
+    # LIVING SOURCE: each WAV changes its own composition through seven
+    # bank-specific scenes. Not just a synth LFO applied by the VST afterward.
+    # The spectral curves operate on the *existing family waveform*, avoiding
+    # a common hiss or additive carrier shared by unrelated banks.
+    seed = (bank + 17) * 10007 + (note + 2) * 103
+    rng = np.random.default_rng(seed)
+    scene_points = np.linspace(0., duration, 8)
+    scene_pos = np.clip(t / duration * 7., 0., 7.)
+    scene_index = np.minimum(scene_pos.astype(np.int32), 6)
+    scene_alpha = scene_pos - scene_index
+    scene_alpha = scene_alpha * scene_alpha * (3. - 2. * scene_alpha)
+
+    def evolving_curve(values):
+        values = np.asarray(values, dtype=np.float64)
+        return (values[scene_index] * (1. - scene_alpha) +
+                values[scene_index + 1] * scene_alpha)
+
+    # Make one scene genuinely bass-heavy, another voiced/mid-focused and a
+    # third bright/resonant; change the order and magnitude for each bank.
+    scene_order = rng.permutation(7)
+    low_values = np.clip(rng.uniform(.40, 1.25, 8), .25, 1.4)
+    mid_values = np.clip(rng.uniform(.37, 1.32, 8), .25, 1.5)
+    high_values = np.clip(rng.uniform(.08, .83, 8), .04, 1.0)
+    for stage, scene in enumerate(scene_order):
+        anchor_index = int(scene) + 1
+        if anchor_index >= 8:
+            continue
+        if stage % 3 == 0:
+            low_values[anchor_index] = 1.25 + .10 * rng.random()
+            high_values[anchor_index] = .13 + .12 * rng.random()
+        elif stage % 3 == 1:
+            mid_values[anchor_index] = 1.20 + .17 * rng.random()
+            low_values[anchor_index] = .30 + .27 * rng.random()
+        else:
+            high_values[anchor_index] = .72 + .26 * rng.random()
+            mid_values[anchor_index] = .35 + .35 * rng.random()
+    # Chapter voices swell and retreat at different, noninteger time scales.
+    low_curve = evolving_curve(low_values)
+    mid_curve = evolving_curve(mid_values)
+    high_curve = evolving_curve(high_values)
+    stage_low = signal.sosfilt(signal.butter(
+        2, 215. + 37. * family + 14. * mutation, fs=SR, output='sos'), x)
+    stage_below_high = signal.sosfilt(signal.butter(
+        2, 1250. + 175. * family, fs=SR, output='sos'), x)
+    stage_mid = stage_below_high - stage_low
+    stage_high = x - stage_below_high
+    x = stage_low * low_curve + stage_mid * mid_curve + stage_high * high_curve
+
+    # Irregular audible events are derived from the SAME source recording:
+    # overlaps of a shifted family waveform under smoothly tapered envelopes.
+    # They are neither white noise nor identical percussion on each bank.
+    event_count = 5 + (bank % 4)
+    for event in range(event_count):
+        centre = (.85 + (event + .55 + .5 * rng.random()) *
+                  (duration - 1.7) / event_count)
+        span = .20 + .66 * rng.random()
+        offset = int(SR * (.043 + .31 * rng.random()))
+        shift = rng.choice((-1, 1)) * offset
+        start = max(0, int((centre - span / 2.) * SR))
+        end = min(x.size, int((centre + span / 2.) * SR))
+        if end <= start:
+            continue
+        u = np.linspace(0., 1., end - start, endpoint=False)
+        envelope = np.sin(np.pi * u) ** 2
+        delayed = np.roll(x, shift)
+        # Mutation drives the density and strength of cellular impacts.
+        strength = (.11 + .14 * rng.random()) * (1. + .07 * mutation)
+        x[start:end] += strength * envelope * delayed[start:end]
+
     # Contrasting mutation signatures rather than any shared synthetic base layer.
     if family not in (1, 5, 6, 9):
         x *= .86 + .14 * np.sin(tau * (.12 + .047 * mutation) * t + phase_offset)
@@ -165,12 +235,12 @@ def main():
             wavfile.write(out / f'{bank:02d}_{note}.wav', SR, create(bank, note, int(kind)))
         if bank % 10 == 9:
             print(f'Generated {bank+1}/50 varied xeno banks', flush=True)
-    (out / 'MANIFEST.txt').write_text('VOIDCORE XENO V12: 50 distinct 48 kHz banks / 200 original PCM16 WAV files.\n', encoding='utf-8')
+    (out / 'MANIFEST.txt').write_text('VOIDCORE LIVING ATLAS V13: 50 evolving 48 kHz banks / 200 multi-scene original PCM16 WAV files.\n', encoding='utf-8')
     lines = [
-        '# VOIDCORE XENO v12 — Diverse Alien Soundscape Atlas', '',
+        '# VOIDCORE LIVING ATLAS v13 — Continuously Evolving Alien Sources', '',
         '50 original multi-zone bank slots / 200 48 kHz PCM16 WAV files.',
-        'Each family uses a different sound-generating topology. Every bank also has a distinct mutation.',
-        'No third-party recordings or broadband random noise.', '',
+        'Each bank contains seven organically crossfaded spectral chapters and irregular bank-native events.',
+        'Every bank is deterministic, sample-based and continuously changing; no broadband random noise.', '',
         '| Slot | Bank | Synthesis family | Sonic identity |',
         '|---:|---|---|---|',
     ]

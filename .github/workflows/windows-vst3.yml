@@ -1,9 +1,9 @@
-name: VOIDCORE DARK IMPACT FINAL VST3
+name: VOIDCORE LIVING SAMPLES FINAL VST3
 
 on:
   # Manual runs prevent repeated private-repository minute consumption on every commit.
   push:
-    branches: [feature/voidcore-astral-full-reskin, feature/voidcore-hifi-clean-diverse, feature/voidcore-phase-clean-source-audio, feature/voidcore-final-one-page-red, feature/voidcore-final-dark-granular-impact]
+    branches: [feature/voidcore-astral-full-reskin, feature/voidcore-hifi-clean-diverse, feature/voidcore-phase-clean-source-audio, feature/voidcore-final-one-page-red, feature/voidcore-final-dark-granular-impact, feature/voidcore-living-evolving-samples]
   workflow_dispatch:
 
 permissions:
@@ -60,6 +60,8 @@ jobs:
           if ($n -ne 200) { throw "Expected 200 WAVs; found $n" }
           python tests/verify_xeno_diversity.py
           if ($LASTEXITCODE -ne 0) { throw 'Sound-bank diversity verification failed' }
+          python tests/verify_evolving_sources.py
+          if ($LASTEXITCODE -ne 0) { throw 'Living WAV chapter verification failed' }
           Write-Host "Generated and verified $n xeno sounds"
 
       - name: Download JUCE 8.0.15 with retries (avoid Git clone EOF)
@@ -123,7 +125,7 @@ jobs:
       - name: Upload downloadable Windows VST3
         uses: actions/upload-artifact@v4
         with:
-          name: VOIDCORE-DARK-IMPACT-FINAL-WIN64-VST3
+          name: VOIDCORE-LIVING-SAMPLES-FINAL-WIN64-VST3
           path: VOIDCORE_V12_XENO_${{ matrix.edition }}.zip
           if-no-files-found: error
           retention-days: 30
