@@ -950,8 +950,9 @@ public:
     // texture algorithm. Pattern steps are softly interpolated, never clicked.
     constexpr float seq[16]={1.f,.64f,.92f,.48f,.98f,.56f,.72f,.39f,
                              1.f,.50f,.80f,.60f,.94f,.45f,.84f,.70f};
-    float beat=globalTime*tempo/60.f*clampf(p.tranceRate,.25f,8.f);
-    float slot=std::fmod(beat*4.f+v.note*.125f,16.f);
+    // DAW PPQ is shared by the gates and rhythmic sample treatments.
+    const float beat=(float)motifBeats*clampf(p.tranceRate,.25f,8.f);
+    float slot=std::fmod(beat*4.f+(float)(v.bank%5)*.25f,16.f);
     int ix=std::clamp((int)slot,0,15);
     float frac=slot-ix;
     float transition=clampf((frac-.85f)/.15f,0.f,1.f);
@@ -959,17 +960,28 @@ public:
     float trance=seq[ix]*(1.f-transition)+seq[(ix+1)%16]*transition;
     gain*=1.f-clampf(p.trancePulse,0.f,1.f)*(.95f-trance);
     gain*=phraseGate;
+    // Darkpsy 16th-note bank accents locked to the host, without detuning.
+    const float step16=(float)motifBeats*4.f;
+    const int beatIndex=((int)std::floor(step16)%16+16)%16;
+    const float beatFrac=step16-std::floor(step16);
+    const int bankFamily=v.bank%10;
+    const int roll=(beatIndex*7+bankFamily*3)%16;
+    const float density=clampf(.20f+.48f*p.trancePulse+.22f*p.hits,0.f,.9f);
+    const bool strike=roll<5+(bankFamily%4);
+    const float transient=(1.f-std::exp(-beatFrac*70.f))*std::exp(-beatFrac*(5.f+bankFamily*.42f));
+    const float rhythm=strike?(.53f+.47f*transient):(.56f-.23f*density);
+    gain*=1.f-density*(1.f-rhythm);
     gain*=clampf(1.f+.18f*biome,.55f,1.35f);
     if(p.motif>0)gain*=1.f+.33f*clampf(p.motifAccent,0.f,1.f)*(accent-.45f);
     if(mode==3){
-     float clockPhase=std::fmod(globalTime*tempo/60.f*clampf(p.pulseRate,.25f,16.f)
-             +(float)(v.note%5)*.04f,1.f);
+     float clockPhase=std::fmod((float)motifBeats*clampf(p.pulseRate,.25f,16.f)
+             +(float)(v.bank%5)*.04f,1.f);
      float gate=.16f+.84f*(.5f+.5f*std::cos(2*pi*clockPhase));
      gain*=1.f-clampf(p.texture,0.f,1.f)*(1.f-gate);
     }
     if(mode==4){
      // Liquid deformation with no square gate or high-rate restart.
-     const float angle=2.f*pi*globalTime*clampf(p.pulseRate,.25f,16.f)*tempo/60.f;
+     const float angle=2.f*pi*(float)motifBeats*clampf(p.pulseRate,.25f,16.f);
      const float breathing=.5f+.5f*std::sin(angle+.31f*bio2);
      gain*=1.f-.23f*clampf(p.texture,0.f,1.f)*(1.f-breathing);
     }
