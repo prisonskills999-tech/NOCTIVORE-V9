@@ -220,9 +220,9 @@ VoidcoreEditor::VoidcoreEditor(NoctivoreProcessor& p):AudioProcessorEditor(p),pr
  if(art.existsAsFile())reference=ImageFileFormat::loadFrom(art);
  buildCore();setPage(Core);
  setResizable(true,true);
- setResizeLimits(960,720,1800,1350);
+ setResizeLimits(960,720,1920,1440);
  if(auto* constrainer=getConstrainer())constrainer->setFixedAspectRatio(4.0/3.0);
- setSize(1200,900);
+ setSize(1440,1080);
  startTimerHz(30); // UI-only; DSP never renders on the GUI thread.
 }
 VoidcoreEditor::~VoidcoreEditor(){stopTimer();chooser.reset();}
@@ -249,7 +249,9 @@ void VoidcoreEditor::shift(const char* id,int n){
 void VoidcoreEditor::knob(const char* id,const char* label,float x,float y,float d,Page page_,int style){
  auto c=std::make_unique<Dial>(processor,id,label,(style%3==1)?blood:acid);
  addAndMakeVisible(*c);
- ui.push_back({std::move(c),{x-d*.5f,y-d*.43f,d,d*.95f},(int)page_});
+ // Allocate the tallest useful grip without touching the next panel.
+ const float height=(y>=620.f&&y<745.f?1.16f:(y>=350.f&&y<591.f?1.0f:1.05f))*d;
+ ui.push_back({std::move(c),{x-d*.5f,y-height*.50f,d,height},(int)page_});
 }
 void VoidcoreEditor::choice(const char* id,StringArray items,float x,float y,float w,float h,Page page_){
  auto c=std::make_unique<Choice>(processor,id,items);
@@ -335,21 +337,44 @@ void VoidcoreEditor::timerCallback(){
 VoidcoreEditor::Fader::Fader(NoctivoreProcessor& p,const String& id){
  setSliderStyle(Slider::LinearHorizontal);
  setTextBoxStyle(Slider::NoTextBox,false,0,0);
- setMouseDragSensitivity(180);
+ setMouseDragSensitivity(480);
+ setVelocityModeParameters(.24,2,0.,true);
+ setScrollWheelEnabled(true);
+ setTooltip(id+"  |  drag precisely, Shift for fine movement");
+ if(auto* param=p.state.getParameter(id))
+  setDoubleClickReturnValue(true,param->convertFrom0to1(param->getDefaultValue()));
  link=std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(p.state,id,*this);
 }
 void VoidcoreEditor::Fader::paint(Graphics& g){
- auto r=getLocalBounds().toFloat();
+ const auto r=getLocalBounds().toFloat();
  const float norm=getMaximum()>getMinimum()?clamp01((float)((getValue()-getMinimum())/(getMaximum()-getMinimum()))):0.f;
- const float y=r.getCentreY(), x=r.getX()+12.f+(r.getWidth()-24.f)*norm;
- g.setColour(grey.withAlpha(.5f));g.fillRoundedRectangle(r.getX()+10.f,y-3.f,r.getWidth()-20.f,6.f,3.f);
- g.setColour(acid.withAlpha(.86f));g.fillRoundedRectangle(r.getX()+10.f,y-3.f,std::max(1.f,x-r.getX()-10.f),6.f,3.f);
- g.setColour(blood.withAlpha(.35f));g.fillEllipse(x-13.f,y-13.f,26.f,26.f);
- g.setColour(frost);g.fillRoundedRectangle(x-5.f,y-14.f,10.f,28.f,2.f);
- g.setColour(acid.withAlpha(.55f+.40f*(.5f+.5f*std::sin(animationPhase*2.f))));
- g.drawRoundedRectangle(x-5.f,y-14.f,10.f,28.f,2.f,1.5f);
- g.setColour(frost.withAlpha(.55f));
- g.fillEllipse(x-2.f,y-2.f,4.f,4.f);
+ const float left=14.f,right=r.getRight()-47.f;
+ const float cy=r.getCentreY();
+ const float x=left+std::max(1.f,right-left)*norm;
+ const bool hot=isMouseOverOrDragging()||isMouseButtonDown();
+ const Colour white=Colour::fromRGB(244,244,244);
+ g.setColour(Colour::fromRGB(11,11,11));g.fillRoundedRectangle(r.reduced(.8f),4.f);
+ g.setColour(hot?white.withAlpha(.7f):white.withAlpha(.30f));
+ g.drawRoundedRectangle(r.reduced(1.5f),4.f,hot?1.5f:.8f);
+ for(int i=0;i<=10;++i){
+  const float px=left+(right-left)*(float)i/10.f;
+  g.setColour(white.withAlpha(i%5==0?.65f:.32f));
+  g.drawVerticalLine((int)px,cy+11.f,cy+(i%5==0?17.f:14.f));
+ }
+ g.setColour(Colour::fromRGB(44,44,44));
+ g.fillRoundedRectangle(left,cy-5.f,right-left,10.f,3.f);
+ g.setColour(white.withAlpha(.88f));
+ g.fillRoundedRectangle(left,cy-4.f,std::max(1.f,x-left),8.f,2.f);
+ ColourGradient body(Colour::fromRGB(205,205,205),x-11.f,cy-19.f,
+                     Colour::fromRGB(82,82,82),x+11.f,cy+19.f,false);
+ g.setGradientFill(body);
+ g.fillRoundedRectangle(x-11.f,cy-19.f,22.f,38.f,3.f);
+ g.setColour(white);g.drawRoundedRectangle(x-11.f,cy-19.f,22.f,38.f,3.f,1.4f);
+ g.setColour(Colour::fromRGB(18,18,18));
+ g.fillRoundedRectangle(x-1.8f,cy-12.f,3.6f,24.f,1.f);
+ const String read=String((int)std::round(norm*100.f))+"%";
+ g.setColour(white);g.setFont(Font(12.f,Font::bold));
+ g.drawFittedText(read,roundToInt(r.getRight()-43.f),roundToInt(cy-9.f),38,18,Justification::centred,1);
 }
 void VoidcoreEditor::fader(const char* id,float x,float y,float w,float h,Page pg){
  auto c=std::make_unique<Fader>(processor,id);
@@ -1024,8 +1049,8 @@ void VoidcoreEditor::drawCore(Graphics& g){
  filter(g,{985,168,179,73});
  lfo(g,{188,416,170,34},focusLfo);
  g.setColour(frost.withAlpha(.66f));g.setFont(Font(9.f));
- g.drawText("SAMPLE A",48,239,132,16,Justification::centred);
- g.drawText("SAMPLE B",231,239,132,16,Justification::centred);
+ 
+ 
  g.drawFittedText("MORPH",560,517,76,16,Justification::centred,1);
  // Lower panel readouts are live DSP measurements, not ornamental meters.
  for(int ch=0;ch<2;++ch){
