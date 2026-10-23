@@ -81,7 +81,7 @@ void VoidcoreEditor::Dial::paint(Graphics& g){
  g.setColour(frost);g.setFont(Font(std::clamp(h*.176f,8.f,11.f),Font::bold));
  g.drawFittedText(label,0,roundToInt(h*.69f),roundToInt(w),roundToInt(h*.18f),Justification::centred,1);
  g.setColour(accent.withAlpha(.95f));g.setFont(Font(std::clamp(h*.147f,8.f,10.f)));
- g.drawFittedText(String(getValue(),getMaximum()>5?1:2),0,roundToInt(h*.85f),
+ g.drawFittedText(label=="RATE" ? (getValue()<.01 ? String(getValue(),5) : String(getValue(),3)) : String(getValue(),getMaximum()>5?1:2),0,roundToInt(h*.85f),
                   roundToInt(w),roundToInt(h*.14f),Justification::centred,1);
 }
 void VoidcoreEditor::OrbPad::apply(const MouseEvent& e){
