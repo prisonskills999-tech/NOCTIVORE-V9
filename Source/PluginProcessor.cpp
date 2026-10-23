@@ -49,12 +49,12 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  add("cutoff","Filter Cutoff",.015f,1,.95f);
  add("resonance","Filter Resonance",0,1,.14f);
  a.push_back(std::make_unique<AudioParameterFloat>(ParameterID{"rate",1},"LFO 1 Rate",
-      NormalisableRange<float>(.001f,35.f,0.f,3.f),.035f));
+      NormalisableRange<float>(.00005f,3.f,0.f,2.6f),.0018f));
  add("depth","LFO 1 Depth",0,1,0.f);
  choose("wave","LFO 1 Shape",{"Sine","Triangle","Saw","Square","Sample & Hold","Fractal"});
  StringArray modTargets{"Volume","Pan","Pitch","Filter 1","Filter 2","FM Index","A/B Morph","Metal Exciter","Grain Density","Delay Warp","Reverb Motion"};
  choose("target","LFO 1 Target",modTargets,3);
- choose("lfo1Sync","LFO 1 Sync",{"Free","1 bar","1/2 bar","1/4 bar","1/8 bar","1/16 bar"});
+ choose("lfo1Sync","LFO 1 Sync",{"Free","1 bar","2 bars","4 bars","8 bars","16 bars","32 bars","64 bars","128 bars"});
  for(int i=2;i<=4;++i){
    auto j=String(i);
    String r="lfo"+j+"Rate",d="lfo"+j+"Depth",w="lfo"+j+"Wave",t="lfo"+j+"Target",sy="lfo"+j+"Sync";
@@ -62,13 +62,17 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
      a.push_back(std::make_unique<AudioParameterFloat>(ParameterID{id,1},name,
        NormalisableRange<float>(low,high,0.f,3.f),def));
    };
-   addSlow(r,"LFO "+j+" Rate",.001f,35.f,i==2?.022f:i==3?.071f:.12f);
+   addSlow(r,"LFO "+j+" Rate",.00005f,3.f,i==2?.001f:i==3?.00035f:.00012f);
    addSlow(d,"LFO "+j+" Depth",0.f,1.f,0.f);
    choose(w.toRawUTF8(),("LFO "+j+" Shape").toRawUTF8(),{"Sine","Triangle","Saw","Square","Sample & Hold","Fractal"});
    choose(t.toRawUTF8(),("LFO "+j+" Target").toRawUTF8(),modTargets,i==2?6:i==3?5:4);
-   choose(sy.toRawUTF8(),("LFO "+j+" Sync").toRawUTF8(),{"Free","1 bar","1/2 bar","1/4 bar","1/8 bar","1/16 bar"});
+   choose(sy.toRawUTF8(),("LFO "+j+" Sync").toRawUTF8(),{"Free","1 bar","2 bars","4 bars","8 bars","16 bars","32 bars","64 bars","128 bars"});
  }
- add("glide","Glide",0,1.5f,.07f);
+ for(int i=1;i<=4;++i){
+   auto id=i==1?String("lfo1Phase"):String("lfo")+String(i)+"Phase";
+   add(id.toRawUTF8(),("LFO "+String(i)+" Phase").toRawUTF8(),0.f,1.f,0.f);
+  }
+  add("glide","Glide",0,1.5f,.07f);
  add("space","Space",0,.95f,.38f);
  add("volume","Volume",0,1.5f,.76f);
  add("pan","Pan",-1,1,0);
@@ -99,6 +103,12 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  add("reverbPreDelay","Reverb Predelay",0,1,.19f);
  add("shimmer","Spectral Bloom",0,1,.09f);
  add("duck","FX Duck",0,1,.24f);
+  choose("delayMode","Delay Algorithm",{"Tape","Ping Pong","Diffuse","Dub"});
+  add("delayDrive","Delay Feedback Color",0.f,1.f,.24f);
+  choose("delayFreeze","Delay Infinite Hold",{"Run","Hold"});
+  choose("reverbMode","Reverb Algorithm",{"Chamber","Plate","Cathedral","Void"});
+  add("reverbWidth","Reverb Stereo Width",0.f,1.f,.83f);
+  choose("reverbFreeze","Reverb Infinite Hold",{"Run","Hold"});
  // New controls appended: keeps all legacy V4 parameter IDs intact for Ableton.
  choose("bankB","Source B Bank",names,7);
  choose("textureMode","Texture Algorithm",{"Flow","Grain Cloud","Orbital","Pulsar","Liquid Warp","Time Freeze"});
@@ -250,10 +260,12 @@ void NoctivoreProcessor::processBlock(AudioBuffer<float>& output,MidiBuffer& eve
  p.texture=get("texture");p.grain=get("grain");p.scatter=get("scatter");
  p.pulseRate=get("pulseRate");p.spectralTilt=get("spectralTilt");
  p.lfos[0]={get("rate"),get("depth"),(int)get("wave"),(int)get("target"),(int)get("lfo1Sync")};
+ p.lfos[0].offset=get("lfo1Phase");
  for(int i=1;i<4;++i){
   String prefix="lfo"+String(i+1);
   p.lfos[(size_t)i]={get((prefix+"Rate").toRawUTF8()),get((prefix+"Depth").toRawUTF8()),
    (int)get((prefix+"Wave").toRawUTF8()),(int)get((prefix+"Target").toRawUTF8()),(int)get((prefix+"Sync").toRawUTF8())};
+  p.lfos[(size_t)i].offset=get((prefix+"Phase").toRawUTF8());
  }
  p.filter2Mode=(int)get("filter2Mode");p.filterRoute=(int)get("filterRoute");
  p.cutoff2=get("cutoff2");p.resonance2=get("resonance2");p.filterBlend=get("filterBlend");
@@ -297,6 +309,10 @@ void NoctivoreProcessor::processBlock(AudioBuffer<float>& output,MidiBuffer& eve
  p.fx.reverbMix=get("reverbMix");p.fx.reverbSize=get("reverbSize");p.fx.reverbDecay=get("reverbDecay");
  p.fx.reverbDark=get("reverbDark");p.fx.reverbMod=get("reverbMod");p.fx.reverbPreDelay=get("reverbPreDelay");
  p.fx.shimmer=get("shimmer");p.fx.duck=get("duck");
+  p.fx.delayMode=(int)get("delayMode");
+  p.fx.delayDrive=get("delayDrive");p.fx.delayFreeze=get("delayFreeze");
+  p.fx.reverbMode=(int)get("reverbMode");
+  p.fx.reverbWidth=get("reverbWidth");p.fx.reverbFreeze=get("reverbFreeze");
  // Preserve old saved 'Space' settings as a macro on the new reverb amount.
  p.fx.reverbMix=noctivore::clampf(p.fx.reverbMix*(.65f+get("space")),0,1);
  if(auto* playhead=getPlayHead())
