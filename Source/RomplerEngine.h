@@ -65,6 +65,7 @@ struct Params {
  // Final XENO destruction matrix: deliberate, bank-linked character, never
  // a permanent hiss/bitcrusher on every source.
  float drop=.55f, hits=.24f, body=.46f, grit=.30f, dark=.43f;
+ float evolution=.68f; // Long-horizon sample-chapter exploration
  // V10.5 user-editable 16 step gate: default all steps active.
  std::array<float,16> gateSteps{{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}};
 
@@ -326,6 +327,7 @@ public:
    v->impactProgress=1.f;v->impactCountdown=.08f;
    v->impactLength=.2f;v->impactSpeed=.5f;v->impactPitch=0.f;
    v->impactPhase=0.f;v->gritPre=v->gritPost=v->darkLP=0.f;
+   v->evolveAge=v->evolvePhase=v->evolveScan=0.f;
    v->anchorA[0]=v->position;v->anchorA[1]=v->position+.09f*v->sample->rate;
    v->anchorB[0]=v->positionB;v->anchorB[1]=v->positionB+.09f*v->sampleB->rate;
    v->level=0;v->stage=1;v->lp=0;v->bp=0;
@@ -458,8 +460,18 @@ public:
     // are allocated in the audio thread. Morph is equal-power and optionally
     // meanders at a second, deliberately slow modulation rate.
     const bool droneLoop=!v.oneShot && p.reverse<=.5f;
+    // Each held voice visits different temporal chapters of the WAV.
+    // Incommensurate multi-rate cycles never reset at loop wrap.
+    const float evolving=clampf(p.evolution,0.f,1.f);
+    v.evolveAge+=dt;
+    v.evolvePhase+=dt*(.17f+.31f*evolving);
+    const float exploreFade=clampf((v.evolveAge-.7f)/3.2f,0.f,1.f);
+    v.evolveScan=droneLoop?evolving*exploreFade*
+       (.075f*std::sin(v.evolvePhase+.013f*(float)v.note)+
+        .044f*std::sin(.413f*v.evolvePhase+.29f*(float)(v.bank%10))):0.f;
     auto readAt=[&](const Sample& source,float x)->float{
      const float n=(float)source.data.size();
+     if(droneLoop)x+=n*v.evolveScan; // smoothly scan recorded chapters
      if(droneLoop){
       const float begin=n*.17f,end=n*.88f;
       const float overlap=std::min((float)source.rate*.19f,(end-begin)*.20f);
@@ -1064,6 +1076,7 @@ private:
   float impactPosA=0.f,impactPosB=0.f,impactProgress=1.f,impactLength=.2f;
   float impactCountdown=0.f,impactSpeed=.5f,impactPitch=0.f;
   float impactPhase=0.f,gritPre=0.f,gritPost=0.f,darkLP=0.f;
+  float evolveAge=0.f,evolvePhase=0.f,evolveScan=0.f;
   float smoothMorph=.2f,smoothFmMix=0.f,smoothFold=0.f,smoothSolo=0.f;
   bool grainSecondHalf=false;
   std::array<float,2> anchorA{},anchorB{};uint32_t noiseState=1;
