@@ -369,7 +369,7 @@ void VoidcoreEditor::buildCore(){
  knob("rate","RATE",63,481,69,Core);
  knob("depth","DEPTH",149,481,69,Core);
  knob("morphMotion","MORPH MOD",238,481,69,Core);
- knob("movement","MOVEMENT",326,481,69,Core);
+ knob("evolution","EVOLVE",326,481,69,Core);
  // Character is the genuine filter/organism macro; the two neighboring
  // parameters change the granular time structure, not cosmetic animations.
  // The full XENO sound matrix stays on this one screen. All knobs are
