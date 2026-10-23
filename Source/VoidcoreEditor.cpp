@@ -510,6 +510,8 @@ void VoidcoreEditor::buildCore(){
  knob("volume","MASTER",555,805,92,Core);
  choice("mode",{"Polyphonic","Mono","Legato"},697,755,150,28,Core);
  knob("glide","GLIDE",732,812,70,Core);
+ // Long weighted performance fader directly drives the audible modulation macro.
+ fader("performanceMod",865,794,233,38,Core);
  // Real MIDI keyboard, available without any navigation or secondary page.
  auto keys=std::make_unique<MidiKeyboardComponent>(
     processor.keyboardState,MidiKeyboardComponent::horizontalKeyboard);
@@ -1052,6 +1054,9 @@ void VoidcoreEditor::drawCore(Graphics& g){
  
  
  g.drawFittedText("MORPH",560,517,76,16,Justification::centred,1);
+ // Compact fader legend stays separate from the moving thumb.
+ g.setColour(frost);g.setFont(Font(11.f,Font::bold));
+ g.drawText("PERFORMANCE MODULATION",869,780,230,13,Justification::centred);
  // Lower panel readouts are live DSP measurements, not ornamental meters.
  for(int ch=0;ch<2;++ch){
   const float m=std::sqrt(clamp01(meterLevels[(size_t)ch]));
