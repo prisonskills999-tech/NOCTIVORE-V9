@@ -17,12 +17,12 @@ public:
  void resized() override;
 private:
  enum Page { Core=0, Motion, Fx, System, PageCount };
- static constexpr float W=1200.f,H=750.f;
- const juce::Colour green=juce::Colour::fromRGB(232,44,52);
- const juce::Colour red=juce::Colour::fromRGB(244,246,249);
- const juce::Colour text=juce::Colour::fromRGB(235,237,240);
- const juce::Colour dim=juce::Colour::fromRGB(118,122,133);
- const juce::Colour black=juce::Colour::fromRGB(6,7,10);
+ static constexpr float W=1200.f,H=900.f;
+ const juce::Colour green=juce::Colour::fromRGB(222,222,222);
+ const juce::Colour red=juce::Colour::fromRGB(246,246,246);
+ const juce::Colour text=juce::Colour::fromRGB(237,237,237);
+ const juce::Colour dim=juce::Colour::fromRGB(137,137,137);
+ const juce::Colour black=juce::Colour::fromRGB(6,6,6);
  NoctivoreProcessor& processor;
  Page page=Core;
  float clock=0.f,smoothedPeak=0.f;
@@ -81,6 +81,8 @@ private:
  std::array<Click*,4> filterModeButtons{};
  Click* reverseButton=nullptr;
  Click* sourceSoloButton=nullptr;
+ Click* delayHoldButton=nullptr;
+ Click* reverbHoldButton=nullptr;
  std::array<std::array<float,192>,2> previews{};
  void updatePreview(int);
  std::unique_ptr<juce::FileChooser> chooser;
