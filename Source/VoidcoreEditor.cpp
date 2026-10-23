@@ -34,7 +34,7 @@ VoidcoreEditor::Dial::Dial(NoctivoreProcessor& p,const String& id,const String& 
  // A long throw makes it easy to settle on a precise sound. JUCE's
  // velocity modifier allows the user to switch to even finer gestures.
  setMouseDragSensitivity(480);
- setVelocityModeParameters(.24,2,0.,true);
+ setVelocityModeParameters(.24,2,0.,true,ModifierKeys::shiftModifier);
  setScrollWheelEnabled(true);
  setMouseCursor(MouseCursor::UpDownResizeCursor);
  setTooltip(text+"  |  drag vertically to adjust  |  Shift for precision  |  double-click to reset");
@@ -338,7 +338,7 @@ VoidcoreEditor::Fader::Fader(NoctivoreProcessor& p,const String& id){
  setSliderStyle(Slider::LinearHorizontal);
  setTextBoxStyle(Slider::NoTextBox,false,0,0);
  setMouseDragSensitivity(480);
- setVelocityModeParameters(.24,2,0.,true);
+ setVelocityModeParameters(.24,2,0.,true,ModifierKeys::shiftModifier);
  setScrollWheelEnabled(true);
  setTooltip(id+"  |  drag precisely, Shift for fine movement");
  if(auto* param=p.state.getParameter(id))
