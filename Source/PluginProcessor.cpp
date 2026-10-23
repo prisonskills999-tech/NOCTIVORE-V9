@@ -49,7 +49,7 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  add("cutoff","Filter Cutoff",.015f,1,.95f);
  add("resonance","Filter Resonance",0,1,.14f);
  a.push_back(std::make_unique<AudioParameterFloat>(ParameterID{"rate",1},"LFO 1 Rate",
-      NormalisableRange<float>(.001f,35.f,0.f,3.f),.035f));
+      NormalisableRange<float>(.00001f,3.f,0.f,3.f),.0015f));
  add("depth","LFO 1 Depth",0,1,0.f);
  choose("wave","LFO 1 Shape",{"Sine","Triangle","Saw","Square","Sample & Hold","Fractal"});
  StringArray modTargets{"Volume","Pan","Pitch","Filter 1","Filter 2","FM Index","A/B Morph","Metal Exciter","Grain Density","Delay Warp","Reverb Motion"};
@@ -62,7 +62,7 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
      a.push_back(std::make_unique<AudioParameterFloat>(ParameterID{id,1},name,
        NormalisableRange<float>(low,high,0.f,3.f),def));
    };
-   addSlow(r,"LFO "+j+" Rate",.001f,35.f,i==2?.022f:i==3?.071f:.12f);
+   addSlow(r,"LFO "+j+" Rate",.00001f,3.f,i==2?.0003f:i==3?.0007f:.001f);
    addSlow(d,"LFO "+j+" Depth",0.f,1.f,0.f);
    choose(w.toRawUTF8(),("LFO "+j+" Shape").toRawUTF8(),{"Sine","Triangle","Saw","Square","Sample & Hold","Fractal"});
    choose(t.toRawUTF8(),("LFO "+j+" Target").toRawUTF8(),modTargets,i==2?6:i==3?5:4);
