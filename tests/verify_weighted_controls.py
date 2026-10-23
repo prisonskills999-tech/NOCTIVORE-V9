@@ -29,7 +29,7 @@ assert "fillRoundedRectangle(x-11.f,cy-19.f,22.f,38.f" in fader
 assert "std::max(1.f,x-left)" in fader
 assert "height=(y>=620.f&&y<745.f?1.16f" in e
 assert "buildCore();setPage(Core);" in e
-assert "node.onPage=20+focusLfo" in e
+assert "node.onPage==20+focusLfo" in e
 for key in ("morph","character","grain","delayMix","reverbMix","toneLow","cutoff"):
     assert 'knob("'+key+'"' in main
 assert re.search(r"Colour::fromRGB\((\d+),\1,\1\)",dial)
