@@ -81,7 +81,7 @@ void VoidcoreEditor::Dial::paint(Graphics& g){
  g.setColour(frost);g.setFont(Font(std::clamp(h*.176f,8.f,11.f),Font::bold));
  g.drawFittedText(label,0,roundToInt(h*.69f),roundToInt(w),roundToInt(h*.18f),Justification::centred,1);
  g.setColour(accent.withAlpha(.95f));g.setFont(Font(std::clamp(h*.147f,8.f,10.f)));
- g.drawFittedText(String(getValue(),getMaximum()>5?1:2),0,roundToInt(h*.85f),
+ g.drawFittedText(String(getValue(),getValue()<.01?5:getValue()<1.?3:getMaximum()>5?1:2),0,roundToInt(h*.85f),
                   roundToInt(w),roundToInt(h*.14f),Justification::centred,1);
 }
 void VoidcoreEditor::OrbPad::apply(const MouseEvent& e){
@@ -920,7 +920,7 @@ void VoidcoreEditor::lfo(Graphics& g,Rectangle<float> r,int which){
  }
  neonLine(g,p,acid,1.65f);
  g.setColour(frost.withAlpha(.7f));g.setFont(Font(10.f));
- g.drawText("LIVE MODULATION  //  "+String(value(hz.toRawUTF8()),3)+" Hz",r.getX()+8.f,r.getY()+6.f,r.getWidth()-16.f,18.f,Justification::topLeft);
+ g.drawText("LFO "+String(which+1)+"  /  "+String(value(hz.toRawUTF8()),5)+" Hz",r.getX()+8.f,r.getY()+6.f,r.getWidth()-16.f,18.f,Justification::topLeft);
 }
 void VoidcoreEditor::filter(Graphics& g,Rectangle<float> r){
  g.setColour(Colour::fromRGB(10,10,10));g.fillRoundedRectangle(r,5.f);
@@ -1044,8 +1044,8 @@ void VoidcoreEditor::drawDeep(Graphics& g){
 }
 void VoidcoreEditor::paintStatus(Graphics& g){
  g.setColour(grey);g.setFont(Font(9.f,Font::bold));
- g.drawText(playing?"AUDIO ACTIVE":"READY",28,716,184,14,Justification::centredLeft);
- g.drawText("VOIDCORE  /  ONE-PAGE XENO ENGINE",1040,716,140,14,Justification::centredRight);
+ g.drawText(playing?"AUDIO ACTIVE":"READY",1090,28,89,14,Justification::centredRight);
+ g.drawText("MONOCHROME  /  4 LFO",1070,45,108,12,Justification::centredRight);
 }
 void VoidcoreEditor::paint(Graphics& g){
  Graphics::ScopedSaveState state(g);
