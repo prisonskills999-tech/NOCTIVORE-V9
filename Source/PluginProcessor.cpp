@@ -192,6 +192,7 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  add("toneMid","Tone Mid",0.f,1.f,.5f);
  add("toneHigh","Tone High",0.f,1.f,.45f);
  add("character","XENO Exciter Amount",0.f,1.f,0.f);
+ add("evolution","Living Sample Evolution",0.f,1.f,.68f);
  // These five macros are intentionally independent of the old shared
  // oscillators. Defaults create weight and irregular life, without forced
  // high-frequency aliasing or brickwall crushing.
@@ -281,6 +282,7 @@ void NoctivoreProcessor::processBlock(AudioBuffer<float>& output,MidiBuffer& eve
  p.psyFold=get("psyFold");p.symbiosis=get("symbiosis");
  p.predator=get("predator");p.insectCode=get("insectCode");p.burrow=get("burrow");
  p.character=get("character");p.sourceSolo=get("sourceSolo");
+ p.evolution=get("evolution");
  p.drop=get("drop");p.hits=get("hits");p.body=get("body");
  p.grit=get("grit");p.dark=get("dark");
  p.tuneA=get("tuneA");p.tuneB=get("tuneB");
