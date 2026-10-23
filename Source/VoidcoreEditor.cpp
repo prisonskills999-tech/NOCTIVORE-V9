@@ -981,7 +981,7 @@ void VoidcoreEditor::drawCore(Graphics& g){
  g.drawFittedText("XY CORE: HORIZONTAL MORPH  /  VERTICAL EVOLUTION",433,426,334,17,Justification::centred,1);
  // Filter and LFO curves update with the real parameter values, not GIFs.
  filter(g,{985,168,179,73});
- lfo(g,{43,443,300,28},focusLfo);
+ lfo(g,{188,416,170,34},focusLfo);
  g.setColour(frost.withAlpha(.66f));g.setFont(Font(9.f));
  g.drawText("SAMPLE A",48,239,132,16,Justification::centred);
  g.drawText("SAMPLE B",231,239,132,16,Justification::centred);
