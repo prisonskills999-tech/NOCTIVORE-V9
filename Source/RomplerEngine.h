@@ -18,6 +18,7 @@ inline float clampf(float x,float a,float b){return std::max(a,std::min(b,x));}
 struct LFOConfig {
  float rate=.009f, depth=0.f;
  int wave=0, target=0, sync=0;
+ float offset=0.f;
 };
 struct Params {
  int bank=0, mode=0, velocityCurve=1, resampling=1, lfoWave=0, lfoTarget=0, filterMode=0;
@@ -376,21 +377,23 @@ public:
    // A small modulation envelope scales depth after attack and before release.
    for(size_t m=0;m<modulators.size();++m){
     auto& osc=modulators[m];const auto& cfg=p.lfos[m];
-    float hz=clampf(cfg.rate,.0002f,1.5f);
-    if(cfg.sync>0){constexpr float beatLengths[]={4.f,2.f,1.f,.5f,.25f,8.f,16.f,32.f,64.f,128.f};
-      hz=(tempo/60.f)/beatLengths[(size_t)std::clamp(cfg.sync-1,0,9)];}
+    float hz=clampf(cfg.rate,.00002f,3.f);
+    if(cfg.sync>0){constexpr float beatLengths[]={4.f,8.f,16.f,32.f,64.f,128.f,256.f,512.f};
+      hz=(tempo/60.f)/beatLengths[(size_t)std::clamp(cfg.sync-1,0,7)];}
     osc.phase+=hz*dt;
     if(osc.phase>=1.f){osc.phase-=std::floor(osc.phase);
       osc.seed=1664525u*osc.seed+1013904223u;
       osc.random=((osc.seed>>8)*(1.f/8388608.f)-1.f);}
     float shape=0.f;
+    const float shifted=osc.phase+clampf(cfg.offset,0.f,1.f);
+    const float phase=shifted-std::floor(shifted);
     switch(cfg.wave){
-      case 1: shape=1.f-4.f*std::fabs(osc.phase-.5f);break;
-      case 2: shape=2.f*osc.phase-1.f;break;
-      case 3: shape=osc.phase<.5f?1.f:-1.f;break;
+      case 1: shape=1.f-4.f*std::fabs(phase-.5f);break;
+      case 2: shape=2.f*phase-1.f;break;
+      case 3: shape=phase<.5f?1.f:-1.f;break;
       case 4: shape=osc.random;break;
-      case 5: shape=std::sin(2.f*pi*osc.phase)*std::sin(2.f*pi*osc.phase*3.f);break;
-      default:shape=std::sin(2.f*pi*osc.phase);
+      case 5: shape=std::sin(2.f*pi*phase)*std::sin(2.f*pi*phase*3.f);break;
+      default:shape=std::sin(2.f*pi*phase);
     }
     // Deliberate fine response for subtle organic movement.
     float depth=clampf(cfg.depth,0,1); depth=depth*depth;

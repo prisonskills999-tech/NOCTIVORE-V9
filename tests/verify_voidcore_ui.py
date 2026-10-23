@@ -23,7 +23,7 @@ assert "return new VoidcoreEditor(*this)" in processor
 assert '#include "VoidcoreEditor.h"' in processor
 assert 'Source/VoidcoreEditor.cpp' in cmake
 assert "if(NOT NOCTIVORE_GENERIC_EDITOR)" in cmake
-assert 'setFixedAspectRatio(1.6)' in editor
+assert 'setFixedAspectRatio(4.0/3.0)' in editor
 assert 'startTimerHz(30)' in editor
 assert "processor.scopeCursor.load" in editor
 assert "processor.displayPpq.load" in editor
