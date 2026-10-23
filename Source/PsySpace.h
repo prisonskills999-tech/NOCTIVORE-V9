@@ -99,8 +99,8 @@ public:
    const float driveR=darkR*(1.f-.72f*color)+std::tanh(darkR*(1.f+5.f*color))*.72f*color;
    darkL=driveL;darkR=driveR;
    float fb=c.delayFreeze?.989f:std::clamp(c.delayFeedback,0.f,.96f);
-  float writeL=((c.delayFreeze?0.f:inL)+fb*(darkL*(1-spread)+darkR*spread)+diffusion*diffL[0])*.83f;
-  float writeR=((c.delayFreeze?0.f:inR)+fb*(darkR*(1-spread)+darkL*spread)+diffusion*diffR[0])*.83f;
+  float writeL=((c.delayFreeze?0.f:inL)+fb*(darkL*(1-spread)+darkR*spread)+diffusion*diffL[0])*(c.delayFreeze?1.f:.83f);
+  float writeR=((c.delayFreeze?0.f:inR)+fb*(darkR*(1-spread)+darkL*spread)+diffusion*diffR[0])*(c.delayFreeze?1.f:.83f);
   diffL[0]=darkL;diffR[0]=darkR;
   // Continuous overload protection without saturating every normal sample.
    delayL[delayPos]=writeL/std::sqrt(1.f+.13f*writeL*writeL);
