@@ -282,11 +282,14 @@ void VoidcoreEditor::setPage(Page next){
  repaint();
 }
 void VoidcoreEditor::resized(){
- const float sx=(float)getWidth()/W,sy=(float)getHeight()/H;
+ // Uniform scale preserves knob and button aspect ratios.
+ const float scale=std::min((float)getWidth()/W,(float)getHeight()/H);
+ const float ox=((float)getWidth()-W*scale)*.5f;
+ const float oy=((float)getHeight()-H*scale)*.5f;
  for(auto& node:ui){
   auto a=node.area;
-  node.control->setBounds(roundToInt(a.getX()*sx),roundToInt(a.getY()*sy),
-                          std::max(1,roundToInt(a.getWidth()*sx)),std::max(1,roundToInt(a.getHeight()*sy)));
+  node.control->setBounds(roundToInt(ox+a.getX()*scale),roundToInt(oy+a.getY()*scale),
+                          std::max(1,roundToInt(a.getWidth()*scale)),std::max(1,roundToInt(a.getHeight()*scale)));
  }
 }
 void VoidcoreEditor::timerCallback(){
@@ -412,8 +415,8 @@ void VoidcoreEditor::buildCore(){
  choice("bankB",banks,218,126,140,28,Core);
  click("<",20,127,21,27,Core,[this]{shift("bank",-1);});
  click(">",184,127,22,27,Core,[this]{shift("bank",1);});
- click("<",196,168,20,27,Core,[this]{shift("bankB",-1);});
- click(">",357,168,20,27,Core,[this]{shift("bankB",1);});
+ click("<",196,127,20,27,Core,[this]{shift("bankB",-1);});
+ click(">",361,127,20,27,Core,[this]{shift("bankB",1);});
  knob("tuneA","TUNE A",68,274,69,Core);
  knob("levelA","LEVEL A",156,274,69,Core);
  knob("tuneB","TUNE B",247,274,69,Core);

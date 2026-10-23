@@ -3,7 +3,7 @@ name: VOIDCORE WEIGHTED CONTROLS VST3
 on:
   # Manual runs prevent repeated private-repository minute consumption on every commit.
   push:
-    branches: [feature/voidcore-astral-full-reskin, feature/voidcore-hifi-clean-diverse, feature/voidcore-phase-clean-source-audio, feature/voidcore-final-one-page-red, feature/voidcore-final-dark-granular-impact, feature/voidcore-living-evolving-samples, feature/voidcore-monochrome-four-lfo-space, feature/voidcore-weighted-large-controls, feature/darkpsy-industrial-pitch-stable-banks]
+    branches: [feature/voidcore-astral-full-reskin, feature/voidcore-hifi-clean-diverse, feature/voidcore-phase-clean-source-audio, feature/voidcore-final-one-page-red, feature/voidcore-final-dark-granular-impact, feature/voidcore-living-evolving-samples, feature/voidcore-monochrome-four-lfo-space, feature/voidcore-weighted-large-controls, feature/darkpsy-industrial-pitch-stable-banks, feature/darkpsy-tempo-grid-ui-repair]
   workflow_dispatch:
 
 permissions:
