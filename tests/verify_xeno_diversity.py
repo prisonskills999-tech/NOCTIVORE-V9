@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the 200 original VOIDCORE V12 soundscapes after generation."""
+"""Validate 200 original VOIDCORE Living Atlas soundscapes after generation."""
 from pathlib import Path
 import numpy as np
 from scipy.io import wavfile
@@ -17,7 +17,7 @@ envelope_cvs = []
 for bank in range(10):
     sr, raw = wavfile.read(BANKS / f"{bank:02d}_60.wav")
     assert sr == 48000 and raw.dtype == np.int16 and raw.ndim == 1
-    assert 7.0 * sr < len(raw) < 11 * sr, f"Unexpected duration: {bank}"
+    assert 11.0 * sr < len(raw) < 15 * sr, f"Unexpected Living Atlas duration: {bank}"
     y = raw.astype(np.float64) / 32768.0
     assert np.isfinite(y).all()
     rms = float(np.sqrt(np.mean(y * y)))
