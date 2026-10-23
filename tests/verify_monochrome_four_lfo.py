@@ -18,7 +18,7 @@ assert "lfo(g,{43,443,300,28},focusLfo)" in editor
 assert "clampf(cfg.rate,.00001f,3.f)" in engine
 assert "NormalisableRange<float>(.00001f,3.f" in params
 for param in ("delayImpact","delayDrift","delayMode","reverbImpact","reverbMode","reverbWidth"):
- assert 'add("'+param+'"' in params and 'p.fx.'+param+'=get("'+param+'")' in params
+ assert 'add("'+param+'"' in params and ('p.fx.'+param+'=get("'+param+'")' in params or 'p.fx.'+param+'=(int)get("'+param+'")' in params)
  assert ('choice("'+param+'"' in main or 'knob("'+param+'"' in main)
  assert 'c.'+param in space
 for name in ("sourceWave(g,","scope(g,","lfo(g,","filter(g,"):
