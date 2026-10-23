@@ -179,9 +179,9 @@ VoidcoreEditor::VoidcoreEditor(NoctivoreProcessor& p):AudioProcessorEditor(p),pr
  if(art.existsAsFile())reference=ImageFileFormat::loadFrom(art);
  buildCore();setPage(Core);
  setResizable(true,true);
- setResizeLimits(960,600,1800,1125);
- if(auto* constrainer=getConstrainer())constrainer->setFixedAspectRatio(1.6);
- setSize(1200,750);
+ setResizeLimits(960,720,1800,1350);
+ if(auto* constrainer=getConstrainer())constrainer->setFixedAspectRatio(4.0/3.0);
+ setSize(1200,900);
  startTimerHz(30); // UI-only; DSP never renders on the GUI thread.
 }
 VoidcoreEditor::~VoidcoreEditor(){stopTimer();chooser.reset();}
@@ -414,20 +414,36 @@ void VoidcoreEditor::buildCore(){
   steps[(size_t)i]=dynamic_cast<Click*>(ui.back().control.get());
  }
  knob("motifGate","GATE",1121,556,59,Core);
- // Space controls have separate real delay and reverb controls.
- knob("delayMix","DELAY",63,661,66,Core);
- knob("delayFeedback","FEEDBACK",142,661,66,Core);
- knob("reverbMix","REVERB",221,661,66,Core);
- knob("reverbDecay","DECAY",299,661,66,Core);
- // Native -9/+9 dB three-band EQ: all three have audible spectral impact.
- knob("toneLow","LOW",394,661,70,Core);
- knob("toneMid","MID",479,661,70,Core);
- knob("toneHigh","HIGH",566,661,70,Core);
- knob("stereo","WIDTH",692,661,84,Core);
- knob("pan","PAN",790,661,66,Core);
- knob("volume","VOLUME",927,661,94,Core);
- choice("mode",{"Polyphonic","Mono","Legato"},1054,626,111,27,Core);
- knob("glide","GLIDE",1117,674,67,Core);
+ // Monochrome impact FX, expanded into two real DSP modules.
+ choice("division",{"1/4","1/8","1/8 dotted","1/16","1/16 dotted","1/32","1/4 triplet","1/8 triplet"},35,630,144,23,Core);
+ choice("delayMode",{"Stereo","Ping Pong","Mono","Drifting"},186,630,171,23,Core);
+ knob("delayMix","MIX",55,693,65,Core);
+ knob("delayFeedback","FEED",123,693,65,Core);
+ knob("delayImpact","IMPACT",191,693,65,Core);
+ knob("delayWarp","WARP",259,693,65,Core);
+ knob("delayDiffusion","DIFFUSE",328,693,65,Core);
+ knob("delayDrift","DRIFT",397,693,65,Core);
+ knob("delayTone","TONE",466,693,65,Core);
+ knob("delaySpread","SPREAD",535,693,65,Core);
+ choice("reverbMode",{"Hall","Plate","Chamber","Infinite"},601,630,180,23,Core);
+ knob("reverbMix","MIX",610,693,65,Core);
+ knob("reverbSize","SIZE",678,693,65,Core);
+ knob("reverbDecay","DECAY",746,693,65,Core);
+ knob("reverbPreDelay","PREDEL",814,693,65,Core);
+ knob("reverbDark","DAMP",882,693,65,Core);
+ knob("reverbMod","MOTION",950,693,65,Core);
+ knob("reverbImpact","IMPACT",1018,693,65,Core);
+ knob("reverbWidth","WIDTH",1086,693,65,Core);
+ knob("shimmer","SHIMMER",1153,693,65,Core);
+ // Source-character EQ, true stereo controls, transport and output.
+ knob("toneLow","LOW",55,805,70,Core);
+ knob("toneMid","MID",137,805,70,Core);
+ knob("toneHigh","HIGH",219,805,70,Core);
+ knob("stereo","STEREO",327,805,72,Core);
+ knob("pan","PAN",430,805,69,Core);
+ knob("volume","MASTER",555,805,92,Core);
+ choice("mode",{"Polyphonic","Mono","Legato"},697,755,150,28,Core);
+ knob("glide","GLIDE",732,812,70,Core);
  // Real MIDI keyboard, available without any navigation or secondary page.
  auto keys=std::make_unique<MidiKeyboardComponent>(
     processor.keyboardState,MidiKeyboardComponent::horizontalKeyboard);
@@ -437,7 +453,7 @@ void VoidcoreEditor::buildCore(){
  keys->setColour(MidiKeyboardComponent::keyDownOverlayColourId,acid.withAlpha(.82f));
  keys->setColour(MidiKeyboardComponent::mouseOverKeyOverlayColourId,acid.withAlpha(.20f));
  addAndMakeVisible(*keys);
- ui.push_back({std::move(keys),{240,707,794,34},(int)Core});
+ ui.push_back({std::move(keys),{208,854,820,35},(int)Core});
 }
 void VoidcoreEditor::buildDeeper(){
  // MOTION: one selected LFO at a time, one ADSR, editable 16-step gate.
@@ -946,10 +962,11 @@ void VoidcoreEditor::drawCore(Graphics& g){
  panel(g,{16,335,369,186},"MOTION  /  MODULATION",acid);
  panel(g,{815,335,369,186},"XENO  /  DEBRIS & IMPACT",acid);
  panel(g,{16,530,1168,55},"GATE  /  16 STEP",acid);
- panel(g,{16,593,327,103},"SPACE  /  DELAY & REVERB",acid);
- panel(g,{351,593,272,103},"TONE  /  THREE BAND EQ",acid);
- panel(g,{630,593,220,103},"WIDTH  /  SPATIAL",acid);
- panel(g,{858,593,326,103},"OUTPUT  /  PERFORMANCE",acid);
+ panel(g,{16,593,558,145},"FX / DELAY  -  SYNC & DIRECTION",acid);
+ panel(g,{582,593,602,145},"FX / REVERB  -  CHAMBERS",acid);
+ panel(g,{16,744,267,94},"TONE / EQ",acid);
+ panel(g,{290,744,343,94},"STEREO / OUTPUT",acid);
+ panel(g,{640,744,544,94},"PERFORMANCE / DYNAMICS",acid);
  // Bank-specific WAV waveforms: never an invented procedural bank display.
  sourceWave(g,{29,160,169,73},false);
  sourceWave(g,{207,160,169,73},true);
@@ -975,18 +992,18 @@ void VoidcoreEditor::drawCore(Graphics& g){
   for(int seg=0;seg<15;++seg){
    const bool on=(float)seg/15.f<m;
    g.setColour((seg>12?frost:acid).withAlpha(on?.93f:.12f));
-   g.fillRoundedRectangle(1022.f+ch*19.f,680.f-seg*3.25f,11.f,2.5f,1.f);
+   g.fillRoundedRectangle(1114.f+ch*19.f,818.f-seg*3.25f,11.f,2.5f,1.f);
   }
   g.setColour(grey);
-  g.drawText(ch?"R":"L",1020+ch*19,682,14,11,Justification::centred);
+  g.drawText(ch?"R":"L",1112+ch*19,822,14,11,Justification::centred);
  }
  // The animated sequence is represented by genuinely clickable steps above.
  g.setColour(frost.withAlpha(.51f));g.setFont(Font(9.f,Font::bold));
- g.drawText("PURE SOURCE isolates the actual sample bank, without FX.",414,704,395,14,Justification::centred);
+ g.drawText("PURE SOURCE: UNPROCESSED WAV ATLAS",661,826,394,13,Justification::centred);
  g.setColour(Colour::fromRGB(8,9,12));
- g.fillRoundedRectangle(225.f,705.f,831.f,41.f,4.f);
+ g.fillRoundedRectangle(198.f,850.f,850.f,43.f,4.f);
  g.setColour(acid.withAlpha(.49f));
- g.drawRoundedRectangle(225.f,705.f,831.f,41.f,4.f,1.f);
+ g.drawRoundedRectangle(198.f,850.f,850.f,43.f,4.f,1.f);
 }
 void VoidcoreEditor::drawDeep(Graphics& g){
  if(page==Motion){
