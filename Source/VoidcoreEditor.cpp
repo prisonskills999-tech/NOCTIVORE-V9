@@ -230,6 +230,7 @@ void VoidcoreEditor::allClick(const String& label,float x,float y,float w,float 
 void VoidcoreEditor::setPage(Page next){
  page=next;
  for(auto& node:ui)node.control->setVisible(node.onPage<0||node.onPage==(int)page||
+   ((page==Motion||page==Core)&&node.onPage==20+focusLfo)||
    (page==Motion&&node.onPage==10+focusLfo));
  for(int i=0;i<4;++i){
   if(pageButtons[(size_t)i]){pageButtons[(size_t)i]->selected=(int)page==i;pageButtons[(size_t)i]->repaint();}
@@ -364,12 +365,30 @@ void VoidcoreEditor::buildCore(){
  knob("resonance","RESONANCE",1014,265,69,Core);
  knob("filterDrive","DRIVE",1112,265,69,Core);
  // Direct LFO routed to a selected physical destination.
- choice("wave",{"Sine","Triangle","Saw","Square","Sample & Hold","Fractal"},39,372,143,27,Core);
- choice("target",{"Volume","Pan","Pitch","Filter 1","Filter 2","FM Index","A/B Morph","Metal Exciter","Grain Density","Delay Warp","Reverb Motion"},193,372,169,27,Core);
- knob("rate","RATE",63,481,69,Core);
- knob("depth","DEPTH",149,481,69,Core);
- knob("morphMotion","MORPH MOD",238,481,69,Core);
- knob("evolution","EVOLVE",326,481,69,Core);
+ for(int i=0;i<4;++i){
+  click("LFO "+String(i+1),35.f+i*83.f,360.f,78.f,25.f,Core,[this,i]{
+   focusLfo=i;setPage(Core);
+  });
+  lfoButtons[(size_t)i]=dynamic_cast<Click*>(ui.back().control.get());
+  const String pre=i==0?"":String("lfo")+String(i+1);
+  const String wa=i==0?"wave":pre+"Wave";
+  const String ta=i==0?"target":pre+"Target";
+  const String ra=i==0?"rate":pre+"Rate";
+  const String de=i==0?"depth":pre+"Depth";
+  const String sy=String("lfo")+String(i+1)+"Sync";
+  const StringArray waveNames{"Sine","Triangle","Saw","Square","Sample & Hold","Fractal"};
+  const StringArray targets{"Volume","Pan","Pitch","Filter 1","Filter 2","FM Index","A/B Morph","Metal Exciter","Grain Density","Delay Warp","Reverb Motion"};
+  choice(wa.toRawUTF8(),waveNames,35,387,145,25,Core);
+  ui.back().onPage=20+i;
+  choice(ta.toRawUTF8(),targets,186,387,172,25,Core);
+  ui.back().onPage=20+i;
+  choice(sy.toRawUTF8(),{"Free","1 bar","1/2 bar","1/4 bar","1/8 bar","1/16 bar"},35,416,145,23,Core);
+  ui.back().onPage=20+i;
+  knob(ra.toRawUTF8(),"RATE",81,489,77,Core);ui.back().onPage=20+i;
+  knob(de.toRawUTF8(),"DEPTH",174,489,77,Core);ui.back().onPage=20+i;
+ }
+ knob("morphMotion","MORPH",269,486,62,Core);
+ knob("evolution","EVOLVE",342,486,62,Core);
  // Character is the genuine filter/organism macro; the two neighboring
  // parameters change the granular time structure, not cosmetic animations.
  // The full XENO sound matrix stays on this one screen. All knobs are
@@ -945,7 +964,7 @@ void VoidcoreEditor::drawCore(Graphics& g){
  g.drawFittedText("XY CORE: HORIZONTAL MORPH  /  VERTICAL EVOLUTION",433,426,334,17,Justification::centred,1);
  // Filter and LFO curves update with the real parameter values, not GIFs.
  filter(g,{985,168,179,73});
- lfo(g,{44,403,312,37},0);
+ lfo(g,{43,443,300,28},focusLfo);
  g.setColour(frost.withAlpha(.66f));g.setFont(Font(9.f));
  g.drawText("SAMPLE A",48,239,132,16,Justification::centred);
  g.drawText("SAMPLE B",231,239,132,16,Justification::centred);
