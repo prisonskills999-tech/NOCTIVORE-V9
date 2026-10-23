@@ -6,9 +6,9 @@ using namespace juce;
 namespace {
 constexpr float pi=juce::MathConstants<float>::pi;
 // Strict Matrix palette: luminous green, black and neutral white/grey only.
-const Colour acid=Colour::fromRGB(237,48,57), blood=Colour::fromRGB(230,232,236);
-const Colour frost=Colour::fromRGB(249,250,252), grey=Colour::fromRGB(136,142,151);
-const Colour voidBlack=Colour::fromRGB(5,6,9);
+const Colour acid=Colour::fromRGB(89,89,89), blood=Colour::fromRGB(232,232,232);
+const Colour frost=Colour::fromRGB(250,250,250), grey=Colour::fromRGB(141,141,141);
+const Colour voidBlack=Colour::fromRGB(6,6,6);
 float clamp01(float v){return std::clamp(v,0.f,1.f);}
 float phaseWave(int shape,float t){
  float p=t-std::floor(t);
@@ -55,7 +55,7 @@ void VoidcoreEditor::Dial::paint(Graphics& g){
  g.setColour(voidBlack);
  g.fillEllipse(cx-rad,cy-rad,2.f*rad,2.f*rad);
  ColourGradient shell(accent.withAlpha(.43f),cx-rad*.45f,cy-rad*.65f,
-                      Colour::fromRGB(10,10,14),cx+rad*.7f,cy+rad*.8f,true);
+                      Colour::fromRGB(10,10,10),cx+rad*.7f,cy+rad*.8f,true);
  g.setGradientFill(shell);
  g.fillEllipse(cx-rad*.89f,cy-rad*.89f,1.78f*rad,1.78f*rad);
  g.setColour(frost.withAlpha(.36f));
@@ -112,8 +112,8 @@ void VoidcoreEditor::OrbPad::paint(Graphics& g){
  const auto* d=processor.state.getRawParameterValue("biomeDepth");
  const float xx=(m?m->load():.5f)*getWidth();
  const float yy=(1.f-(d?d->load():.5f))*getHeight();
- const Colour green=Colour::fromRGB(237,48,57);
- const Colour white=Colour::fromRGB(246,246,249);
+ const Colour green=Colour::fromRGB(89,89,89);
+ const Colour white=Colour::fromRGB(246,246,246);
  const float rad=dragging?11.f:7.f;
  g.setColour(green.withAlpha(dragging?.70f:.34f));
  g.drawEllipse(xx-rad,yy-rad,rad*2.f,rad*2.f,1.2f);
@@ -128,13 +128,13 @@ void VoidcoreEditor::OrbPad::paint(Graphics& g){
 VoidcoreEditor::Choice::Choice(NoctivoreProcessor& p,const String& id,const StringArray& items){
  addItemList(items,1);
  setJustificationType(Justification::centredLeft);
- setColour(ComboBox::backgroundColourId,Colour::fromRGB(10,11,15));
+ setColour(ComboBox::backgroundColourId,Colour::fromRGB(11,11,11));
  setColour(ComboBox::textColourId,frost);
  setColour(ComboBox::outlineColourId,grey.withAlpha(.8f));
  setColour(ComboBox::arrowColourId,acid);
  setColour(PopupMenu::backgroundColourId,voidBlack);
  setColour(PopupMenu::textColourId,frost);
- setColour(PopupMenu::highlightedBackgroundColourId,Colour::fromRGB(105,19,29));
+ setColour(PopupMenu::highlightedBackgroundColourId,Colour::fromRGB(38,38,38));
  link=std::make_unique<AudioProcessorValueTreeState::ComboBoxAttachment>(p.state,id,*this);
 }
 void VoidcoreEditor::Choice::paint(Graphics& g){
@@ -155,7 +155,7 @@ void VoidcoreEditor::Click::paintButton(Graphics& g,bool over,bool pressed){
  const auto r=getLocalBounds().toFloat().reduced(1.f);
  const float pulse=.5f+.5f*std::sin(animationPhase*2.5f);
  const bool lit=selected||over||pressed;
- g.setColour(lit?Colour::fromRGB(48,11,19):Colour::fromRGB(12,13,18));
+ g.setColour(lit?Colour::fromRGB(19,19,19):Colour::fromRGB(13,13,13));
  g.fillRoundedRectangle(r,4.f);
  g.setColour(accent.withAlpha(lit?.60f+.30f*pulse:.18f+.13f*pulse));
  g.drawRoundedRectangle(r,4.f,lit?1.7f:1.f);
@@ -448,8 +448,8 @@ void VoidcoreEditor::buildCore(){
  auto keys=std::make_unique<MidiKeyboardComponent>(
     processor.keyboardState,MidiKeyboardComponent::horizontalKeyboard);
  keys->setAvailableRange(36,96);keys->setKeyWidth(18.f);
- keys->setColour(MidiKeyboardComponent::whiteNoteColourId,Colour::fromRGB(220,222,225));
- keys->setColour(MidiKeyboardComponent::blackNoteColourId,Colour::fromRGB(6,7,10));
+ keys->setColour(MidiKeyboardComponent::whiteNoteColourId,Colour::fromRGB(222,222,222));
+ keys->setColour(MidiKeyboardComponent::blackNoteColourId,Colour::fromRGB(7,7,7));
  keys->setColour(MidiKeyboardComponent::keyDownOverlayColourId,acid.withAlpha(.82f));
  keys->setColour(MidiKeyboardComponent::mouseOverKeyOverlayColourId,acid.withAlpha(.20f));
  addAndMakeVisible(*keys);
@@ -522,7 +522,7 @@ void VoidcoreEditor::buildDeeper(){
                                                    MidiKeyboardComponent::horizontalKeyboard);
  keys->setAvailableRange(24,96);
  keys->setKeyWidth(18.f);
- keys->setColour(MidiKeyboardComponent::whiteNoteColourId,Colour::fromRGB(222,240,226));
+ keys->setColour(MidiKeyboardComponent::whiteNoteColourId,Colour::fromRGB(235,235,235));
  keys->setColour(MidiKeyboardComponent::blackNoteColourId,voidBlack);
  keys->setColour(MidiKeyboardComponent::keyDownOverlayColourId,acid.withAlpha(.8f));
  keys->setColour(MidiKeyboardComponent::mouseOverKeyOverlayColourId,acid.withAlpha(.23f));
@@ -636,13 +636,13 @@ void VoidcoreEditor::load(){
 
 void VoidcoreEditor::panel(Graphics& g,Rectangle<float> box,const String& name,Colour accent){
  const float x=box.getX(),y=box.getY(),w=box.getWidth(),h=box.getHeight();
- g.setColour(Colour::fromRGB(8,9,12));
+ g.setColour(Colour::fromRGB(9,9,9));
  g.fillRoundedRectangle(box,7.f);
- ColourGradient glass(Colour::fromRGB(20,21,27),x,y,
-                      Colour::fromRGB(6,7,10),x+w,y+h,true);
+ ColourGradient glass(Colour::fromRGB(21,21,21),x,y,
+                      Colour::fromRGB(7,7,7),x+w,y+h,true);
  g.setGradientFill(glass);
  g.fillRoundedRectangle(box.reduced(2.f),5.f);
- g.setColour(Colour::fromRGB(65,67,75));
+ g.setColour(Colour::fromRGB(67,67,67));
  g.drawRoundedRectangle(box.reduced(.8f),7.f,1.f);
  g.setColour(accent.withAlpha(.72f));
  g.fillRoundedRectangle(x+13.f,y+12.f,3.f,15.f,1.f);
@@ -654,11 +654,11 @@ void VoidcoreEditor::panel(Graphics& g,Rectangle<float> box,const String& name,C
 void VoidcoreEditor::drawBase(Graphics& g){
  g.fillAll(voidBlack);
  const Rectangle<float> screen{5.f,5.f,W-10.f,H-10.f};
- ColourGradient metal(Colour::fromRGB(23,23,29),0.f,0.f,
-                      Colour::fromRGB(4,5,8),W*.8f,H,true);
+ ColourGradient metal(Colour::fromRGB(23,23,23),0.f,0.f,
+                      Colour::fromRGB(5,5,5),W*.8f,H,true);
  g.setGradientFill(metal);
  g.fillRoundedRectangle(screen,11.f);
- g.setColour(Colour::fromRGB(75,77,83));
+ g.setColour(Colour::fromRGB(77,77,77));
  g.drawRoundedRectangle(screen,11.f,1.5f);
  g.setColour(acid.withAlpha(.63f));
  g.drawLine(18.f,65.f,1180.f,65.f,1.f);
@@ -669,16 +669,16 @@ void VoidcoreEditor::drawBase(Graphics& g){
   g.drawVerticalLine((int)x,8.f,H-8.f);
  }
  Rectangle<float> header{13,12,1174,48};
- g.setColour(Colour::fromRGB(5,6,9));
+ g.setColour(Colour::fromRGB(6,6,6));
  g.fillRoundedRectangle(header,7.f);
- g.setColour(Colour::fromRGB(80,83,91));
+ g.setColour(Colour::fromRGB(83,83,83));
  g.drawRoundedRectangle(header,7.f,1.f);
  g.setFont(Font("Consolas",27.f,Font::bold));
  g.setColour(frost);
  g.drawFittedText("V O I D C O R E",31,15,363,33,Justification::centredLeft,1);
  g.setFont(Font("Consolas",10.f,Font::bold));
  g.setColour(acid);
- g.drawText("X E N O   /   F I N A L   E D I T I O N",36,46,357,13,Justification::centredLeft);
+ g.drawText("L I V I N G   S O U N D S C A P E   A T L A S",36,46,357,13,Justification::centredLeft);
  for(int i=0;i<4;++i){
   const float x=i%2?1180.f:18.f;
   const float y=i/2?H-18.f:18.f;
@@ -709,7 +709,7 @@ void VoidcoreEditor::drawOrbitalFrame(Graphics& g,Point<float> centre,float radi
    bone.cubicTo(edge+side*37.f,yy-46.f,
                 edge+side*18.f,y+(yy-y)*.45f,
                 x+side*radius*.55f,y+(yy-y)*.27f);
-   g.setColour(Colour::fromRGB(38,36,42));
+   g.setColour(Colour::fromRGB(37,37,37));
    g.strokePath(bone,PathStrokeType(6.f,PathStrokeType::curved,PathStrokeType::rounded));
    g.setColour(frost.withAlpha(.38f));
    g.strokePath(bone,PathStrokeType(1.3f));
@@ -728,7 +728,7 @@ void VoidcoreEditor::drawOrbitalFrame(Graphics& g,Point<float> centre,float radi
 }
 void VoidcoreEditor::drawKeyboardShell(Graphics& g){
  const Rectangle<float> r{245.f,735.f,738.f,59.f};
- g.setColour(Colour::fromRGB(2,7,4));
+ g.setColour(Colour::fromRGB(6,6,6));
  g.fillRoundedRectangle(r,9.f);
  g.setColour(frost.withAlpha(.34f));
  g.drawRoundedRectangle(r,9.f,1.f);
@@ -746,13 +746,13 @@ void VoidcoreEditor::soundSphere(Graphics& g,Point<float> centre,float radius,Co
   g.setColour(tint.withAlpha(.008f+.016f*p));
   g.fillEllipse(x-R,y-R,2.f*R,2.f*R);
  }
- ColourGradient ball(Colour::fromRGB(135,21,29).withAlpha(.90f),
+ ColourGradient ball(Colour::fromRGB(46,46,46).withAlpha(.90f),
                       x-r*.56f,y-r*.76f,voidBlack,x+r*.78f,y+r*.85f,true);
  g.setGradientFill(ball);g.fillEllipse(x-r,y-r,2.f*r,2.f*r);
  // Dark shadow inside the lower-right hemisphere gives planet curvature.
- ColourGradient edge(Colour::fromRGB(0,3,2).withAlpha(0.f),
+ ColourGradient edge(Colour::fromRGB(2,2,2).withAlpha(0.f),
                      x-r*.43f,y-r*.55f,
-                     Colour::fromRGB(0,1,1).withAlpha(.87f),x+r*.56f,y+r*.71f,true);
+                     Colour::fromRGB(1,1,1).withAlpha(.87f),x+r*.56f,y+r*.71f,true);
  g.setGradientFill(edge);g.fillEllipse(x-r*.96f,y-r*.96f,1.92f*r,1.92f*r);
  g.setColour(frost.withAlpha(.42f));
  g.drawEllipse(x-r*.98f,y-r*.98f,r*1.96f,r*1.96f,1.45f);
@@ -784,7 +784,7 @@ void VoidcoreEditor::soundSphere(Graphics& g,Point<float> centre,float radius,Co
  }
  // Organic void iris carries the reactor name without occluding the rings.
  const float iris=r*(.20f+.026f*p);
- g.setColour(Colour::fromRGB(0,2,2).withAlpha(.92f));
+ g.setColour(Colour::fromRGB(2,2,2).withAlpha(.92f));
  g.fillEllipse(x-iris,y-iris,2.f*iris,2.f*iris);
  g.setColour(frost.withAlpha(.29f));
  g.drawEllipse(x-iris,y-iris,2.f*iris,2.f*iris,1.25f);
@@ -802,7 +802,7 @@ void VoidcoreEditor::visualEye(Graphics& g,float x,float y,float radius){
  g.drawFittedText("XENO  /  SOUND SPHERE",(int)(x-125.f),(int)(y+33.f),250,23,Justification::centred,1);
 }
 void VoidcoreEditor::sourceWave(Graphics& g,Rectangle<float> r,bool second){
- g.setColour(Colour::fromRGB(9,10,14));g.fillRoundedRectangle(r,5.f);
+ g.setColour(Colour::fromRGB(10,10,10));g.fillRoundedRectangle(r,5.f);
  for(int k=0;k<=8;++k){const float xx=r.getX()+r.getWidth()*k/8.f;
   g.setColour(acid.withAlpha(.09f));g.drawVerticalLine((int)xx,r.getY(),r.getBottom());}
  for(int k=0;k<5;++k){const float yy=r.getY()+r.getHeight()*k/4.f;
@@ -838,7 +838,7 @@ void VoidcoreEditor::sourceWave(Graphics& g,Rectangle<float> r,bool second){
  }
 }
 void VoidcoreEditor::scope(Graphics& g,Rectangle<float> r,int mode,Colour c){
- g.setColour(Colour::fromRGB(1,9,5).withAlpha(.97f));
+ g.setColour(Colour::fromRGB(7,7,7).withAlpha(.97f));
  g.fillRoundedRectangle(r,5.f);
  g.setColour(c.withAlpha(.24f));g.drawRoundedRectangle(r,5.f,1.f);
  g.setColour(frost.withAlpha(.06f));
@@ -867,7 +867,7 @@ void VoidcoreEditor::scope(Graphics& g,Rectangle<float> r,int mode,Colour c){
  (void)mode;
 }
 void VoidcoreEditor::env(Graphics& g,Rectangle<float> r){
- g.setColour(Colour::fromRGB(3,17,14));g.fillRoundedRectangle(r,5.f);
+ g.setColour(Colour::fromRGB(14,14,14));g.fillRoundedRectangle(r,5.f);
  for(int i=1;i<5;++i){g.setColour(acid.withAlpha(.11f));g.drawVerticalLine((int)(r.getX()+r.getWidth()*i/5),r.getY(),r.getBottom());}
  const float a=std::sqrt(clamp01(value("attack")/8.f));
  const float d=std::sqrt(clamp01(value("decay")/9.f));
@@ -886,7 +886,7 @@ void VoidcoreEditor::env(Graphics& g,Rectangle<float> r){
  g.setColour(frost.withAlpha(.65f));g.fillEllipse(start+marker*w*.70f-3.f,base-height*sust-3.f,6.f,6.f);
 }
 void VoidcoreEditor::lfo(Graphics& g,Rectangle<float> r,int which){
- g.setColour(Colour::fromRGB(9,10,14));g.fillRoundedRectangle(r,5.f);
+ g.setColour(Colour::fromRGB(10,10,10));g.fillRoundedRectangle(r,5.f);
  const String pre=which==0?"":String("lfo")+String(which+1);
  const String shape=which==0?"wave":pre+"Wave";
  const String hz=which==0?"rate":pre+"Rate";
@@ -908,7 +908,7 @@ void VoidcoreEditor::lfo(Graphics& g,Rectangle<float> r,int which){
  g.drawText("LIVE MODULATION  //  "+String(value(hz.toRawUTF8()),3)+" Hz",r.getX()+8.f,r.getY()+6.f,r.getWidth()-16.f,18.f,Justification::topLeft);
 }
 void VoidcoreEditor::filter(Graphics& g,Rectangle<float> r){
- g.setColour(Colour::fromRGB(9,10,14));g.fillRoundedRectangle(r,5.f);
+ g.setColour(Colour::fromRGB(10,10,10));g.fillRoundedRectangle(r,5.f);
  const float cutoff=clamp01(value("cutoff")),q=clamp01(value("resonance"));
  Path p;
  for(int i=0;i<240;++i){
@@ -925,7 +925,7 @@ void VoidcoreEditor::filter(Graphics& g,Rectangle<float> r){
  g.setColour(frost.withAlpha(.5f));g.drawVerticalLine((int)marker,r.getY(),r.getBottom());
 }
 void VoidcoreEditor::gates(Graphics& g,Rectangle<float> r){
- g.setColour(Colour::fromRGB(3,13,10));g.fillRoundedRectangle(r,5.f);
+ g.setColour(Colour::fromRGB(11,11,11));g.fillRoundedRectangle(r,5.f);
  const float beat=processor.displayPpq.load(std::memory_order_relaxed);
  const int step=(int)std::floor(beat*4.f)%16;
  const int active=(step+16)%16;
@@ -1000,7 +1000,7 @@ void VoidcoreEditor::drawCore(Graphics& g){
  // The animated sequence is represented by genuinely clickable steps above.
  g.setColour(frost.withAlpha(.51f));g.setFont(Font(9.f,Font::bold));
  g.drawText("PURE SOURCE: UNPROCESSED WAV ATLAS",661,826,394,13,Justification::centred);
- g.setColour(Colour::fromRGB(8,9,12));
+ g.setColour(Colour::fromRGB(9,9,9));
  g.fillRoundedRectangle(198.f,850.f,850.f,43.f,4.f);
  g.setColour(acid.withAlpha(.49f));
  g.drawRoundedRectangle(198.f,850.f,850.f,43.f,4.f,1.f);
@@ -1030,8 +1030,8 @@ void VoidcoreEditor::drawDeep(Graphics& g){
 }
 void VoidcoreEditor::paintStatus(Graphics& g){
  g.setColour(grey);g.setFont(Font(9.f,Font::bold));
- g.drawText(playing?"AUDIO ACTIVE":"READY",28,716,184,14,Justification::centredLeft);
- g.drawText("VOIDCORE  /  ONE-PAGE XENO ENGINE",1040,716,140,14,Justification::centredRight);
+ g.drawText(playing?"AUDIO ACTIVE":"READY",28,866,184,14,Justification::centredLeft);
+ g.drawText("VOIDCORE  /  MONOCHROME",1030,867,150,14,Justification::centredRight);
 }
 void VoidcoreEditor::paint(Graphics& g){
  Graphics::ScopedSaveState state(g);
