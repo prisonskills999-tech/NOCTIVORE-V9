@@ -402,32 +402,32 @@ void VoidcoreEditor::buildCore(){
  knob("dark","DARK",1032,495,65,Core);
  knob("texture","SCATTER",1120,495,65,Core);
  // Two featured, algorithm-selectable effects: fully accessible on one page.
- choice("division",{"1/4","1/8","1/8 dotted","1/16","1/16 dotted","1/32","1/4 triplet","1/8 triplet"},33,579,167,27,Core);
- choice("delayMode",{"Tape","Ping Pong","Diffuse","Dub"},207,579,181,27,Core);
- click("DELAY HOLD",402,579,161,27,Core,[this]{
+ choice("division",{"1/4","1/8","1/8 dotted","1/16","1/16 dotted","1/32","1/4 triplet","1/8 triplet"},33,591,167,27,Core);
+ choice("delayMode",{"Tape","Ping Pong","Diffuse","Dub"},207,591,181,27,Core);
+ click("DELAY HOLD",402,591,161,27,Core,[this]{
   set("delayFreeze",value("delayFreeze")>.5f?0.f:1.f);
  });
  delayHoldButton=dynamic_cast<Click*>(ui.back().control.get());
- knob("delayMix","MIX",62,663,60,Core);
- knob("delayFeedback","FEEDBACK",144,663,60,Core);
- knob("delayTone","TONE",225,663,60,Core);
- knob("delayWarp","WARP",307,663,60,Core);
- knob("delaySpread","PING PONG",389,663,60,Core);
- knob("delayDiffusion","SMEAR",471,663,60,Core);
- knob("delayDrive","COLOR",553,663,60,Core);
- choice("reverbMode",{"Chamber","Plate","Cathedral","Void"},620,579,219,27,Core);
- click("REVERB HOLD",849,579,132,27,Core,[this]{
+ knob("delayMix","MIX",62,673,60,Core);
+ knob("delayFeedback","FEEDBACK",144,673,60,Core);
+ knob("delayTone","TONE",225,673,60,Core);
+ knob("delayWarp","WARP",307,673,60,Core);
+ knob("delaySpread","PING PONG",389,673,60,Core);
+ knob("delayDiffusion","SMEAR",471,673,60,Core);
+ knob("delayDrive","COLOR",553,673,60,Core);
+ choice("reverbMode",{"Chamber","Plate","Cathedral","Void"},620,591,219,27,Core);
+ click("REVERB HOLD",849,591,132,27,Core,[this]{
   set("reverbFreeze",value("reverbFreeze")>.5f?0.f:1.f);
  });
  reverbHoldButton=dynamic_cast<Click*>(ui.back().control.get());
- knob("reverbMix","MIX",634,663,56,Core);
- knob("reverbSize","SIZE",707,663,56,Core);
- knob("reverbDecay","DECAY",781,663,56,Core);
- knob("reverbPreDelay","PREDELAY",854,663,56,Core);
- knob("reverbDark","DAMP",928,663,56,Core);
- knob("reverbMod","MOTION",1001,663,56,Core);
- knob("shimmer","BLOOM",1074,663,56,Core);
- knob("reverbWidth","WIDTH",1147,663,56,Core);
+ knob("reverbMix","MIX",634,671,56,Core);
+ knob("reverbSize","SIZE",707,671,56,Core);
+ knob("reverbDecay","DECAY",781,671,56,Core);
+ knob("reverbPreDelay","PREDELAY",854,671,56,Core);
+ knob("reverbDark","DAMP",928,671,56,Core);
+ knob("reverbMod","MOTION",1001,671,56,Core);
+ knob("shimmer","BLOOM",1074,671,56,Core);
+ knob("reverbWidth","WIDTH",1147,671,56,Core);
  choice("motif",{"Off","Serpent","Ritual","Insect","Portal","Fracture","Hollow"},84,735,147,25,Core);
  knob("trancePulse","PULSE",277,744,53,Core);
  for(int i=0;i<16;++i){
@@ -1005,7 +1005,7 @@ void VoidcoreEditor::drawCore(Graphics& g){
  g.setColour(Colour::fromRGB(9,9,9));
  g.fillRoundedRectangle(22.f,858.f,1156.f,41.f,4.f);
  g.setColour(acid.withAlpha(.49f));
- g.drawRoundedRectangle(225.f,705.f,831.f,41.f,4.f,1.f);
+ g.drawRoundedRectangle(22.f,858.f,1156.f,41.f,4.f,1.f);
 }
 void VoidcoreEditor::drawDeep(Graphics& g){
  if(page==Motion){
