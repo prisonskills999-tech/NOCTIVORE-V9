@@ -448,12 +448,12 @@ public:
     // MIDI input sets the pitch. No scripted pitch gestures at all.
     const float gesture=0.f;
     float semitones=v.pitch-(float)s.root+(bend+p.bend)*p.bendRange+gesture+p.tuneA;
-    semitones+=clampf(destinations[2],-1.f,1.f)*2.f;
-    float micro=clampf(p.organic,0.f,1.f)*.030f*std::sin(v.motionPhase);
+    // Intentional MIDI pitch remains; evolving modulation no longer detunes samples.
+    const float micro=0.f;
     float step=(float)s.rate*dt*std::exp2((semitones+micro)/12.f);
     step=clampf(step,.01f,20.f);
     const float semitonesB=v.pitch-(float)sb.root+(bend+p.bend)*p.bendRange+gesture+p.tuneB
-      +clampf(destinations[2],-1.f,1.f)*2.f;
+      ;
     float stepB=clampf((float)sb.rate*dt*std::exp2((semitonesB+micro)/12.f),.01f,20.f);
     if(p.reverse>.5f){step=-step;stepB=-stepB;}
     // Two independent crossfaded, pitch-tracked source transports. No buffers
@@ -734,7 +734,7 @@ public:
     const float aggression=clampf(p.macroAggression,0.f,1.f);
     const float atmosphere=clampf(p.macroAtmosphere,0.f,1.f);
     // Two-operator inharmonic FM: no samples or wavetables required.
-    const float carrier=std::min(7200.f,fundamentalHz(v.pitch+gesture+(bend+p.bend)*p.bendRange+clampf(destinations[2],-1.f,1.f)*2.f));
+    const float carrier=std::min(7200.f,fundamentalHz(v.pitch+gesture+(bend+p.bend)*p.bendRange));
     const float fmFreq=std::min((float)sr*.17f,carrier*(p.fmRatio+.19f*p.fmInharmonic));
     v.modPhase=wrapPhase(v.modPhase+2.f*pi*fmFreq*dt);
     const float mod=std::sin(v.modPhase+clampf(p.fmFeedback,0.f,.95f)*v.prevMod*2.5f);
