@@ -104,7 +104,7 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  choose("textureMode","Texture Algorithm",{"Flow","Grain Cloud","Orbital","Pulsar","Liquid Warp","Time Freeze"});
  add("morph","Source Crossfade",0,1,0.f);
  add("morphMotion","Autonomous Morph",0,1,0.f);
- add("morphRate","Morph Rate (Hz)",.005f,1.2f,.065f);
+ add("morphRate","Morph Rate (Hz)",.00005f,1.2f,.005f);
  add("texture","Algorithm Intensity",0,1,.18f);
  add("grain","Grain Density",0,1,.38f);
  add("scatter","Time Scatter",0,1,.31f);
@@ -142,7 +142,13 @@ AudioProcessorValueTreeState::ParameterLayout NoctivoreProcessor::layout(){
  add("trancePulse","Psy Pulse",0.f,1.f,0.f);
  add("tranceRate","Pulse Speed",.25f,8.f,2.f);
  add("psySpiral","Psy Spiral",0.f,1.f,.24f);
- add("psySpiralRate","Spiral Rate (Hz)",.005f,2.f,.16f);
+ add("psySpiralRate","Spiral Rate (Hz)",.00005f,2.f,.015f);
+ add("delayImpact","Delay Impact",0.f,1.f,.58f);
+ add("delayMode","Delay Routing",0.f,3.f,0.f);
+ add("delayDrift","Delay Drift",0.f,1.f,.46f);
+ add("reverbImpact","Reverb Impact",0.f,1.f,.68f);
+ add("reverbMode","Reverb Chamber Mode",0.f,3.f,0.f);
+ add("reverbWidth","Reverb Width",0.f,1.f,.75f);
  add("hiFiAir","Hi-Fi Air",0.f,1.f,0.f);
  add("clarity","Master Clarity",0.f,1.f,1.f);
  // V9 rhythmic-only shadow gate (legacy parameters retained for automation).
@@ -297,6 +303,8 @@ void NoctivoreProcessor::processBlock(AudioBuffer<float>& output,MidiBuffer& eve
  p.fx.reverbMix=get("reverbMix");p.fx.reverbSize=get("reverbSize");p.fx.reverbDecay=get("reverbDecay");
  p.fx.reverbDark=get("reverbDark");p.fx.reverbMod=get("reverbMod");p.fx.reverbPreDelay=get("reverbPreDelay");
  p.fx.shimmer=get("shimmer");p.fx.duck=get("duck");
+ p.fx.delayImpact=get("delayImpact");p.fx.delayMode=(int)get("delayMode");p.fx.delayDrift=get("delayDrift");
+ p.fx.reverbImpact=get("reverbImpact");p.fx.reverbMode=(int)get("reverbMode");p.fx.reverbWidth=get("reverbWidth");
  // Preserve old saved 'Space' settings as a macro on the new reverb amount.
  p.fx.reverbMix=noctivore::clampf(p.fx.reverbMix*(.65f+get("space")),0,1);
  if(auto* playhead=getPlayHead())
