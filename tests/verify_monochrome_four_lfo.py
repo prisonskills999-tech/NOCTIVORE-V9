@@ -14,7 +14,7 @@ assert "W=1200.f,H=900.f" in hdr
 assert "for(int i=0;i<4;++i)" in main and 'click("LFO "+String(i+1)' in main
 assert "20+focusLfo" in editor and "node.onPage=20+i" not in editor
 assert main.count("ui.back().onPage=20+i")>=5
-assert "lfo(g,{43,443,300,28},focusLfo)" in editor
+assert "lfo(g,{188,416,170,34},focusLfo)" in editor
 assert "clampf(cfg.rate,.00001f,3.f)" in engine
 assert "NormalisableRange<float>(.00001f,3.f" in params
 for param in ("delayImpact","delayDrift","delayMode","reverbImpact","reverbMode","reverbWidth"):
