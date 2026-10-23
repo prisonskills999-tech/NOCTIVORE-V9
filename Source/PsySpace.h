@@ -20,6 +20,8 @@ public:
   float shimmer=.09f, duck=.24f;
   float wetLowCut=.64f; // HP feeds both delay and reverb: no sub swamp
   float psySpiral=.28f, psySpiralRate=.16f;
+   int delayMode=0,delayFreeze=0,reverbMode=0,reverbFreeze=0;
+   float delayDrive=.24f,reverbWidth=.83f;
  };
  void prepare(double sampleRate) {
   sr=std::max(8000.0,sampleRate); phase=0; envelope=0;
@@ -84,9 +86,21 @@ public:
   float darkL=toneL-hpL,darkR=toneR-hpR;
   float diffusion=std::clamp(c.delayDiffusion,0.f,1.f)*.30f;
   float spread=std::clamp(c.delaySpread,0.f,1.f);
-  float fb=std::clamp(c.delayFeedback,0.f,.92f);
-  float writeL=(inL+fb*(darkL*(1-spread)+darkR*spread)+diffusion*diffL[0])*.83f;
-  float writeR=(inR+fb*(darkR*(1-spread)+darkL*spread)+diffusion*diffR[0])*.83f;
+  // Four audible delay algorithms, all bounded and sample-rate continuous.
+   // Tape: mono-dark feedback. Ping Pong: cross-coupled stereo.
+   // Diffuse: extra FDN-style tap smear. Dub: driven filtered feedback.
+   const int algorithm=std::clamp(c.delayMode,0,3);
+   if(algorithm==0){const float mono=.5f*(darkL+darkR);darkL=.72f*darkL+.28f*mono;darkR=.72f*darkR+.28f*mono;}
+   else if(algorithm==1)spread=1.f;
+   else if(algorithm==2)diffusion=std::min(.54f,diffusion+.24f);
+   else if(algorithm==3){darkL*=1.25f;darkR*=1.25f;}
+   const float color=std::clamp(c.delayDrive,0.f,1.f);
+   const float driveL=darkL*(1.f-.72f*color)+std::tanh(darkL*(1.f+5.f*color))*.72f*color;
+   const float driveR=darkR*(1.f-.72f*color)+std::tanh(darkR*(1.f+5.f*color))*.72f*color;
+   darkL=driveL;darkR=driveR;
+   float fb=c.delayFreeze?.989f:std::clamp(c.delayFeedback,0.f,.96f);
+  float writeL=((c.delayFreeze?0.f:inL)+fb*(darkL*(1-spread)+darkR*spread)+diffusion*diffL[0])*.83f;
+  float writeR=((c.delayFreeze?0.f:inR)+fb*(darkR*(1-spread)+darkL*spread)+diffusion*diffR[0])*.83f;
   diffL[0]=darkL;diffR[0]=darkR;
   // Continuous overload protection without saturating every normal sample.
    delayL[delayPos]=writeL/std::sqrt(1.f+.13f*writeL*writeL);
@@ -109,7 +123,7 @@ public:
   // 8-dimensional unitary Hadamard FDN with per-line lowpass, DC block,
   // fractional modulated reads; decay mapping stays below unity.
   std::array<float,8> t{};
-  float sz=.57f+std::clamp(c.reverbSize,0.f,1.f)*1.22f;
+  float sz=(.57f+std::clamp(c.reverbSize,0.f,1.f)*1.22f)*(c.reverbMode==2?1.48f:c.reverbMode==1?.72f:1.f);
   const float mod=std::clamp(c.reverbMod,0.f,1.f);
   const float dark=std::clamp(c.reverbDark,0.f,1.f);
   for(size_t k=0;k<8;++k){
@@ -117,6 +131,7 @@ public:
    float speed=.09f+.013f*(float)k;
    float flutter=std::sin(6.2831853f*(phase*speed+(float)k*.137f));
    float readSamples=(float)sr*line.base*sz+(float)sr*(.00035f+mod*.0024f)*flutter;
+    readSamples=std::clamp(readSamples,16.f,(float)line.data.size()-16.f);
    float v=read(line.data,line.pos,readSamples);
    float tone=.45f-dark*.405f;
    line.damp+=(v-line.damp)*tone;
@@ -131,10 +146,11 @@ public:
      float a=mixed[base+j],b=mixed[base+j+stride];
      mixed[base+j]=a+b;mixed[base+j+stride]=a-b;
     }
-  float tailGain=.75f+std::clamp(c.reverbDecay,0.f,1.f)*.245f;
+  float tailGain=c.reverbFreeze?.9985f:(.75f+std::clamp(c.reverbDecay,0.f,1.f)*.245f);
+   if(c.reverbMode==3)tailGain=std::max(tailGain,.991f);
   float monoIn=(earlyL+earlyR)*.5f;
   for(size_t k=0;k<8;++k){
-   float injection=(k%2==0?earlyL:earlyR)*.18f+monoIn*.055f;
+   float injection=c.reverbFreeze?0.f:((k%2==0?earlyL:earlyR)*.18f+monoIn*.055f);
    // Finite, bounded feedback; shimmer adds only subtle bright overtone energy.
    float harmonic=std::clamp(c.shimmer,0.f,1.f)*.075f*(t[k]-t[(k+3)%8]);
    auto& line=lines[k];
@@ -147,6 +163,12 @@ public:
   float rvR=(t[1]-t[2]+t[4]-t[5]+t[6])*.28f;
   rvL=rvL*.82f+earlyL*.12f;
   rvR=rvR*.82f+earlyR*.12f;
+   if(c.reverbMode==1){rvL=.65f*rvL+.35f*earlyL;rvR=.65f*rvR+.35f*earlyR;}
+   else if(c.reverbMode==2){rvL=1.20f*rvL+.12f*earlyL;rvR=1.20f*rvR+.12f*earlyR;}
+   else if(c.reverbMode==3){rvL=1.32f*rvL;rvR=1.32f*rvR;}
+   const float width=std::clamp(c.reverbWidth,0.f,1.f)*1.9f;
+   const float centre=.5f*(rvL+rvR),side=.5f*(rvL-rvR)*width;
+   rvL=centre+side;rvR=centre-side;
   // Slowly sweeping four-stage allpass cloud: phase animation without
   // boosting narrow metallic resonances. Stages use opposite stereo sweeps.
   const float spiral=std::clamp(c.psySpiral,0.f,1.f);
@@ -162,8 +184,8 @@ public:
    spiralInR[stage]=shimmerR;spiralOutR[stage]=outPhaseR;
    shimmerL=outPhaseL;shimmerR=outPhaseR;
   }
-  float baseL=std::clamp(c.delayMix,0.f,1.f)*wetDL*.65f+std::clamp(c.reverbMix,0.f,1.f)*rvL;
-  float baseR=std::clamp(c.delayMix,0.f,1.f)*wetDR*.65f+std::clamp(c.reverbMix,0.f,1.f)*rvR;
+  float baseL=std::clamp(c.delayMix,0.f,1.f)*wetDL*1.12f+std::clamp(c.reverbMix,0.f,1.f)*rvL*1.34f;
+  float baseR=std::clamp(c.delayMix,0.f,1.f)*wetDR*1.12f+std::clamp(c.reverbMix,0.f,1.f)*rvR*1.34f;
   float swirlGain=spiral*.28f*(c.reverbMix+c.delayMix);
   outL=duck*(baseL*(1.f-spiral*.15f)+swirlGain*shimmerL);
   outR=duck*(baseR*(1.f-spiral*.15f)+swirlGain*shimmerR);
